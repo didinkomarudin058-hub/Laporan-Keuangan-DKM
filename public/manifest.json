@@ -1,0 +1,24 @@
+{
+  "name": "Kas DKM Masjid - Pengelolaan Transparan",
+  "short_name": "Kas DKM",
+  "description": "Sistem Pengelolaan Kas Transparan DKM Masjid, Transaksi Infaq, dan Laporan Bulanan Otomatis",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#064e3b",
+  "theme_color": "#064e3b",
+  "icons": [
+    {
+      "src": "/pwa-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/pwa-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

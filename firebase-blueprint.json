@@ -1,0 +1,32 @@
+{
+  "entities": {
+    "user_data": {
+      "path": "users/{userId}",
+      "fields": {
+        "email": { "type": "string" },
+        "updatedAt": { "type": "timestamp" }
+      }
+    },
+    "transactions": {
+      "path": "users/{userId}/transactions/{transactionId}",
+      "fields": {
+        "tanggal": { "type": "string" },
+        "jenis": { "type": "string" },
+        "danaKat": { "type": "string" },
+        "kategori": { "type": "string" },
+        "keterangan": { "type": "string" },
+        "jumlah": { "type": "number" },
+        "donatur": { "type": "string" },
+        "metodePembayaran": { "type": "string" }
+      }
+    },
+    "settings": {
+      "path": "users/{userId}/settings/{settingId}",
+      "fields": {
+        "mosqueProfile": { "type": "map" },
+        "categoriesPemasukan": { "type": "array" },
+        "categoriesPengeluaran": { "type": "array" }
+      }
+    }
+  }
+}
