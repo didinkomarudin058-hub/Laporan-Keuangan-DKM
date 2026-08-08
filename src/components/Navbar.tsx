@@ -6,7 +6,6 @@ import {
   BarChart3,
   ListFilter,
   Settings,
-  Download,
 } from 'lucide-react';
 import { User } from 'firebase/auth';
 import { MosqueProfile } from '../types';
@@ -16,7 +15,7 @@ interface NavbarProps {
   activeTab: 'dashboard' | 'transactions' | 'monthlyReport' | 'analytics' | 'tvMode';
   setActiveTab: (tab: 'dashboard' | 'transactions' | 'monthlyReport' | 'analytics' | 'tvMode') => void;
   onOpenSettingsModal: (tab?: 'profile' | 'account' | 'categories' | 'backup' | 'pwa') => void;
-  onOpenPwaModal: () => void;
+  onOpenPwaModal?: () => void;
   currentUser?: User | null;
 }
 
@@ -25,7 +24,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
   onOpenSettingsModal,
-  onOpenPwaModal,
 }) => {
   return (
     <header id="dkm-app-navbar" className="bg-emerald-900 text-white shadow-md border-b border-emerald-800 sticky top-0 z-30">
@@ -45,16 +43,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             </p>
           </div>
         </div>
-
-        {/* Top Right Quick Action for Mobile / Tablet / Desktop */}
-        <button
-          onClick={onOpenPwaModal}
-          className="md:hidden px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-emerald-950 shadow-md transition flex items-center gap-1.5 shrink-0 cursor-pointer border border-amber-300/50"
-          title="Install Aplikasi PWA di Android & Desktop"
-        >
-          <Download className="w-4 h-4 stroke-[2.5]" />
-          <span>Install PWA</span>
-        </button>
       </div>
 
       {/* Navigation Sub-bar (Desktop & Tablet) */}
@@ -125,25 +113,14 @@ export const Navbar: React.FC<NavbarProps> = ({
             <span>Tampilan TV Jamaah</span>
           </button>
 
-          <div className="ml-auto flex items-center gap-2">
-            <button
-              onClick={onOpenPwaModal}
-              className="px-3 py-1.5 rounded-md text-xs font-bold bg-amber-500 hover:bg-amber-400 text-emerald-950 transition flex items-center gap-1.5 shrink-0 cursor-pointer shadow-sm"
-              title="Install Aplikasi PWA di Android & Desktop"
-            >
-              <Download className="w-4 h-4 stroke-[2.5]" />
-              <span>Install App PWA</span>
-            </button>
-
-            <button
-              onClick={() => onOpenSettingsModal('profile')}
-              className="px-3 py-1.5 rounded-md text-xs font-medium bg-emerald-800/60 text-emerald-100 hover:text-white hover:bg-emerald-800 border border-emerald-700/60 transition flex items-center gap-1.5 shrink-0 cursor-pointer"
-              title="Menu Pengaturan DKM"
-            >
-              <Settings className="w-4 h-4 text-amber-300" />
-              <span>Pengaturan</span>
-            </button>
-          </div>
+          <button
+            onClick={() => onOpenSettingsModal('profile')}
+            className="ml-auto px-3 py-1.5 rounded-md text-xs font-medium bg-emerald-800/60 text-emerald-100 hover:text-white hover:bg-emerald-800 border border-emerald-700/60 transition flex items-center gap-1.5 shrink-0 cursor-pointer"
+            title="Menu Pengaturan DKM"
+          >
+            <Settings className="w-4 h-4 text-amber-300" />
+            <span>Pengaturan</span>
+          </button>
         </div>
       </div>
     </header>
