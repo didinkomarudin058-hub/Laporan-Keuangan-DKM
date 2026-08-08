@@ -44,7 +44,8 @@ interface MosqueSettingsModalProps {
   onResetData: () => void;
 
   // Optional tab selector
-  defaultTab?: 'profile' | 'account' | 'categories' | 'backup';
+  defaultTab?: 'profile' | 'account' | 'categories' | 'backup' | 'pwa';
+  onOpenPwaModal?: () => void;
 }
 
 export const MosqueSettingsModal: React.FC<MosqueSettingsModalProps> = ({
@@ -63,8 +64,9 @@ export const MosqueSettingsModal: React.FC<MosqueSettingsModalProps> = ({
   onImportBackup,
   onResetData,
   defaultTab = 'profile',
+  onOpenPwaModal,
 }) => {
-  const [activeTab, setActiveTab] = useState<'profile' | 'account' | 'categories' | 'backup'>(defaultTab);
+  const [activeTab, setActiveTab] = useState<'profile' | 'account' | 'categories' | 'backup' | 'pwa'>(defaultTab);
 
   // Profile Form State
   const [profile, setProfile] = useState<MosqueProfile>({ ...mosqueProfile });
@@ -194,6 +196,18 @@ export const MosqueSettingsModal: React.FC<MosqueSettingsModalProps> = ({
           >
             <Database className="w-4 h-4 text-emerald-700" />
             <span>Backup & Reset</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('pwa')}
+            className={`py-2.5 px-4 text-xs font-bold rounded-t-lg transition flex items-center gap-1.5 shrink-0 ${
+              activeTab === 'pwa'
+                ? 'bg-amber-500 text-emerald-950 font-bold shadow-xs'
+                : 'bg-amber-100 text-amber-900 hover:bg-amber-200'
+            }`}
+          >
+            <Download className="w-4 h-4 text-emerald-900 stroke-[2.5]" />
+            <span>Install App PWA</span>
           </button>
         </div>
 
@@ -564,6 +578,61 @@ export const MosqueSettingsModal: React.FC<MosqueSettingsModalProps> = ({
                   <RotateCcw className="w-4 h-4" />
                   <span>Reset Seluruh Data Kas</span>
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 5: INSTALL PWA ANDROID & DESKTOP */}
+          {activeTab === 'pwa' && (
+            <div className="space-y-4">
+              <div className="bg-gradient-to-r from-emerald-900 to-teal-900 text-white p-5 rounded-xl space-y-3 shadow-md">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-400 text-emerald-950 flex items-center justify-center font-bold">
+                    <Download className="w-6 h-6 stroke-[2.5]" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-sm text-white">Aplikasi Web Progresif (PWA)</h4>
+                    <p className="text-xs text-emerald-200">Dukungan Lintas Perangkat: Android, Windows, Mac, iOS</p>
+                  </div>
+                </div>
+
+                <p className="text-xs text-emerald-100/90 leading-relaxed">
+                  Install aplikasi Kas DKM ke layar utama smartphone atau PC Anda. Tanpa PlayStore/AppStore, langsung berjalan cepat dan dapat diakses offline saat sinyal tidak stabil.
+                </p>
+
+                {onOpenPwaModal && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenPwaModal();
+                    }}
+                    className="w-full py-2.5 px-4 bg-amber-500 hover:bg-amber-400 text-emerald-950 font-extrabold text-xs rounded-lg shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>BUKA PANDUAN & TOMBOL INSTALL PWA</span>
+                  </button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs text-slate-700">
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+                  <h5 className="font-bold text-slate-900 flex items-center gap-1.5">
+                    📱 HP Android (Chrome):
+                  </h5>
+                  <p className="text-slate-600 leading-relaxed text-[11px]">
+                    Buka Chrome di HP -&gt; Ketuk menu titik 3 di pojok kanan atas -&gt; Pilih <strong>"Instal Aplikasi"</strong> atau <strong>"Tambahkan ke Layar Utama"</strong>.
+                  </p>
+                </div>
+
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+                  <h5 className="font-bold text-slate-900 flex items-center gap-1.5">
+                    💻 Komputer / PC (Chrome & Edge):
+                  </h5>
+                  <p className="text-slate-600 leading-relaxed text-[11px]">
+                    Buka website di Chrome/Edge PC -&gt; Klik ikon <strong>Install</strong> di address bar kanan atas -&gt; Pilih <strong>Instal</strong>.
+                  </p>
+                </div>
               </div>
             </div>
           )}

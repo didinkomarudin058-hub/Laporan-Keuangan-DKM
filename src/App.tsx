@@ -10,6 +10,7 @@ import { PublicDisplayBoard } from './components/PublicDisplayBoard';
 import { AddTransactionModal } from './components/AddTransactionModal';
 import { MosqueSettingsModal } from './components/MosqueSettingsModal';
 import { MobileBottomNav } from './components/MobileBottomNav';
+import { PwaInstallModal } from './components/PwaInstallModal';
 
 import { FundCategory, MosqueProfile, Transaction, TransactionType } from './types';
 import {
@@ -163,8 +164,11 @@ export default function App() {
 
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [settingsDefaultTab, setSettingsDefaultTab] = useState<
-    'profile' | 'account' | 'categories' | 'backup'
+    'profile' | 'account' | 'categories' | 'backup' | 'pwa'
   >('profile');
+
+  // PWA Modal State
+  const [isPwaModalOpen, setIsPwaModalOpen] = useState(false);
 
   // Toast Banner for Back Button / System Notifications
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -218,6 +222,11 @@ export default function App() {
         window.history.pushState({ tab: activeTab }, '');
         return;
       }
+      if (isPwaModalOpen) {
+        setIsPwaModalOpen(false);
+        window.history.pushState({ tab: activeTab }, '');
+        return;
+      }
 
       // 2. Priority: If not on Dashboard, switch back to Dashboard (1x back press)
       if (activeTab !== 'dashboard') {
@@ -245,10 +254,10 @@ export default function App() {
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [activeTab, isAddModalOpen, isSettingsModalOpen]);
+  }, [activeTab, isAddModalOpen, isSettingsModalOpen, isPwaModalOpen]);
 
   const handleOpenSettingsModal = (
-    tab: 'profile' | 'account' | 'categories' | 'backup' = 'profile'
+    tab: 'profile' | 'account' | 'categories' | 'backup' | 'pwa' = 'profile'
   ) => {
     setSettingsDefaultTab(tab);
     setIsSettingsModalOpen(true);
@@ -520,6 +529,7 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onOpenSettingsModal={(tab) => handleOpenSettingsModal(tab || 'profile')}
+        onOpenPwaModal={() => setIsPwaModalOpen(true)}
         currentUser={currentUser}
       />
 
@@ -641,6 +651,15 @@ export default function App() {
         onImportBackup={handleImportBackup}
         onResetData={handleResetData}
         defaultTab={settingsDefaultTab}
+        onOpenPwaModal={() => setIsPwaModalOpen(true)}
+      />
+
+      {/* PWA Installation Modal */}
+      <PwaInstallModal
+        isOpen={isPwaModalOpen}
+        onClose={() => setIsPwaModalOpen(false)}
+        deferredPrompt={deferredPrompt}
+        onInstallClick={handleInstallPWA}
       />
     </div>
   );
