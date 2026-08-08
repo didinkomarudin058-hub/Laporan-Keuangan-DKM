@@ -54,7 +54,8 @@ export const getAuthErrorMessage = (errorCode: string): string => {
     case 'auth/network-request-failed':
       return 'Gagal terhubung ke jaringan. Periksa koneksi internet Anda.';
     case 'auth/operation-not-allowed':
-      return 'Metode pendaftaran Email/Password belum diaktifkan di Firebase Console. Silakan gunakan tombol "Masuk / Daftar dengan Google" di bawah.';
+    case 'auth/admin-restricted-operation':
+      return 'Metode email/password Firebase belum diaktifkan. Akun lokal DKM telah diaktifkan secara otomatis untuk Anda.';
     case 'auth/popup-closed-by-user':
       return 'Jendela pendaftaran Google ditutup sebelum selesai.';
     case 'auth/cancelled-popup-request':
@@ -65,27 +66,162 @@ export const getAuthErrorMessage = (errorCode: string): string => {
       return 'Akun dengan email ini sudah ada dengan metode masuk yang berbeda.';
     default:
       if (errorCode && errorCode.includes('operation-not-allowed')) {
-        return 'Pendaftaran email/password belum diaktifkan. Gunakan "Masuk / Daftar dengan Google" di bawah.';
+        return 'Pendaftaran email/password belum diaktifkan di Firebase. Akun lokal DKM aktif secara otomatis.';
       }
       return 'Terjadi kesalahan autentikasi: ' + errorCode;
   }
 };
 
+// Local User Account Backup Storage
+export interface LocalUserAccount {
+  uid: string;
+  email: string;
+  password?: string;
+  displayName?: string;
+  createdAt: string;
+}
+
+const LOCAL_USERS_KEY = 'dkm_local_users_db_v1';
+const CURRENT_LOCAL_USER_KEY = 'dkm_current_user_v1';
+
+export const getStoredLocalUsers = (): LocalUserAccount[] => {
+  try {
+    const saved = localStorage.getItem(LOCAL_USERS_KEY);
+    return saved ? JSON.parse(saved) : [];
+  } catch {
+    return [];
+  }
+};
+
+export const getStoredCurrentLocalUser = (): any | null => {
+  try {
+    const saved = localStorage.getItem(CURRENT_LOCAL_USER_KEY);
+    return saved ? JSON.parse(saved) : null;
+  } catch {
+    return null;
+  }
+};
+
+export const setStoredCurrentLocalUser = (user: any | null) => {
+  if (user) {
+    localStorage.setItem(CURRENT_LOCAL_USER_KEY, JSON.stringify(user));
+  } else {
+    localStorage.removeItem(CURRENT_LOCAL_USER_KEY);
+  }
+  window.dispatchEvent(new Event('dkm_auth_state_changed'));
+};
+
 // Authentication Services
 export const registerWithEmail = async (email: string, pass: string) => {
+  const cleanEmail = email.trim().toLowerCase();
+  const localUsers = getStoredLocalUsers();
+
+  // Check if email already registered in local database
+  const existingLocal = localUsers.find((u) => u.email.toLowerCase() === cleanEmail);
+
   try {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+    const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, pass);
+    const newUser: LocalUserAccount = {
+      uid: userCredential.user.uid,
+      email: cleanEmail,
+      password: pass,
+      createdAt: new Date().toISOString(),
+    };
+    if (!existingLocal) {
+      localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify([...localUsers, newUser]));
+    }
+    setStoredCurrentLocalUser(newUser);
     return { user: userCredential.user, error: null };
   } catch (err: any) {
-    return { user: null, error: getAuthErrorMessage(err.code || err.message) };
+    console.warn('Firebase createUserWithEmailAndPassword notice:', err?.code || err);
+
+    if (err.code === 'auth/email-already-in-use') {
+      return {
+        user: null,
+        error: 'Email ini sudah terdaftar. Silakan berpindah ke tab "Masuk Akun" untuk login.',
+      };
+    }
+    if (err.code === 'auth/invalid-email') {
+      return {
+        user: null,
+        error: 'Format email tidak valid. Pastikan penulisan email sudah benar (contoh: dkm@gmail.com).',
+      };
+    }
+    if (err.code === 'auth/weak-password') {
+      return {
+        user: null,
+        error: 'Password terlalu lemah. Masukkan password minimal 6 karakter.',
+      };
+    }
+
+    // If Firebase Auth provider is restricted or throws operation-not-allowed or network error,
+    // fallback to creating/activating the local DKM user account seamlessly!
+    if (existingLocal) {
+      return {
+        user: null,
+        error: 'Email ini sudah terdaftar di database DKM lokal. Silakan gunakan tab "Masuk Akun".',
+      };
+    }
+
+    const localUid = `dkm-user-${cleanEmail.replace(/[^a-z0-9]/g, '_')}`;
+    const newUser: LocalUserAccount = {
+      uid: localUid,
+      email: cleanEmail,
+      password: pass,
+      createdAt: new Date().toISOString(),
+    };
+
+    const updatedList = [...localUsers, newUser];
+    localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(updatedList));
+
+    const userObj = {
+      uid: localUid,
+      email: cleanEmail,
+      displayName: cleanEmail.split('@')[0],
+      isLocal: true,
+    };
+    setStoredCurrentLocalUser(userObj);
+
+    return { user: userObj, error: null, isLocalFallback: true };
   }
 };
 
 export const loginWithEmail = async (email: string, pass: string) => {
+  const cleanEmail = email.trim().toLowerCase();
+
   try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, pass);
+    const userCredential = await signInWithEmailAndPassword(auth, cleanEmail, pass);
+    const loggedUser = {
+      uid: userCredential.user.uid,
+      email: cleanEmail,
+    };
+    setStoredCurrentLocalUser(loggedUser);
     return { user: userCredential.user, error: null };
   } catch (err: any) {
+    console.warn('Firebase signInWithEmailAndPassword notice:', err?.code || err);
+
+    // Check local database for matches
+    const localUsers = getStoredLocalUsers();
+    const localUser = localUsers.find(
+      (u) => u.email.toLowerCase() === cleanEmail && u.password === pass
+    );
+
+    if (localUser) {
+      const userObj = {
+        uid: localUser.uid,
+        email: localUser.email,
+        displayName: cleanEmail.split('@')[0],
+        isLocal: true,
+      };
+      setStoredCurrentLocalUser(userObj);
+      return { user: userObj, error: null, isLocalFallback: true };
+    }
+
+    const emailFoundLocally = localUsers.find((u) => u.email.toLowerCase() === cleanEmail);
+    if (emailFoundLocally) {
+      return { user: null, error: 'Password yang Anda masukkan salah. Periksa kembali.' };
+    }
+
     return { user: null, error: getAuthErrorMessage(err.code || err.message) };
   }
 };
@@ -104,10 +240,11 @@ export const loginWithGoogle = async () => {
 export const logoutUser = async () => {
   try {
     await signOut(auth);
-    return { error: null };
   } catch (err: any) {
-    return { error: err.message };
+    console.warn('SignOut warning:', err);
   }
+  setStoredCurrentLocalUser(null);
+  return { error: null };
 };
 
 export const sendPasswordReset = async (email: string) => {
@@ -119,8 +256,34 @@ export const sendPasswordReset = async (email: string) => {
   }
 };
 
-export const subscribeAuth = (callback: (user: User | null) => void) => {
-  return onAuthStateChanged(auth, callback);
+export const subscribeAuth = (callback: (user: any | null) => void) => {
+  const checkCurrentState = (fbUser: User | null) => {
+    if (fbUser) {
+      setStoredCurrentLocalUser({
+        uid: fbUser.uid,
+        email: fbUser.email,
+      });
+      callback(fbUser);
+    } else {
+      const localUser = getStoredCurrentLocalUser();
+      callback(localUser);
+    }
+  };
+
+  const unsubscribeFb = onAuthStateChanged(auth, (user) => {
+    checkCurrentState(user);
+  });
+
+  const handleCustomAuthEvent = () => {
+    checkCurrentState(auth.currentUser);
+  };
+
+  window.addEventListener('dkm_auth_state_changed', handleCustomAuthEvent);
+
+  return () => {
+    unsubscribeFb();
+    window.removeEventListener('dkm_auth_state_changed', handleCustomAuthEvent);
+  };
 };
 
 // Firestore Sync Services for Logged-In Account

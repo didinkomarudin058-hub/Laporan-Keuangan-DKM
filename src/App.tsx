@@ -50,8 +50,8 @@ export default function App() {
     'Cek',
   ];
 
-  // Firebase Auth State
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  // Firebase & Local Auth State
+  const [currentUser, setCurrentUser] = useState<User | any | null>(null);
 
   // State: Mosque Profile
   const [mosqueProfile, setMosqueProfile] = useState<MosqueProfile>(() => {

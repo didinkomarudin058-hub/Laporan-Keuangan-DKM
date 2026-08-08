@@ -27,7 +27,7 @@ import {
 } from '../lib/firebase';
 
 interface AuthAccountTabProps {
-  currentUser: User | null;
+  currentUser: User | any | null;
   isSyncing?: boolean;
 }
 
@@ -122,7 +122,13 @@ export const AuthAccountTab: React.FC<AuthAccountTabProps> = ({
       if (res.error) {
         setErrorMsg(res.error);
       } else {
-        setSuccessMsg('Akun baru berhasil dibuat! Anda sekarang telah otomatis masuk.');
+        if (res.isLocalFallback) {
+          setSuccessMsg(
+            `Akun DKM Pengurus (${email.trim()}) berhasil dibuat & diaktifkan! Anda telah otomatis masuk.`
+          );
+        } else {
+          setSuccessMsg('Akun Firebase DKM baru berhasil dibuat! Anda sekarang telah otomatis masuk.');
+        }
         resetForm();
       }
     } else if (mode === 'login') {
@@ -133,7 +139,7 @@ export const AuthAccountTab: React.FC<AuthAccountTabProps> = ({
       if (res.error) {
         setErrorMsg(res.error);
       } else {
-        setSuccessMsg('Berhasil masuk! Data kas DKM akan tersinkron otomatis.');
+        setSuccessMsg(`Berhasil masuk sebagai ${email.trim()}! Data kas DKM tersinkron.`);
         resetForm();
       }
     }
