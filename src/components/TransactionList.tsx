@@ -296,8 +296,8 @@ export const TransactionList: React.FC<TransactionListProps> = ({
             <thead>
               <tr className="bg-slate-50 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">
                 <th className="py-3 px-3">Tanggal</th>
-                <th className="py-3 px-3">Pos Kas & Kategori</th>
                 <th className="py-3 px-3">Keterangan & Donatur</th>
+                <th className="py-3 px-3">Kategori & Pos Kas</th>
                 <th className="py-3 px-3">Petugas & Metode</th>
                 <th className="py-3 px-3 text-right">Jumlah (Rp)</th>
                 <th className="py-3 px-3 text-center">Aksi</th>
@@ -318,21 +318,21 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                       <span className="text-[10px] text-slate-400 font-mono">{trx.id}</span>
                     </td>
 
-                    <td className="py-3 px-3 whitespace-nowrap">
-                      <div className="font-semibold text-slate-900">{trx.kategori}</div>
-                      <span className="text-[10px] font-medium bg-emerald-50 text-emerald-800 border border-emerald-200 px-1.5 py-0.5 rounded inline-block mt-0.5">
-                        {trx.danaKat}
-                      </span>
-                    </td>
-
                     <td className="py-3 px-3 max-w-sm">
-                      <p className="text-slate-800 font-normal leading-snug">{trx.keterangan}</p>
+                      <p className="text-slate-900 font-bold leading-snug">{trx.keterangan}</p>
                       {trx.donatur && (
                         <div className="mt-0.5 text-[11px] text-emerald-700 font-medium flex items-center gap-1">
                           <span>Donatur:</span>
                           <span className="bg-amber-50 text-amber-800 px-1.5 py-0.2 rounded border border-amber-200/60">{trx.donatur}</span>
                         </div>
                       )}
+                    </td>
+
+                    <td className="py-3 px-3 whitespace-nowrap">
+                      <div className="font-semibold text-slate-700">{trx.kategori}</div>
+                      <span className="text-[10px] font-medium bg-emerald-50 text-emerald-800 border border-emerald-200 px-1.5 py-0.5 rounded inline-block mt-0.5">
+                        {trx.danaKat}
+                      </span>
                     </td>
 
                     <td className="py-3 px-3 whitespace-nowrap">

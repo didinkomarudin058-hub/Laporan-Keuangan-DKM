@@ -620,8 +620,8 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
                   <thead>
                     <tr className="bg-slate-100 font-bold border-b border-slate-300">
                       <th className="p-2 border-r border-slate-300">Tgl</th>
-                      <th className="p-2 border-r border-slate-300">Kategori & Pos Kas</th>
                       <th className="p-2 border-r border-slate-300">Keterangan / Donatur</th>
+                      <th className="p-2 border-r border-slate-300">Kategori & Pos Kas</th>
                       <th className="p-2 text-right">Jumlah (Rp)</th>
                     </tr>
                   </thead>
@@ -630,13 +630,13 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
                       <tr key={inc.id}>
                         <td className="p-2 border-r border-slate-300 whitespace-nowrap font-mono">{formatDateDDMMYYYY(inc.tanggal)}</td>
                         <td className="p-2 border-r border-slate-300 font-medium">
+                          {inc.keterangan} {inc.donatur ? `[Donatur: ${inc.donatur}]` : ''}
+                        </td>
+                        <td className="p-2 border-r border-slate-300">
                           <span className="bg-emerald-50 text-emerald-800 px-1.5 py-0.5 rounded border border-emerald-200 mr-1 font-semibold">
                             {inc.kategori}
                           </span>
                           <span className="text-slate-500">({inc.danaKat})</span>
-                        </td>
-                        <td className="p-2 border-r border-slate-300">
-                          {inc.keterangan} {inc.donatur ? `[Donatur: ${inc.donatur}]` : ''}
                         </td>
                         <td className="p-2 text-right font-semibold text-emerald-800">
                           +{inc.jumlah.toLocaleString('id-ID')}
@@ -666,8 +666,8 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
                   <thead>
                     <tr className="bg-slate-100 font-bold border-b border-slate-300">
                       <th className="p-2 border-r border-slate-300">Tgl</th>
-                      <th className="p-2 border-r border-slate-300">Kategori & Pos Kas</th>
                       <th className="p-2 border-r border-slate-300">Keterangan Pengeluaran</th>
+                      <th className="p-2 border-r border-slate-300">Kategori & Pos Kas</th>
                       <th className="p-2 text-right">Jumlah (Rp)</th>
                     </tr>
                   </thead>
@@ -675,13 +675,13 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
                     {filteredExpenseDetails.map((exp) => (
                       <tr key={exp.id}>
                         <td className="p-2 border-r border-slate-300 whitespace-nowrap font-mono">{formatDateDDMMYYYY(exp.tanggal)}</td>
-                        <td className="p-2 border-r border-slate-300 font-medium">
+                        <td className="p-2 border-r border-slate-300 font-medium">{exp.keterangan}</td>
+                        <td className="p-2 border-r border-slate-300">
                           <span className="bg-rose-50 text-rose-800 px-1.5 py-0.5 rounded border border-rose-200 mr-1 font-semibold">
                             {exp.kategori}
                           </span>
                           <span className="text-slate-500">({exp.danaKat})</span>
                         </td>
-                        <td className="p-2 border-r border-slate-300">{exp.keterangan}</td>
                         <td className="p-2 text-right font-semibold text-rose-800">
                           -{exp.jumlah.toLocaleString('id-ID')}
                         </td>

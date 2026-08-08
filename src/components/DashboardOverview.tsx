@@ -391,13 +391,15 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               recentTransactions.map((trx) => (
                 <div key={trx.id} className="py-3 flex items-center justify-between gap-3 text-xs">
                   <div className="space-y-0.5 max-w-[65%]">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-slate-900">{trx.kategori}</span>
+                    <p className="font-bold text-slate-900 text-xs leading-snug">{trx.keterangan}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[11px] text-emerald-800 font-semibold bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                        {trx.kategori}
+                      </span>
                       <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 font-medium">
                         {trx.danaKat}
                       </span>
                     </div>
-                    <p className="text-slate-500 text-[11px] truncate">{trx.keterangan}</p>
                     <div className="text-[10px] text-slate-400 flex items-center gap-2">
                       <span>{formatDateDDMMYYYY(trx.tanggal)}</span> • <span>Petugas: {trx.petugas}</span>
                     </div>

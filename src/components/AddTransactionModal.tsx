@@ -196,6 +196,21 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
             </div>
           </div>
 
+          {/* Keterangan & Rincian */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Keterangan Transaksi / Catatan Rincian
+            </label>
+            <textarea
+              required
+              rows={2}
+              value={keterangan}
+              onChange={(e) => setKeterangan(e.target.value)}
+              placeholder="Misal: Hasil Infaq Kotak Shalat Jumat Pekan I atau Pembelian 2 Galon Cat Tembok"
+              className="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+            />
+          </div>
+
           {/* Kategori Spesifik */}
           <div>
             <div className="flex items-center justify-between mb-1">
@@ -252,21 +267,6 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                 Terbilang: Rp {Number(jumlah).toLocaleString('id-ID')}
               </p>
             )}
-          </div>
-
-          {/* Keterangan & Rincian */}
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
-              Keterangan Transaksi / Catatan Rincian
-            </label>
-            <textarea
-              required
-              rows={2}
-              value={keterangan}
-              onChange={(e) => setKeterangan(e.target.value)}
-              placeholder="Misal: Hasil Infaq Kotak Shalat Jumat Pekan I atau Pembelian 2 Galon Cat Tembok"
-              className="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
-            />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
