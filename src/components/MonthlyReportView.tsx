@@ -11,7 +11,9 @@ import {
   Wallet,
   Filter,
   RotateCcw,
-  Tag
+  Tag,
+  CheckCircle2,
+  List
 } from 'lucide-react';
 import { MosqueProfile, Transaction, FundCategory } from '../types';
 
@@ -23,6 +25,7 @@ interface MonthlyReportViewProps {
   onMonthYearChange: (month: number, year: number) => void;
   categoriesPemasukan?: string[];
   categoriesPengeluaran?: string[];
+  posDanaList?: string[];
 }
 
 export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
@@ -33,11 +36,15 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
   onMonthYearChange,
   categoriesPemasukan = [],
   categoriesPengeluaran = [],
+  posDanaList = ['Kas Operasional', 'Kas Pembangunan', 'Kas Yatim & Sosial', 'Kas Zakat & Shadaqah'],
 }) => {
   const [aiNarrative, setAiNarrative] = useState<string | null>(null);
   const [isLoadingAi, setIsLoadingAi] = useState(false);
   const [copied, setCopied] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+
+  // Print Mode State: 'ringkas' (Core Summary & Signatures - Default) vs 'lengkap' (Full Details)
+  const [printMode, setPrintMode] = useState<'ringkas' | 'lengkap'>('ringkas');
 
   // Interactive Filters State
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('semua');
@@ -59,7 +66,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
   useEffect(() => {
     const lastDay = new Date(selectedYear, selectedMonth, 0).getDate();
     setStartDateFilter(`${currentMonthStr}-01`);
-    setEndDateFilter(`${currentMonthStr}-${String(lastDay).padStart(2, '0')}`);
+    setEndDateFilter(`${currentMonthStr}-${String(lastDayOfMonth).padStart(2, '0')}`);
   }, [selectedMonth, selectedYear, currentMonthStr]);
 
   // Date formatting helper
@@ -88,7 +95,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
     .reduce((sum, t) => sum + t.jumlah, 0);
   const startingBalance = priorIncome - priorExpense;
 
-  // 2. Base Transactions in selected date range (spans across any months / years freely)
+  // 2. Base Transactions in selected date range
   const periodTransactions = transactions.filter((t) => {
     if (effectiveStartDate && t.tanggal < effectiveStartDate) return false;
     if (effectiveEndDate && t.tanggal > effectiveEndDate) return false;
@@ -126,15 +133,15 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
     ])
   ).sort();
 
-  // 4. Breakdown per Pos Kas for selected date range
-  const fundCategories: FundCategory[] = [
+  // 4. Dynamic Breakdown per Pos Kas
+  const effectiveFundCategories = posDanaList && posDanaList.length > 0 ? posDanaList : [
     'Kas Operasional',
     'Kas Pembangunan',
     'Kas Yatim & Sosial',
     'Kas Zakat & Shadaqah',
   ];
 
-  const fundBreakdown = fundCategories.map((cat) => {
+  const fundBreakdown = effectiveFundCategories.map((cat) => {
     // Prior balance
     const pT = priorTransactions.filter((t) => t.danaKat === cat);
     const pInc = pT.filter((t) => t.jenis === 'pemasukan').reduce((sum, t) => sum + t.jumlah, 0);
@@ -158,41 +165,39 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
 
   // Reset interactive filters
   const handleResetFilters = () => {
-    setSelectedCategoryFilter('semua');
-    setSelectedFundFilter('semua');
     const lastDay = new Date(selectedYear, selectedMonth, 0).getDate();
     setStartDateFilter(`${currentMonthStr}-01`);
     setEndDateFilter(`${currentMonthStr}-${String(lastDay).padStart(2, '0')}`);
+    setSelectedCategoryFilter('semua');
+    setSelectedFundFilter('semua');
   };
 
-  const defaultStart = `${currentMonthStr}-01`;
-  const defaultEnd = `${currentMonthStr}-${String(new Date(selectedYear, selectedMonth, 0).getDate()).padStart(2, '0')}`;
   const isFilterActive =
+    startDateFilter !== `${currentMonthStr}-01` ||
+    endDateFilter !== `${currentMonthStr}-${String(lastDayOfMonth).padStart(2, '0')}` ||
     selectedCategoryFilter !== 'semua' ||
-    selectedFundFilter !== 'semua' ||
-    startDateFilter !== defaultStart ||
-    endDateFilter !== defaultEnd;
+    selectedFundFilter !== 'semua';
 
-  // Call Gemini API server endpoint
+  // Generate AI Executive Narrative
   const handleGenerateAiNarrative = async () => {
     setIsLoadingAi(true);
     setAiError(null);
+    setAiNarrative(null);
+
     try {
-      const response = await fetch('/api/gemini/summarize-report', {
+      const response = await fetch('/api/gemini/generate-narrative', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          masjidName: mosqueProfile.namaMasjid,
-          monthYear: periodDateRangeStr,
+          mosqueName: mosqueProfile.namaMasjid,
+          periodStr: periodDateRangeStr,
           startingBalance,
           totalIncome,
           totalExpense,
           endingBalance,
           fundBreakdown,
-          incomeDetails: periodIncomeDetails,
-          expenseDetails: periodExpenseDetails,
+          sampleIncomes: periodIncomeDetails.slice(0, 5),
+          sampleExpenses: periodExpenseDetails.slice(0, 5),
         }),
       });
 
@@ -286,6 +291,47 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
         </div>
       </div>
 
+      {/* Mode Cetak Selector Bar */}
+      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 print:hidden">
+        <div className="flex items-center gap-2 text-xs text-emerald-950">
+          <Printer className="w-4 h-4 text-emerald-700 shrink-0" />
+          <div>
+            <span className="font-bold">Pilihan Format Hasil Cetak Laporan:</span>
+            <p className="text-[11px] text-emerald-800">
+              Pilih format tampilan dokumen sebelum menekan tombol cetak.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-emerald-300 shadow-xs shrink-0">
+          <button
+            type="button"
+            onClick={() => setPrintMode('ringkas')}
+            className={`px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+              printMode === 'ringkas'
+                ? 'bg-emerald-700 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            <span>Cetak Ringkas (Intinya Saja)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setPrintMode('lengkap')}
+            className={`px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+              printMode === 'lengkap'
+                ? 'bg-emerald-700 text-white shadow-xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <List className="w-3.5 h-3.5" />
+            <span>Cetak Lengkap (Semua Transaksi)</span>
+          </button>
+        </div>
+      </div>
+
       {/* Interactive Filter Control Panel */}
       <div className="bg-slate-900 text-white rounded-xl p-5 border border-slate-800 shadow-md space-y-4 print:hidden">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
@@ -306,7 +352,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {/* Filter 1: Rentang Awal ( Bebas antar bulan / tahun ) */}
+          {/* Filter 1: Rentang Awal */}
           <div>
             <label className="block text-[11px] font-bold text-slate-300 mb-1 flex items-center gap-1">
               <Calendar className="w-3 h-3 text-emerald-400" /> Rentang Awal
@@ -319,7 +365,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
             />
           </div>
 
-          {/* Filter 2: Rentang Akhir ( Bebas antar bulan / tahun ) */}
+          {/* Filter 2: Rentang Akhir */}
           <div>
             <label className="block text-[11px] font-bold text-slate-300 mb-1 flex items-center gap-1">
               <Calendar className="w-3 h-3 text-emerald-400" /> Rentang Akhir
@@ -361,8 +407,8 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
               onChange={(e) => setSelectedFundFilter(e.target.value)}
               className="w-full py-1.5 px-2.5 text-xs bg-slate-800 border border-slate-700 text-white rounded-lg focus:outline-none focus:border-emerald-500 cursor-pointer"
             >
-              <option value="semua">Semua Pos Kas</option>
-              {fundCategories.map((f) => (
+              <option value="semua">Semua Pos Kas ({effectiveFundCategories.length})</option>
+              {effectiveFundCategories.map((f) => (
                 <option key={f} value={f}>
                   {f}
                 </option>
@@ -466,7 +512,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
         {/* Title Statement */}
         <div className="text-center space-y-1">
           <h3 className="text-base font-extrabold uppercase tracking-wider text-slate-900 border-b border-slate-300 inline-block px-4 pb-0.5">
-            LAPORAN KEUANGAN KAS MASJID
+            LAPORAN KEUANGAN KAS MASJID {printMode === 'ringkas' ? '(RINGKASAN REKAPITULASI)' : ''}
           </h3>
           <p className="text-xs font-semibold text-slate-700">
             PERIODE: {periodDateRangeStrUpper}
@@ -478,7 +524,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
           </p>
         </div>
 
-        {/* Top Summary Table (Rekapitulasi Utama) */}
+        {/* Top Summary Table (Rekapitulasi Utama - Intinya Saja) */}
         <div className="space-y-2">
           <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800 bg-slate-100 p-2 rounded">
             I. REKAPITULASI POSISI KAS MASJID PER POS DANA
@@ -508,7 +554,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
                   </tr>
                 ))}
                 <tr className="bg-emerald-100/80 font-bold border-t-2 border-slate-900 text-slate-900 text-xs">
-                  <td colSpan={2} className="p-2.5 text-center border-r border-slate-300 uppercase">TOTAL KAS GABUNGAN</td>
+                  <td colSpan={2} className="p-2.5 text-center border-r border-slate-300 uppercase">TOTAL KAS GABUNGAN MASJID</td>
                   <td className="p-2.5 border-r border-slate-300 text-right">{startingBalance.toLocaleString('id-ID')}</td>
                   <td className="p-2.5 border-r border-slate-300 text-right text-emerald-900">+{totalIncome.toLocaleString('id-ID')}</td>
                   <td className="p-2.5 border-r border-slate-300 text-right text-rose-900">-{totalExpense.toLocaleString('id-ID')}</td>
@@ -519,95 +565,100 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
           </div>
         </div>
 
-        {/* Detailed Income Table */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between bg-slate-100 p-2 rounded">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
-              II. RINCIAN PEMASUKAN DANA ({periodDateRangeStr})
-            </h4>
-            <span className="text-xs font-bold text-emerald-800">
-              Total: +Rp {filteredIncomeTotal.toLocaleString('id-ID')}
-            </span>
-          </div>
+        {/* Detailed Tables (ONLY shown when printMode === 'lengkap') */}
+        {printMode === 'lengkap' && (
+          <>
+            {/* Detailed Income Table */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between bg-slate-100 p-2 rounded">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                  II. RINCIAN PEMASUKAN DANA ({periodDateRangeStr})
+                </h4>
+                <span className="text-xs font-bold text-emerald-800">
+                  Total: +Rp {filteredIncomeTotal.toLocaleString('id-ID')}
+                </span>
+              </div>
 
-          {filteredIncomeDetails.length === 0 ? (
-            <p className="text-xs text-slate-500 italic p-2">Tidak ada transaksi pemasukan sesuai kriteria filter.</p>
-          ) : (
-            <table className="w-full text-left text-xs border-collapse border border-slate-300">
-              <thead>
-                <tr className="bg-slate-100 font-bold border-b border-slate-300">
-                  <th className="p-2 border-r border-slate-300">Tgl</th>
-                  <th className="p-2 border-r border-slate-300">Kategori & Pos Kas</th>
-                  <th className="p-2 border-r border-slate-300">Keterangan / Donatur</th>
-                  <th className="p-2 text-right">Jumlah (Rp)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
-                {filteredIncomeDetails.map((inc) => (
-                  <tr key={inc.id}>
-                    <td className="p-2 border-r border-slate-300 whitespace-nowrap font-mono">{inc.tanggal}</td>
-                    <td className="p-2 border-r border-slate-300 font-medium">
-                      <span className="bg-emerald-50 text-emerald-800 px-1.5 py-0.5 rounded border border-emerald-200 mr-1 font-semibold">
-                        {inc.kategori}
-                      </span>
-                      <span className="text-slate-500">({inc.danaKat})</span>
-                    </td>
-                    <td className="p-2 border-r border-slate-300">
-                      {inc.keterangan} {inc.donatur ? `[Donatur: ${inc.donatur}]` : ''}
-                    </td>
-                    <td className="p-2 text-right font-semibold text-emerald-800">
-                      +{inc.jumlah.toLocaleString('id-ID')}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+              {filteredIncomeDetails.length === 0 ? (
+                <p className="text-xs text-slate-500 italic p-2">Tidak ada transaksi pemasukan sesuai kriteria filter.</p>
+              ) : (
+                <table className="w-full text-left text-xs border-collapse border border-slate-300">
+                  <thead>
+                    <tr className="bg-slate-100 font-bold border-b border-slate-300">
+                      <th className="p-2 border-r border-slate-300">Tgl</th>
+                      <th className="p-2 border-r border-slate-300">Kategori & Pos Kas</th>
+                      <th className="p-2 border-r border-slate-300">Keterangan / Donatur</th>
+                      <th className="p-2 text-right">Jumlah (Rp)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {filteredIncomeDetails.map((inc) => (
+                      <tr key={inc.id}>
+                        <td className="p-2 border-r border-slate-300 whitespace-nowrap font-mono">{inc.tanggal}</td>
+                        <td className="p-2 border-r border-slate-300 font-medium">
+                          <span className="bg-emerald-50 text-emerald-800 px-1.5 py-0.5 rounded border border-emerald-200 mr-1 font-semibold">
+                            {inc.kategori}
+                          </span>
+                          <span className="text-slate-500">({inc.danaKat})</span>
+                        </td>
+                        <td className="p-2 border-r border-slate-300">
+                          {inc.keterangan} {inc.donatur ? `[Donatur: ${inc.donatur}]` : ''}
+                        </td>
+                        <td className="p-2 text-right font-semibold text-emerald-800">
+                          +{inc.jumlah.toLocaleString('id-ID')}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
 
-        {/* Detailed Expense Table */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between bg-slate-100 p-2 rounded">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
-              III. RINCIAN PENGELUARAN DANA ({periodDateRangeStr})
-            </h4>
-            <span className="text-xs font-bold text-rose-800">
-              Total: -Rp {filteredExpenseTotal.toLocaleString('id-ID')}
-            </span>
-          </div>
+            {/* Detailed Expense Table */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between bg-slate-100 p-2 rounded">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+                  III. RINCIAN PENGELUARAN DANA ({periodDateRangeStr})
+                </h4>
+                <span className="text-xs font-bold text-rose-800">
+                  Total: -Rp {filteredExpenseTotal.toLocaleString('id-ID')}
+                </span>
+              </div>
 
-          {filteredExpenseDetails.length === 0 ? (
-            <p className="text-xs text-slate-500 italic p-2">Tidak ada transaksi pengeluaran sesuai kriteria filter.</p>
-          ) : (
-            <table className="w-full text-left text-xs border-collapse border border-slate-300">
-              <thead>
-                <tr className="bg-slate-100 font-bold border-b border-slate-300">
-                  <th className="p-2 border-r border-slate-300">Tgl</th>
-                  <th className="p-2 border-r border-slate-300">Kategori & Pos Kas</th>
-                  <th className="p-2 border-r border-slate-300">Keterangan Pengeluaran</th>
-                  <th className="p-2 text-right">Jumlah (Rp)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
-                {filteredExpenseDetails.map((exp) => (
-                  <tr key={exp.id}>
-                    <td className="p-2 border-r border-slate-300 whitespace-nowrap font-mono">{exp.tanggal}</td>
-                    <td className="p-2 border-r border-slate-300 font-medium">
-                      <span className="bg-rose-50 text-rose-800 px-1.5 py-0.5 rounded border border-rose-200 mr-1 font-semibold">
-                        {exp.kategori}
-                      </span>
-                      <span className="text-slate-500">({exp.danaKat})</span>
-                    </td>
-                    <td className="p-2 border-r border-slate-300">{exp.keterangan}</td>
-                    <td className="p-2 text-right font-semibold text-rose-800">
-                      -{exp.jumlah.toLocaleString('id-ID')}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+              {filteredExpenseDetails.length === 0 ? (
+                <p className="text-xs text-slate-500 italic p-2">Tidak ada transaksi pengeluaran sesuai kriteria filter.</p>
+              ) : (
+                <table className="w-full text-left text-xs border-collapse border border-slate-300">
+                  <thead>
+                    <tr className="bg-slate-100 font-bold border-b border-slate-300">
+                      <th className="p-2 border-r border-slate-300">Tgl</th>
+                      <th className="p-2 border-r border-slate-300">Kategori & Pos Kas</th>
+                      <th className="p-2 border-r border-slate-300">Keterangan Pengeluaran</th>
+                      <th className="p-2 text-right">Jumlah (Rp)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {filteredExpenseDetails.map((exp) => (
+                      <tr key={exp.id}>
+                        <td className="p-2 border-r border-slate-300 whitespace-nowrap font-mono">{exp.tanggal}</td>
+                        <td className="p-2 border-r border-slate-300 font-medium">
+                          <span className="bg-rose-50 text-rose-800 px-1.5 py-0.5 rounded border border-rose-200 mr-1 font-semibold">
+                            {exp.kategori}
+                          </span>
+                          <span className="text-slate-500">({exp.danaKat})</span>
+                        </td>
+                        <td className="p-2 border-r border-slate-300">{exp.keterangan}</td>
+                        <td className="p-2 text-right font-semibold text-rose-800">
+                          -{exp.jumlah.toLocaleString('id-ID')}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </>
+        )}
 
         {/* Signatures Section */}
         <div className="pt-8 border-t border-slate-300">

@@ -16,6 +16,8 @@ import {
   ShieldCheck,
   Settings,
   AlertTriangle,
+  Wallet,
+  CreditCard,
 } from 'lucide-react';
 import { User } from 'firebase/auth';
 import { MosqueProfile, TransactionType } from '../types';
@@ -37,6 +39,18 @@ interface MosqueSettingsModalProps {
   onEditCategory: (type: TransactionType, oldName: string, newName: string) => void;
   onDeleteCategory: (type: TransactionType, name: string) => void;
   onResetCategories: () => void;
+
+  // Pos Dana Kas
+  posDanaList?: string[];
+  onAddPosDana?: (name: string) => void;
+  onEditPosDana?: (oldName: string, newName: string) => void;
+  onDeletePosDana?: (name: string) => void;
+
+  // Metode Pembayaran
+  metodePembayaranList?: string[];
+  onAddMetodePembayaran?: (name: string) => void;
+  onEditMetodePembayaran?: (oldName: string, newName: string) => void;
+  onDeleteMetodePembayaran?: (name: string) => void;
 
   // Backup & Restore
   onExportBackup: () => void;
@@ -60,6 +74,14 @@ export const MosqueSettingsModal: React.FC<MosqueSettingsModalProps> = ({
   onEditCategory,
   onDeleteCategory,
   onResetCategories,
+  posDanaList = ['Kas Operasional', 'Kas Pembangunan', 'Kas Yatim & Sosial', 'Kas Zakat & Shadaqah'],
+  onAddPosDana,
+  onEditPosDana,
+  onDeletePosDana,
+  metodePembayaranList = ['Tunai', 'Transfer Bank', 'QRIS', 'Cek'],
+  onAddMetodePembayaran,
+  onEditMetodePembayaran,
+  onDeleteMetodePembayaran,
   onExportBackup,
   onImportBackup,
   onResetData,
@@ -71,10 +93,10 @@ export const MosqueSettingsModal: React.FC<MosqueSettingsModalProps> = ({
   // Profile Form State
   const [profile, setProfile] = useState<MosqueProfile>({ ...mosqueProfile });
 
-  // Category State
-  const [activeCatType, setActiveCatType] = useState<TransactionType>('pemasukan');
-  const [newCatName, setNewCatName] = useState('');
-  const [editingCatName, setEditingCatName] = useState<string | null>(null);
+  // Master Data Sub-Tab State: 'pemasukan' | 'pengeluaran' | 'posDana' | 'metodePembayaran'
+  const [activeCatType, setActiveCatType] = useState<'pemasukan' | 'pengeluaran' | 'posDana' | 'metodePembayaran'>('pemasukan');
+  const [newItemName, setNewItemName] = useState('');
+  const [editingItemName, setEditingItemName] = useState<string | null>(null);
   const [editInputValue, setEditInputValue] = useState('');
 
   useEffect(() => {
@@ -87,201 +109,345 @@ export const MosqueSettingsModal: React.FC<MosqueSettingsModalProps> = ({
 
   if (!isOpen) return null;
 
-  const currentCategories =
-    activeCatType === 'pemasukan' ? categoriesPemasukan : categoriesPengeluaran;
-
   const handleProfileSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSaveProfile(profile);
     alert('Profil DKM berhasil diperbarui!');
   };
 
-  const handleAddCategorySubmit = (e: React.FormEvent) => {
+  const handleAddItemSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newCatName.trim()) return;
-    if (currentCategories.includes(newCatName.trim())) {
-      alert('Nama kategori ini sudah ada!');
-      return;
+    const trimmed = newItemName.trim();
+    if (!trimmed) return;
+
+    if (activeCatType === 'pemasukan' || activeCatType === 'pengeluaran') {
+      onAddCategory(activeCatType, trimmed);
+    } else if (activeCatType === 'posDana' && onAddPosDana) {
+      onAddPosDana(trimmed);
+    } else if (activeCatType === 'metodePembayaran' && onAddMetodePembayaran) {
+      onAddMetodePembayaran(trimmed);
     }
-    onAddCategory(activeCatType, newCatName.trim());
-    setNewCatName('');
+
+    setNewItemName('');
   };
 
-  const handleSaveCategoryEdit = (oldName: string) => {
-    if (!editInputValue.trim()) return;
-    if (
-      editInputValue.trim() !== oldName &&
-      currentCategories.includes(editInputValue.trim())
-    ) {
-      alert('Nama kategori ini sudah ada!');
+  const handleSaveItemEdit = (oldName: string) => {
+    const trimmed = editInputValue.trim();
+    if (!trimmed || trimmed === oldName) {
+      setEditingItemName(null);
       return;
     }
-    onEditCategory(activeCatType, oldName, editInputValue.trim());
-    setEditingCatName(null);
+
+    if (activeCatType === 'pemasukan' || activeCatType === 'pengeluaran') {
+      onEditCategory(activeCatType, oldName, trimmed);
+    } else if (activeCatType === 'posDana' && onEditPosDana) {
+      onEditPosDana(oldName, trimmed);
+    } else if (activeCatType === 'metodePembayaran' && onEditMetodePembayaran) {
+      onEditMetodePembayaran(oldName, trimmed);
+    }
+
+    setEditingItemName(null);
   };
 
-  const handleDeleteCat = (cat: string) => {
-    if (confirm(`Apakah Anda yakin ingin menghapus kategori "${cat}"?`)) {
-      onDeleteCategory(activeCatType, cat);
+  const handleDeleteItem = (item: string) => {
+    if (!confirm(`Apakah Anda yakin ingin menghapus "${item}"?`)) return;
+
+    if (activeCatType === 'pemasukan' || activeCatType === 'pengeluaran') {
+      onDeleteCategory(activeCatType, item);
+    } else if (activeCatType === 'posDana' && onDeletePosDana) {
+      onDeletePosDana(item);
+    } else if (activeCatType === 'metodePembayaran' && onDeleteMetodePembayaran) {
+      onDeleteMetodePembayaran(item);
+    }
+  };
+
+  const currentList =
+    activeCatType === 'pemasukan'
+      ? categoriesPemasukan
+      : activeCatType === 'pengeluaran'
+      ? categoriesPengeluaran
+      : activeCatType === 'posDana'
+      ? posDanaList
+      : metodePembayaranList;
+
+  const getSubTabLabel = () => {
+    switch (activeCatType) {
+      case 'pemasukan':
+        return 'Kategori Pemasukan';
+      case 'pengeluaran':
+        return 'Kategori Pengeluaran';
+      case 'posDana':
+        return 'Pos Dana Kas';
+      case 'metodePembayaran':
+        return 'Metode Pembayaran';
+    }
+  };
+
+  const getPlaceholder = () => {
+    switch (activeCatType) {
+      case 'pemasukan':
+        return 'Tambah nama kategori pemasukan baru...';
+      case 'pengeluaran':
+        return 'Tambah nama kategori pengeluaran baru...';
+      case 'posDana':
+        return 'Tambah nama Pos Dana Kas baru (misal: Kas Ambulance)...';
+      case 'metodePembayaran':
+        return 'Tambah metode pembayaran baru (misal: DANA, OVO)...';
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl max-w-3xl w-full shadow-2xl border border-slate-200 overflow-hidden my-6 flex flex-col max-h-[90vh]">
-        {/* Header */}
-        <div className="bg-emerald-900 text-white px-6 py-4 flex items-center justify-between border-b border-emerald-800 shrink-0">
-          <div className="flex items-center gap-2">
-            <Settings className="w-5 h-5 text-amber-400" />
-            <h3 className="font-bold text-base text-white">
-              Menu Pengaturan DKM & Sistem Kas
-            </h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 overflow-y-auto">
+      <div className="bg-white rounded-2xl max-w-3xl w-full shadow-2xl border border-slate-200 overflow-hidden my-auto max-h-[92vh] flex flex-col">
+        {/* Modal Header */}
+        <div className="bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-900 text-white px-6 py-4 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-400/20 text-amber-300 flex items-center justify-center border border-amber-300/30">
+              <Settings className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-base tracking-wide text-white">
+                Pengaturan Sistem & Profil DKM
+              </h3>
+              <p className="text-xs text-emerald-200">
+                Kelola profil masjid, pos dana kas, metode pembayaran, akun & backup data
+              </p>
+            </div>
           </div>
+
           <button
             onClick={onClose}
-            className="p-1 text-emerald-200 hover:text-white hover:bg-emerald-800 rounded-lg transition cursor-pointer"
+            className="text-emerald-200 hover:text-white p-1 rounded-lg hover:bg-emerald-800/60 transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Tab Navigation Menu */}
-        <div className="bg-slate-100 px-4 pt-3 border-b border-slate-200 flex gap-2 overflow-x-auto shrink-0 scrollbar-none">
+        {/* Navigation Tabs */}
+        <div className="bg-slate-100 px-6 pt-2 border-b border-slate-200 flex items-center gap-2 overflow-x-auto text-xs font-bold text-slate-600 shrink-0">
           <button
             onClick={() => setActiveTab('profile')}
-            className={`py-2.5 px-4 text-xs font-bold rounded-t-lg transition flex items-center gap-1.5 shrink-0 ${
+            className={`py-2.5 px-3 border-b-2 transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
               activeTab === 'profile'
-                ? 'bg-white text-emerald-900 border-t-2 border-emerald-700 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                ? 'border-emerald-700 text-emerald-800 font-extrabold bg-white rounded-t-lg'
+                : 'border-transparent hover:text-slate-900'
             }`}
           >
-            <Building2 className="w-4 h-4 text-emerald-700" />
+            <Building2 className="w-4 h-4" />
             <span>Profil DKM</span>
           </button>
 
           <button
-            onClick={() => setActiveTab('account')}
-            className={`py-2.5 px-4 text-xs font-bold rounded-t-lg transition flex items-center gap-1.5 shrink-0 ${
-              activeTab === 'account'
-                ? 'bg-white text-emerald-900 border-t-2 border-emerald-700 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+            onClick={() => setActiveTab('categories')}
+            className={`py-2.5 px-3 border-b-2 transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+              activeTab === 'categories'
+                ? 'border-emerald-700 text-emerald-800 font-extrabold bg-white rounded-t-lg'
+                : 'border-transparent hover:text-slate-900'
             }`}
           >
-            <UserCheck className="w-4 h-4 text-emerald-700" />
-            <span>Akun & Cloud Sync</span>
-            {currentUser && (
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            )}
+            <Tag className="w-4 h-4" />
+            <span>Kelola Pos Dana & Metode</span>
           </button>
 
           <button
-            onClick={() => setActiveTab('categories')}
-            className={`py-2.5 px-4 text-xs font-bold rounded-t-lg transition flex items-center gap-1.5 shrink-0 ${
-              activeTab === 'categories'
-                ? 'bg-white text-emerald-900 border-t-2 border-emerald-700 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+            onClick={() => setActiveTab('account')}
+            className={`py-2.5 px-3 border-b-2 transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+              activeTab === 'account'
+                ? 'border-emerald-700 text-emerald-800 font-extrabold bg-white rounded-t-lg'
+                : 'border-transparent hover:text-slate-900'
             }`}
           >
-            <Tag className="w-4 h-4 text-emerald-700" />
-            <span>Kelola Kategori</span>
+            <ShieldCheck className="w-4 h-4" />
+            <span>Akun & Sync Cloud</span>
           </button>
 
           <button
             onClick={() => setActiveTab('backup')}
-            className={`py-2.5 px-4 text-xs font-bold rounded-t-lg transition flex items-center gap-1.5 shrink-0 ${
+            className={`py-2.5 px-3 border-b-2 transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
               activeTab === 'backup'
-                ? 'bg-white text-emerald-900 border-t-2 border-emerald-700 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                ? 'border-emerald-700 text-emerald-800 font-extrabold bg-white rounded-t-lg'
+                : 'border-transparent hover:text-slate-900'
             }`}
           >
-            <Database className="w-4 h-4 text-emerald-700" />
-            <span>Backup & Reset</span>
+            <Database className="w-4 h-4" />
+            <span>Backup & Restore</span>
           </button>
 
           <button
             onClick={() => setActiveTab('pwa')}
-            className={`py-2.5 px-4 text-xs font-bold rounded-t-lg transition flex items-center gap-1.5 shrink-0 ${
+            className={`py-2.5 px-3 border-b-2 transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
               activeTab === 'pwa'
-                ? 'bg-amber-500 text-emerald-950 font-bold shadow-xs'
-                : 'bg-amber-100 text-amber-900 hover:bg-amber-200'
+                ? 'border-emerald-700 text-emerald-800 font-extrabold bg-white rounded-t-lg'
+                : 'border-transparent hover:text-slate-900'
             }`}
           >
-            <Download className="w-4 h-4 text-emerald-900 stroke-[2.5]" />
+            <Download className="w-4 h-4" />
             <span>Install App PWA</span>
           </button>
         </div>
 
-        {/* Tab Content Body */}
-        <div className="p-6 overflow-y-auto flex-1 space-y-4">
-          {/* TAB 1: PROFIL DKM */}
+        {/* Tab Contents */}
+        <div className="p-6 overflow-y-auto flex-1 space-y-6">
+          {/* TAB 1: PROFIL DKM MASJID */}
           {activeTab === 'profile' && (
             <form onSubmit={handleProfileSubmit} className="space-y-4">
-              <div className="space-y-3">
-                <h4 className="text-xs font-bold text-emerald-800 uppercase tracking-wider border-b border-slate-200 pb-1">
-                  Identitas & Alamat Masjid
-                </h4>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Nama Masjid</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Nama Resmi Masjid / Musholla
+                  </label>
                   <input
                     type="text"
                     required
                     value={profile.namaMasjid}
                     onChange={(e) => setProfile({ ...profile, namaMasjid: e.target.value })}
+                    className="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-bold text-slate-900"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Alamat Lengkap Masjid
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={profile.alamat}
+                    onChange={(e) => setProfile({ ...profile, alamat: e.target.value })}
                     className="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Alamat Lengkap</label>
-                    <input
-                      type="text"
-                      required
-                      value={profile.alamat}
-                      onChange={(e) => setProfile({ ...profile, alamat: e.target.value })}
-                      className="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Kota / Kabupaten</label>
-                    <input
-                      type="text"
-                      required
-                      value={profile.kota}
-                      onChange={(e) => setProfile({ ...profile, kota: e.target.value })}
-                      className="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Nomor WA / Telepon DKM</label>
-                    <input
-                      type="text"
-                      value={profile.telepon}
-                      onChange={(e) => setProfile({ ...profile, telepon: e.target.value })}
-                      className="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Email Resmi DKM</label>
-                    <input
-                      type="email"
-                      value={profile.email}
-                      onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                      className="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Kota / Wilayah & Provinsi
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={profile.kota}
+                    onChange={(e) => setProfile({ ...profile, kota: e.target.value })}
+                    className="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                  />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Motto / Slogan DKM</label>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Telepon Kontak DKM / WhatsApp
+                  </label>
                   <input
                     type="text"
+                    required
+                    value={profile.telepon}
+                    onChange={(e) => setProfile({ ...profile, telepon: e.target.value })}
+                    className="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Email Resmi DKM
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={profile.email}
+                    onChange={(e) => setProfile({ ...profile, email: e.target.value })}
+                    className="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Nama Bank Rekening Infaq
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={profile.namaBank}
+                    onChange={(e) => setProfile({ ...profile, namaBank: e.target.value })}
+                    className="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Nomor Rekening Bank
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={profile.nomorRekening}
+                    onChange={(e) => setProfile({ ...profile, nomorRekening: e.target.value })}
+                    className="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-mono font-bold"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Atas Nama Rekening Infaq (a.n)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={profile.anRekening}
+                    onChange={(e) => setProfile({ ...profile, anRekening: e.target.value })}
+                    className="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-semibold"
+                  />
+                </div>
+
+                <div className="sm:col-span-2 pt-2 border-t border-slate-200">
+                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider mb-2">
+                    Pengurus DKM (Untuk Tanda Tangan Laporan Real-Time)
+                  </h4>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Nama Ketua DKM
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={profile.ketuaDKM}
+                    onChange={(e) => setProfile({ ...profile, ketuaDKM: e.target.value })}
+                    className="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Nama Bendahara DKM
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={profile.bendaharaDKM}
+                    onChange={(e) => setProfile({ ...profile, bendaharaDKM: e.target.value })}
+                    className="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Nama Sekretaris DKM
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={profile.sekretarisDKM}
+                    onChange={(e) => setProfile({ ...profile, sekretarisDKM: e.target.value })}
+                    className="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Motto / Slogan DKM Masjid
+                  </label>
+                  <input
+                    type="text"
+                    required
                     value={profile.motto}
                     onChange={(e) => setProfile({ ...profile, motto: e.target.value })}
                     className="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
@@ -289,94 +455,10 @@ export const MosqueSettingsModal: React.FC<MosqueSettingsModalProps> = ({
                 </div>
               </div>
 
-              {/* Rekening Bank */}
-              <div className="space-y-3 pt-2">
-                <h4 className="text-xs font-bold text-emerald-800 uppercase tracking-wider border-b border-slate-200 pb-1">
-                  Rekening Infaq Bank Resmi
-                </h4>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Nama Bank</label>
-                    <input
-                      type="text"
-                      required
-                      value={profile.namaBank}
-                      onChange={(e) => setProfile({ ...profile, namaBank: e.target.value })}
-                      className="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Nomor Rekening</label>
-                    <input
-                      type="text"
-                      required
-                      value={profile.nomorRekening}
-                      onChange={(e) => setProfile({ ...profile, nomorRekening: e.target.value })}
-                      className="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-mono"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Atas Nama Rekening</label>
-                    <input
-                      type="text"
-                      required
-                      value={profile.anRekening}
-                      onChange={(e) => setProfile({ ...profile, anRekening: e.target.value })}
-                      className="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Pengurus DKM */}
-              <div className="space-y-3 pt-2">
-                <h4 className="text-xs font-bold text-emerald-800 uppercase tracking-wider border-b border-slate-200 pb-1">
-                  Pengurus DKM (Tanda Tangan Laporan)
-                </h4>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Ketua DKM</label>
-                    <input
-                      type="text"
-                      required
-                      value={profile.ketuaDKM}
-                      onChange={(e) => setProfile({ ...profile, ketuaDKM: e.target.value })}
-                      className="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Bendahara DKM</label>
-                    <input
-                      type="text"
-                      required
-                      value={profile.bendaharaDKM}
-                      onChange={(e) => setProfile({ ...profile, bendaharaDKM: e.target.value })}
-                      className="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Sekretaris DKM</label>
-                    <input
-                      type="text"
-                      required
-                      value={profile.sekretarisDKM}
-                      onChange={(e) => setProfile({ ...profile, sekretarisDKM: e.target.value })}
-                      className="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-3 border-t border-slate-200 flex items-center justify-end">
+              <div className="pt-4 flex justify-end">
                 <button
                   type="submit"
-                  className="px-5 py-2 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg shadow-sm transition flex items-center gap-1.5 cursor-pointer"
+                  className="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-xl shadow-md transition flex items-center gap-2 cursor-pointer"
                 >
                   <Save className="w-4 h-4" />
                   <span>Simpan Profil DKM</span>
@@ -390,39 +472,83 @@ export const MosqueSettingsModal: React.FC<MosqueSettingsModalProps> = ({
             <AuthAccountTab currentUser={currentUser} />
           )}
 
-          {/* TAB 3: KELOLA KATEGORI */}
+          {/* TAB 3: KELOLA MASTER DATA (KATEGORI, POS KAS & METODE PEMBAYARAN) */}
           {activeTab === 'categories' && (
             <div className="space-y-4">
-              <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
+              {/* Sub-Tabs Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 bg-slate-100 p-1.5 rounded-xl border border-slate-200">
                 <button
-                  onClick={() => setActiveCatType('pemasukan')}
-                  className={`flex-1 py-2 text-xs font-bold rounded-lg transition ${
+                  type="button"
+                  onClick={() => {
+                    setActiveCatType('pemasukan');
+                    setEditingItemName(null);
+                  }}
+                  className={`py-2 px-2 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1 cursor-pointer ${
                     activeCatType === 'pemasukan'
-                      ? 'bg-emerald-600 text-white shadow-sm'
+                      ? 'bg-emerald-700 text-white shadow-xs'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  Kategori Pemasukan ({categoriesPemasukan.length})
+                  <Tag className="w-3.5 h-3.5" />
+                  <span>Pemasukan ({categoriesPemasukan.length})</span>
                 </button>
+
                 <button
-                  onClick={() => setActiveCatType('pengeluaran')}
-                  className={`flex-1 py-2 text-xs font-bold rounded-lg transition ${
+                  type="button"
+                  onClick={() => {
+                    setActiveCatType('pengeluaran');
+                    setEditingItemName(null);
+                  }}
+                  className={`py-2 px-2 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1 cursor-pointer ${
                     activeCatType === 'pengeluaran'
-                      ? 'bg-rose-600 text-white shadow-sm'
+                      ? 'bg-rose-700 text-white shadow-xs'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
-                  Kategori Pengeluaran ({categoriesPengeluaran.length})
+                  <Tag className="w-3.5 h-3.5" />
+                  <span>Pengeluaran ({categoriesPengeluaran.length})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveCatType('posDana');
+                    setEditingItemName(null);
+                  }}
+                  className={`py-2 px-2 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1 cursor-pointer ${
+                    activeCatType === 'posDana'
+                      ? 'bg-amber-600 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Wallet className="w-3.5 h-3.5" />
+                  <span>Pos Dana Kas ({posDanaList.length})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveCatType('metodePembayaran');
+                    setEditingItemName(null);
+                  }}
+                  className={`py-2 px-2 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1 cursor-pointer ${
+                    activeCatType === 'metodePembayaran'
+                      ? 'bg-blue-700 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <CreditCard className="w-3.5 h-3.5" />
+                  <span>Metode Bayar ({metodePembayaranList.length})</span>
                 </button>
               </div>
 
-              {/* Form Add Category */}
-              <form onSubmit={handleAddCategorySubmit} className="flex gap-2">
+              {/* Form Add Item */}
+              <form onSubmit={handleAddItemSubmit} className="flex gap-2">
                 <input
                   type="text"
-                  placeholder={`Tambah nama kategori ${activeCatType} baru...`}
-                  value={newCatName}
-                  onChange={(e) => setNewCatName(e.target.value)}
+                  placeholder={getPlaceholder()}
+                  value={newItemName}
+                  onChange={(e) => setNewItemName(e.target.value)}
                   className="flex-1 py-2 px-3 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
                 />
                 <button
@@ -430,27 +556,31 @@ export const MosqueSettingsModal: React.FC<MosqueSettingsModalProps> = ({
                   className={`px-4 py-2 text-xs font-bold text-white rounded-lg shadow-sm transition flex items-center gap-1 shrink-0 cursor-pointer ${
                     activeCatType === 'pemasukan'
                       ? 'bg-emerald-700 hover:bg-emerald-800'
-                      : 'bg-rose-700 hover:bg-rose-800'
+                      : activeCatType === 'pengeluaran'
+                      ? 'bg-rose-700 hover:bg-rose-800'
+                      : activeCatType === 'posDana'
+                      ? 'bg-amber-600 hover:bg-amber-700'
+                      : 'bg-blue-700 hover:bg-blue-800'
                   }`}
                 >
                   <Plus className="w-4 h-4" />
-                  <span>Tambah Kategori</span>
+                  <span>Tambah {getSubTabLabel()}</span>
                 </button>
               </form>
 
-              {/* Category List */}
+              {/* Item List */}
               <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-                {currentCategories.length === 0 ? (
+                {currentList.length === 0 ? (
                   <p className="text-xs text-slate-400 italic py-4 text-center">
-                    Belum ada kategori disetting.
+                    Belum ada data untuk {getSubTabLabel()}.
                   </p>
                 ) : (
-                  currentCategories.map((cat) => (
+                  currentList.map((item) => (
                     <div
-                      key={cat}
+                      key={item}
                       className="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs"
                     >
-                      {editingCatName === cat ? (
+                      {editingItemName === item ? (
                         <div className="flex items-center gap-2 flex-1 mr-2">
                           <input
                             type="text"
@@ -461,15 +591,15 @@ export const MosqueSettingsModal: React.FC<MosqueSettingsModalProps> = ({
                           />
                           <button
                             type="button"
-                            onClick={() => handleSaveCategoryEdit(cat)}
+                            onClick={() => handleSaveItemEdit(item)}
                             className="p-1 bg-emerald-600 text-white rounded hover:bg-emerald-700 cursor-pointer"
-                            title="Simpan"
+                            title="Simpan perubahan"
                           >
                             <Check className="w-3.5 h-3.5" />
                           </button>
                           <button
                             type="button"
-                            onClick={() => setEditingCatName(null)}
+                            onClick={() => setEditingItemName(null)}
                             className="p-1 bg-slate-300 text-slate-700 rounded hover:bg-slate-400 cursor-pointer"
                             title="Batal"
                           >
@@ -478,24 +608,24 @@ export const MosqueSettingsModal: React.FC<MosqueSettingsModalProps> = ({
                         </div>
                       ) : (
                         <>
-                          <span className="font-semibold text-slate-800">{cat}</span>
+                          <span className="font-semibold text-slate-800">{item}</span>
                           <div className="flex items-center gap-1">
                             <button
                               type="button"
                               onClick={() => {
-                                setEditingCatName(cat);
-                                setEditInputValue(cat);
+                                setEditingItemName(item);
+                                setEditInputValue(item);
                               }}
                               className="p-1 text-slate-500 hover:text-emerald-700 hover:bg-slate-200 rounded transition cursor-pointer"
-                              title="Edit nama kategori"
+                              title={`Edit nama ${getSubTabLabel()}`}
                             >
                               <Edit2 className="w-3.5 h-3.5" />
                             </button>
                             <button
                               type="button"
-                              onClick={() => handleDeleteCat(cat)}
+                              onClick={() => handleDeleteItem(item)}
                               className="p-1 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded transition cursor-pointer"
-                              title="Hapus kategori"
+                              title={`Hapus ${getSubTabLabel()}`}
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -507,16 +637,18 @@ export const MosqueSettingsModal: React.FC<MosqueSettingsModalProps> = ({
                 )}
               </div>
 
-              <div className="pt-3 border-t border-slate-200 flex justify-start">
-                <button
-                  type="button"
-                  onClick={onResetCategories}
-                  className="text-xs font-semibold text-slate-600 hover:text-slate-900 flex items-center gap-1 transition"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Reset Kategori ke Bawaan Default</span>
-                </button>
-              </div>
+              {(activeCatType === 'pemasukan' || activeCatType === 'pengeluaran') && (
+                <div className="pt-3 border-t border-slate-200 flex justify-start">
+                  <button
+                    type="button"
+                    onClick={onResetCategories}
+                    className="text-xs font-semibold text-slate-600 hover:text-slate-900 flex items-center gap-1 transition cursor-pointer"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Reset Kategori Pemasukan/Pengeluaran ke Bawaan</span>
+                  </button>
+                </div>
+              )}
             </div>
           )}
 

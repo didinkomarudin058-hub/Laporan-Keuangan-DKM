@@ -1,10 +1,7 @@
 export type TransactionType = 'pemasukan' | 'pengeluaran';
 
-export type FundCategory = 
-  | 'Kas Operasional'      // Kas umum operasional & kegiatan masjid
-  | 'Kas Pembangunan'      // Kas renovasi, perawatan fisik, & perluasan
-  | 'Kas Yatim & Sosial'   // Kas santunan anak yatim & dhuafa
-  | 'Kas Zakat & Shadaqah';// Kas ZIS, zakat fitrah & zakat maal
+export type FundCategory = string;
+export type PaymentMethod = string;
 
 export interface Transaction {
   id: string;
@@ -16,7 +13,7 @@ export interface Transaction {
   jumlah: number;
   petugas: string; // Name of DKM officer who logged it
   donatur?: string; // Optional name or 'Hamba Allah'
-  metodePembayaran: 'Tunai' | 'Transfer Bank' | 'QRIS' | 'Cek';
+  metodePembayaran: PaymentMethod;
   buktiUrl?: string; // Optional receipt/note image url or preview
   statusVerification?: 'Terverifikasi' | 'Pending';
 }

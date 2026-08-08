@@ -10,6 +10,8 @@ interface AddTransactionModalProps {
   defaultFundCategory?: FundCategory;
   categoriesPemasukan: string[];
   categoriesPengeluaran: string[];
+  posDanaList?: string[];
+  metodePembayaranList?: string[];
   onOpenCategoryManager?: () => void;
 }
 
@@ -21,6 +23,8 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   defaultFundCategory = 'Kas Operasional',
   categoriesPemasukan,
   categoriesPengeluaran,
+  posDanaList = ['Kas Operasional', 'Kas Pembangunan', 'Kas Yatim & Sosial', 'Kas Zakat & Shadaqah'],
+  metodePembayaranList = ['Tunai', 'Transfer Bank', 'QRIS', 'Cek'],
   onOpenCategoryManager,
 }) => {
   const [jenis, setJenis] = useState<TransactionType>('pemasukan');
@@ -31,7 +35,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   const [tanggal, setTanggal] = useState(new Date().toISOString().split('T')[0]);
   const [petugas, setPetugas] = useState('H. Mohammad Ridwan');
   const [donatur, setDonatur] = useState('');
-  const [metodePembayaran, setMetodePembayaran] = useState<'Tunai' | 'Transfer Bank' | 'QRIS' | 'Cek'>('Tunai');
+  const [metodePembayaran, setMetodePembayaran] = useState<string>('Tunai');
 
   const currentCategoryList = jenis === 'pemasukan' ? categoriesPemasukan : categoriesPengeluaran;
 
@@ -46,36 +50,34 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
       setTanggal(editingTransaction.tanggal);
       setPetugas(editingTransaction.petugas);
       setDonatur(editingTransaction.donatur || '');
-      setMetodePembayaran(editingTransaction.metodePembayaran);
+      setMetodePembayaran(editingTransaction.metodePembayaran || 'Tunai');
     } else {
       setJenis('pemasukan');
-      setDanaKat(defaultFundCategory);
-      setKategori(currentCategoryList[0] || 'Infaq Umum');
+      setDanaKat(posDanaList.includes(defaultFundCategory) ? defaultFundCategory : (posDanaList[0] || 'Kas Operasional'));
+      setKategori(categoriesPemasukan[0] || '');
       setKeterangan('');
       setJumlah('');
       setTanggal(new Date().toISOString().split('T')[0]);
-      setPetugas('H. Mohammad Ridwan');
       setDonatur('');
-      setMetodePembayaran('Tunai');
+      setMetodePembayaran(metodePembayaranList[0] || 'Tunai');
     }
-  }, [editingTransaction, defaultFundCategory, isOpen, categoriesPemasukan, categoriesPengeluaran]);
+  }, [editingTransaction, isOpen, defaultFundCategory, posDanaList, metodePembayaranList, categoriesPemasukan]);
 
-  if (!isOpen) return null;
-
+  // When changing transaction type, set default category to first in list
   const handleJenisChange = (newJenis: TransactionType) => {
     setJenis(newJenis);
-    const nextList = newJenis === 'pemasukan' ? categoriesPemasukan : categoriesPengeluaran;
-    setKategori(nextList[0] || '');
+    const catList = newJenis === 'pemasukan' ? categoriesPemasukan : categoriesPengeluaran;
+    if (catList.length > 0) {
+      setKategori(catList[0]);
+    }
   };
+
+  if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!jumlah || Number(jumlah) <= 0) {
-      alert('Mohon masukkan jumlah Rupiah transaksi yang valid.');
-      return;
-    }
-    if (!keterangan.trim()) {
-      alert('Mohon lengkapi keterangan transaksi.');
+      alert('Mohon masukkan jumlah nominal uang yang valid.');
       return;
     }
 
@@ -83,13 +85,13 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
       {
         tanggal,
         jenis,
-        danaKat,
-        kategori: kategori.trim() || (jenis === 'pemasukan' ? 'Infaq Umum' : 'Pengeluaran Umum'),
-        keterangan: keterangan.trim(),
+        danaKat: danaKat || posDanaList[0] || 'Kas Operasional',
+        kategori: kategori || (jenis === 'pemasukan' ? 'Infaq Kotak Jumat' : 'Kebersihan & Perlengkapan'),
+        keterangan,
         jumlah: Number(jumlah),
-        petugas: petugas.trim() || 'Bendahara DKM',
+        petugas,
         donatur: donatur.trim() ? donatur.trim() : undefined,
-        metodePembayaran,
+        metodePembayaran: metodePembayaran || 'Tunai',
         statusVerification: 'Terverifikasi',
       },
       editingTransaction?.id
@@ -99,30 +101,37 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl max-w-xl w-full shadow-2xl border border-slate-200 overflow-hidden my-8">
-        {/* Modal Header */}
-        <div className="bg-emerald-900 text-white px-6 py-4 flex items-center justify-between border-b border-emerald-800">
-          <div className="flex items-center gap-2">
-            <Wallet className="w-5 h-5 text-amber-400" />
-            <h3 className="font-bold text-base text-white">
-              {editingTransaction ? 'Edit Catatan Transaksi Kas' : 'Pencatatan Transaksi Kas Baru'}
-            </h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 overflow-y-auto">
+      <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden my-auto">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-emerald-900 to-teal-900 text-white p-4 px-6 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-amber-400 text-emerald-950 flex items-center justify-center font-bold">
+              <PlusCircle className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-sm tracking-wide">
+                {editingTransaction ? 'Edit Catatan Transaksi Kas' : 'Catat Transaksi Kas Baru'}
+              </h3>
+              <p className="text-[11px] text-emerald-200">
+                Laporan Kas Keuangan DKM Real-Time
+              </p>
+            </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1 text-emerald-200 hover:text-white hover:bg-emerald-800 rounded-lg transition"
+            className="text-emerald-200 hover:text-white p-1 rounded-lg hover:bg-emerald-800 transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Modal Form */}
+        {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {/* Jenis Transaksi Selector */}
+          {/* Jenis Transaksi Toggle */}
           <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Jenis Transaksi Kas
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              Jenis Alur Transaksi
             </label>
             <div className="grid grid-cols-2 gap-3">
               <button
@@ -130,12 +139,12 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                 onClick={() => handleJenisChange('pemasukan')}
                 className={`py-2.5 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 border transition cursor-pointer ${
                   jenis === 'pemasukan'
-                    ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm'
+                    ? 'bg-emerald-700 text-white border-emerald-800 shadow-sm'
                     : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
                 }`}
               >
                 <span className="w-2 h-2 rounded-full bg-emerald-300"></span>
-                <span>Pemasukan (+) Infaq / Donasi</span>
+                <span>Pemasukan (+) Kas</span>
               </button>
 
               <button
@@ -161,13 +170,14 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
               </label>
               <select
                 value={danaKat}
-                onChange={(e) => setDanaKat(e.target.value as FundCategory)}
+                onChange={(e) => setDanaKat(e.target.value)}
                 className="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 bg-white"
               >
-                <option value="Kas Operasional">Kas Operasional & Umum</option>
-                <option value="Kas Pembangunan">Kas Pembangunan & Renovasi</option>
-                <option value="Kas Yatim & Sosial">Kas Santunan Yatim & Sosial</option>
-                <option value="Kas Zakat & Shadaqah">Kas Zakat & Shadaqah (ZIS)</option>
+                {posDanaList.map((f) => (
+                  <option key={f} value={f}>
+                    {f}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -196,10 +206,10 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                 <button
                   type="button"
                   onClick={onOpenCategoryManager}
-                  className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1"
+                  className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 cursor-pointer"
                 >
                   <Tag className="w-3 h-3" />
-                  <span>+ Kelola Kategori</span>
+                  <span>+ Kelola Master Data</span>
                 </button>
               )}
             </div>
@@ -281,13 +291,14 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
               </label>
               <select
                 value={metodePembayaran}
-                onChange={(e) => setMetodePembayaran(e.target.value as any)}
+                onChange={(e) => setMetodePembayaran(e.target.value)}
                 className="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 bg-white"
               >
-                <option value="Tunai">Tunai / Kotak Infaq</option>
-                <option value="Transfer Bank">Transfer Bank (BSI)</option>
-                <option value="QRIS">QRIS Barcode</option>
-                <option value="Cek">Cek / Bilyet Giro</option>
+                {metodePembayaranList.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
@@ -311,13 +322,13 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition"
+              className="px-4 py-2 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition cursor-pointer"
             >
               Batal
             </button>
             <button
               type="submit"
-              className="px-5 py-2 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg shadow-sm transition flex items-center gap-1.5"
+              className="px-5 py-2 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg shadow-sm transition flex items-center gap-1.5 cursor-pointer"
             >
               <CheckCircle2 className="w-4 h-4" />
               <span>Simpan Catatan Transaksi</span>

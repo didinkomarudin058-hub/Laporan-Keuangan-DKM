@@ -15,7 +15,8 @@ import {
   ShieldCheck, 
   FileText,
   Clock,
-  Sparkles
+  Sparkles,
+  Coins
 } from 'lucide-react';
 import { FundCategory, MosqueProfile, Transaction } from '../types';
 
@@ -24,6 +25,7 @@ interface DashboardOverviewProps {
   mosqueProfile: MosqueProfile;
   selectedMonth: number; // 1-12
   selectedYear: number;
+  posDanaList?: string[];
   onOpenAddModal: (defaultCategory?: FundCategory) => void;
   onNavigateTab: (tab: 'dashboard' | 'transactions' | 'monthlyReport' | 'analytics' | 'tvMode') => void;
   onSelectFundFilter: (fund: FundCategory | 'semua') => void;
@@ -34,6 +36,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   mosqueProfile,
   selectedMonth,
   selectedYear,
+  posDanaList = ['Kas Operasional', 'Kas Pembangunan', 'Kas Yatim & Sosial', 'Kas Zakat & Shadaqah'],
   onOpenAddModal,
   onNavigateTab,
   onSelectFundFilter,
@@ -64,48 +67,61 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
   const currentMonthNet = currentMonthIncome - currentMonthExpense;
 
-  // Fund Categories definitions
-  const fundList: {
-    name: FundCategory;
+  // Default Preset definitions for known fund categories
+  const presets: Record<string, {
     description: string;
     icon: React.ReactNode;
     badgeBg: string;
     badgeText: string;
     borderAccent: string;
-  }[] = [
-    {
-      name: 'Kas Operasional',
+  }> = {
+    'Kas Operasional': {
       description: 'Infaq Jumat, Kebersihan, Listrik, Syahriyah Imam & Marbot',
       icon: <Wallet className="w-5 h-5 text-emerald-600" />,
       badgeBg: 'bg-emerald-100 text-emerald-800 border-emerald-200',
       badgeText: 'Kas Utama',
       borderAccent: 'border-l-4 border-l-emerald-600',
     },
-    {
-      name: 'Kas Pembangunan',
+    'Kas Pembangunan': {
       description: 'Renovasi fisik, perluasan area, kubah & menara masjid',
       icon: <Building className="w-5 h-5 text-blue-600" />,
       badgeBg: 'bg-blue-100 text-blue-800 border-blue-200',
       badgeText: 'Renovasi',
       borderAccent: 'border-l-4 border-l-blue-600',
     },
-    {
-      name: 'Kas Yatim & Sosial',
+    'Kas Yatim & Sosial': {
       description: 'Santunan anak yatim, bantuan dhuafa & paket sembako',
       icon: <HeartHandshake className="w-5 h-5 text-amber-600" />,
       badgeBg: 'bg-amber-100 text-amber-800 border-amber-200',
       badgeText: 'Sosial Umat',
       borderAccent: 'border-l-4 border-l-amber-500',
     },
-    {
-      name: 'Kas Zakat & Shadaqah',
+    'Kas Zakat & Shadaqah': {
       description: 'Zakat Fitrah, Zakat Maal & Distribusi Mustahik',
       icon: <CircleDollarSign className="w-5 h-5 text-purple-600" />,
       badgeBg: 'bg-purple-100 text-purple-800 border-purple-200',
       badgeText: 'ZIS',
       borderAccent: 'border-l-4 border-l-purple-600',
     },
-  ];
+  };
+
+  // Build dynamic fundList from posDanaList
+  const fundList = posDanaList.map((fundName) => {
+    if (presets[fundName]) {
+      return {
+        name: fundName,
+        ...presets[fundName],
+      };
+    }
+    return {
+      name: fundName,
+      description: `Pos dana khusus DKM ${fundName}`,
+      icon: <Coins className="w-5 h-5 text-teal-600" />,
+      badgeBg: 'bg-teal-100 text-teal-800 border-teal-200',
+      badgeText: 'Pos Dana',
+      borderAccent: 'border-l-4 border-l-teal-600',
+    };
+  });
 
   // Calculate balance per fund category
   const fundBalances = fundList.map(fund => {
@@ -138,321 +154,298 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   ];
 
   return (
-    <div className="space-y-6 pb-12">
-      {/* Welcome & Transparansi Heading */}
-      <div className="bg-gradient-to-r from-emerald-900 via-teal-900 to-emerald-950 text-white rounded-2xl p-6 shadow-md border border-emerald-800 relative overflow-hidden">
-        <div className="absolute right-0 top-0 bottom-0 w-1/3 opacity-10 pointer-events-none flex items-center justify-center">
-          <Building className="w-72 h-72 text-white" />
-        </div>
+    <div className="space-y-6 pb-8">
+      {/* Top Welcome Banner */}
+      <div className="bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-900 text-white rounded-2xl p-6 shadow-xl border border-emerald-700/50 relative overflow-hidden">
+        <div className="absolute right-0 top-0 translate-x-8 -translate-y-8 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
         
-        <div className="relative z-10 max-w-3xl space-y-2">
-          <div className="inline-flex items-center gap-1.5 bg-emerald-800/80 text-amber-300 text-xs px-3 py-1 rounded-full font-medium border border-emerald-700/60">
-            <ShieldCheck className="w-3.5 h-3.5" /> Transparansi Kas DKM Berkelanjutan
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="bg-amber-400 text-emerald-950 text-[11px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
+                DKM Dashboard
+              </span>
+              <span className="text-emerald-200 text-xs flex items-center gap-1 font-medium">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Terverifikasi & Akuntabel
+              </span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+              {mosqueProfile.namaMasjid}
+            </h1>
+            <p className="text-xs sm:text-sm text-emerald-100/90 font-sans max-w-2xl leading-relaxed">
+              "{mosqueProfile.motto}"
+            </p>
           </div>
-          <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-white">
-            Ikhtisar Keuangan Kas {mosqueProfile.namaMasjid}
-          </h2>
-          <p className="text-emerald-100/90 text-sm leading-relaxed">
-            Pencatatan kas terbuka, akuntabel, dan rapi untuk seluruh dana infaq jamaah, pembangunan, serta santunan sosial.
-          </p>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={() => onOpenAddModal()}
+              className="bg-amber-400 hover:bg-amber-300 text-emerald-950 font-black text-xs py-2.5 px-4 rounded-xl shadow-lg hover:shadow-xl transition flex items-center gap-2 transform active:scale-95 cursor-pointer"
+            >
+              <PlusCircle className="w-4 h-4 stroke-[2.5]" />
+              <span>+ Catat Transaksi Baru</span>
+            </button>
+            <button
+              onClick={() => onNavigateTab('monthlyReport')}
+              className="bg-emerald-800/80 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 px-4 rounded-xl border border-emerald-600/80 shadow-sm transition flex items-center gap-2 cursor-pointer"
+            >
+              <FileText className="w-4 h-4 text-amber-300" />
+              <span>Laporan Keuangan</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Main KPI Stats Row */}
+      {/* KPI Highlight Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Saldo Utama */}
-        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm relative overflow-hidden hover:shadow-md transition">
+        {/* Total Saldo Kas Gabungan */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Total Saldo Seluruh Kas
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              Total Kas Gabungan
             </span>
-            <div className="w-9 h-9 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
               <Wallet className="w-5 h-5" />
             </div>
           </div>
-          <div className="mt-3">
-            <div className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+          <div>
+            <div className="text-2xl font-black text-slate-900 tracking-tight">
               Rp {totalCombinedBalance.toLocaleString('id-ID')}
             </div>
-            <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
-              <span className="text-emerald-600 font-semibold">Aktif</span> per {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
+            <p className="text-[11px] text-slate-500 mt-1 font-medium">
+              Akumulasi dari {posDanaList.length} Pos Dana Kas DKM
             </p>
           </div>
         </div>
 
         {/* Total Pemasukan Bulan Ini */}
-        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition">
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Pemasukan {monthNamesIndonesian[selectedMonth - 1]}
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              Inflow {monthNamesIndonesian[selectedMonth - 1]} {selectedYear}
             </span>
-            <div className="w-9 h-9 rounded-lg bg-teal-100 text-teal-700 flex items-center justify-center">
-              <ArrowUpRight className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
+              <TrendingUp className="w-5 h-5 text-emerald-600" />
             </div>
           </div>
-          <div className="mt-3">
-            <div className="text-xl sm:text-2xl font-bold text-emerald-700 tracking-tight flex items-baseline gap-1">
-              <span>Rp {currentMonthIncome.toLocaleString('id-ID')}</span>
+          <div>
+            <div className="text-2xl font-black text-emerald-700 tracking-tight">
+              +Rp {currentMonthIncome.toLocaleString('id-ID')}
             </div>
-            <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
-              <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Infaq, donatur, & zakat</span>
+            <p className="text-[11px] text-emerald-600 mt-1 font-medium flex items-center gap-1">
+              <ArrowUpRight className="w-3.5 h-3.5" /> Total Penerimaan Kas Bulan Ini
             </p>
           </div>
         </div>
 
         {/* Total Pengeluaran Bulan Ini */}
-        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition">
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Pengeluaran {monthNamesIndonesian[selectedMonth - 1]}
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              Outflow {monthNamesIndonesian[selectedMonth - 1]} {selectedYear}
             </span>
-            <div className="w-9 h-9 rounded-lg bg-rose-100 text-rose-700 flex items-center justify-center">
-              <ArrowDownRight className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-700 flex items-center justify-center font-bold">
+              <TrendingDown className="w-5 h-5 text-rose-600" />
             </div>
           </div>
-          <div className="mt-3">
-            <div className="text-xl sm:text-2xl font-bold text-rose-700 tracking-tight">
-              Rp {currentMonthExpense.toLocaleString('id-ID')}
+          <div>
+            <div className="text-2xl font-black text-rose-600 tracking-tight">
+              -Rp {currentMonthExpense.toLocaleString('id-ID')}
             </div>
-            <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
-              <TrendingDown className="w-3.5 h-3.5 text-rose-500" />
-              <span>Operasional & pembangunan</span>
+            <p className="text-[11px] text-rose-600 mt-1 font-medium flex items-center gap-1">
+              <ArrowDownRight className="w-3.5 h-3.5" /> Total Operasional & Belanja
             </p>
           </div>
         </div>
 
-        {/* Surplus / Defisit Bulan Ini */}
-        <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm hover:shadow-md transition">
+        {/* Net Flow Bulan Ini */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Surplus Neto Bulan Ini
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              Arus Kas Net Bulan Ini
             </span>
-            <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${
-              currentMonthNet >= 0 ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'
-            }`}>
-              <Calendar className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold">
+              <Sparkles className="w-5 h-5 text-amber-600" />
             </div>
           </div>
-          <div className="mt-3">
-            <div className={`text-xl sm:text-2xl font-bold tracking-tight ${
-              currentMonthNet >= 0 ? 'text-amber-700' : 'text-rose-600'
-            }`}>
-              Rp {currentMonthNet.toLocaleString('id-ID')}
+          <div>
+            <div className={`text-2xl font-black tracking-tight ${currentMonthNet >= 0 ? 'text-amber-600' : 'text-rose-600'}`}>
+              {currentMonthNet >= 0 ? '+' : ''}Rp {currentMonthNet.toLocaleString('id-ID')}
             </div>
-            <p className="text-xs text-slate-500 mt-1">
-              {currentMonthNet >= 0 ? 'Surplus kas terkendali' : 'Defisit bulan berjalan'}
+            <p className="text-[11px] text-slate-500 mt-1 font-medium">
+              Surplus / Defisit Kas Bulan Ini
             </p>
           </div>
         </div>
       </div>
 
-      {/* Breakdown per Jenis Kas (4 Account Cards) */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+      {/* Breakdown 4 Pos Dana Kas */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
             <Wallet className="w-5 h-5 text-emerald-700" />
-            Rincian Kas per Pos/Kategori Dana
-          </h3>
-          <span className="text-xs text-slate-500">
-            Klik pos kas untuk memfilter transaksi
-          </span>
+            Rincian Saldo Kas per Pos Dana
+          </h2>
+          <button
+            onClick={() => onNavigateTab('transactions')}
+            className="text-xs font-bold text-emerald-800 hover:text-emerald-900 flex items-center gap-1 cursor-pointer"
+          >
+            <span>Lihat Semua Jurnal</span>
+            <ChevronRight className="w-4 h-4" />
+          </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {fundBalances.map((fund) => (
-            <div 
-              key={fund.name}
-              className={`bg-white rounded-xl p-4 border border-slate-200 shadow-sm ${fund.borderAccent} hover:shadow-md transition flex flex-col justify-between`}
+          {fundBalances.map((item) => (
+            <div
+              key={item.name}
+              className={`bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition ${item.borderAccent} space-y-4 flex flex-col justify-between`}
             >
-              <div>
-                <div className="flex items-start justify-between gap-2">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    {fund.icon}
-                    <h4 className="font-bold text-slate-900 text-sm leading-snug">
-                      {fund.name}
-                    </h4>
+                    {item.icon}
+                    <h3 className="font-extrabold text-sm text-slate-900">{item.name}</h3>
                   </div>
-                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${fund.badgeBg}`}>
-                    {fund.badgeText}
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${item.badgeBg}`}>
+                    {item.badgeText}
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-500 mt-1 line-clamp-2">
-                  {fund.description}
+                <p className="text-[11px] text-slate-500 leading-snug line-clamp-2">
+                  {item.description}
                 </p>
-
-                <div className="mt-3 pt-3 border-t border-slate-100">
-                  <div className="text-xs text-slate-500">Saldo Akumulasi:</div>
-                  <div className="text-lg font-extrabold text-slate-900 mt-0.5">
-                    Rp {fund.balance.toLocaleString('id-ID')}
-                  </div>
-                </div>
-
-                <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] bg-slate-50 p-2 rounded-lg border border-slate-100">
-                  <div>
-                    <span className="text-slate-400 block">Masuk (Bln Ini):</span>
-                    <span className="font-semibold text-emerald-700">+Rp {fund.monthIncome.toLocaleString('id-ID')}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400 block">Keluar (Bln Ini):</span>
-                    <span className="font-semibold text-rose-600">-Rp {fund.monthExpense.toLocaleString('id-ID')}</span>
-                  </div>
-                </div>
               </div>
 
-              <div className="mt-4 pt-2 border-t border-slate-100 flex items-center justify-between">
-                <button
-                  onClick={() => {
-                    onSelectFundFilter(fund.name);
-                    onNavigateTab('transactions');
-                  }}
-                  className="text-xs text-emerald-700 hover:text-emerald-900 font-semibold flex items-center gap-1 cursor-pointer"
-                >
-                  <span>Lihat Jurnal</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => onOpenAddModal(fund.name)}
-                  className="text-xs bg-slate-100 hover:bg-emerald-50 text-slate-700 hover:text-emerald-800 font-medium px-2 py-1 rounded flex items-center gap-1 transition"
-                >
-                  <PlusCircle className="w-3 h-3 text-emerald-600" />
-                  <span>+ Catat</span>
-                </button>
+              <div className="space-y-3 pt-2 border-t border-slate-100">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Saldo Akhir Kas
+                  </span>
+                  <div className="text-lg font-black text-slate-900 mt-0.5">
+                    Rp {item.balance.toLocaleString('id-ID')}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
+                  <div className="bg-emerald-50/60 p-2 rounded-lg border border-emerald-100">
+                    <span className="text-emerald-800 font-semibold block text-[10px]">Masuk (Bln Ini)</span>
+                    <span className="font-bold text-emerald-700">+Rp {item.monthIncome.toLocaleString('id-ID')}</span>
+                  </div>
+                  <div className="bg-rose-50/60 p-2 rounded-lg border border-rose-100">
+                    <span className="text-rose-800 font-semibold block text-[10px]">Keluar (Bln Ini)</span>
+                    <span className="font-bold text-rose-700">-Rp {item.monthExpense.toLocaleString('id-ID')}</span>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={() => onOpenAddModal(item.name)}
+                    className="flex-1 py-1.5 px-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-[11px] rounded-lg border border-emerald-200 transition text-center cursor-pointer"
+                  >
+                    + Catat Kas
+                  </button>
+                  <button
+                    onClick={() => onSelectFundFilter(item.name)}
+                    className="py-1.5 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] rounded-lg transition cursor-pointer"
+                    title="Filter mutasi pos ini"
+                  >
+                    Mutasi
+                  </button>
+                </div>
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Main Split Section: Recent Transactions & Public Transparency Bulletin */}
+      {/* Recent Mutasi Table & QRIS Info Card */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column (2 cols): Recent Transactions Table */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-slate-100">
-            <div>
-              <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
-                <Clock className="w-4 h-4 text-emerald-700" />
-                Transaksi Terakhir Recorded
+        {/* Left Column: Recent Transactions (2 cols) */}
+        <div className="lg:col-span-2 bg-white rounded-2xl p-5 border border-slate-200 shadow-sm space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div className="flex items-center gap-2">
+              <Clock className="w-5 h-5 text-emerald-700" />
+              <h3 className="font-extrabold text-sm text-slate-900">
+                Transaksi Kas Terbaru
               </h3>
-              <p className="text-xs text-slate-500">Mutasi kas terbeli & terverifikasi oleh bendahara DKM</p>
             </div>
-            
             <button
               onClick={() => onNavigateTab('transactions')}
-              className="text-xs text-emerald-700 hover:text-emerald-900 font-bold flex items-center gap-1"
+              className="text-xs font-bold text-emerald-800 hover:text-emerald-900 flex items-center gap-1 cursor-pointer"
             >
-              <span>Semua Jurnal</span>
+              <span>Jurnal Lengkap</span>
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">
-                  <th className="py-2.5 px-3">Tanggal</th>
-                  <th className="py-2.5 px-3">Kategori & Pos Kas</th>
-                  <th className="py-2.5 px-3">Keterangan</th>
-                  <th className="py-2.5 px-3 text-right">Jumlah (Rp)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
-                {recentTransactions.map((trx) => (
-                  <tr key={trx.id} className="hover:bg-slate-50/80 transition">
-                    <td className="py-3 px-3 whitespace-nowrap font-medium text-slate-600">
-                      {new Date(trx.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })}
-                    </td>
-                    <td className="py-3 px-3 whitespace-nowrap">
-                      <div className="font-semibold text-slate-800">{trx.kategori}</div>
-                      <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-medium border border-emerald-100 inline-block mt-0.5">
+          <div className="divide-y divide-slate-100">
+            {recentTransactions.length === 0 ? (
+              <p className="text-xs text-slate-400 italic py-6 text-center">
+                Belum ada transaksi dicatat.
+              </p>
+            ) : (
+              recentTransactions.map((trx) => (
+                <div key={trx.id} className="py-3 flex items-center justify-between gap-3 text-xs">
+                  <div className="space-y-0.5 max-w-[65%]">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-slate-900">{trx.kategori}</span>
+                      <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 font-medium">
                         {trx.danaKat}
                       </span>
-                    </td>
-                    <td className="py-3 px-3 max-w-xs truncate text-slate-600">
-                      {trx.keterangan}
-                      {trx.donatur && (
-                        <span className="block text-[11px] text-slate-400 italic">
-                          Donatur: {trx.donatur}
-                        </span>
-                      )}
-                    </td>
-                    <td className="py-3 px-3 text-right whitespace-nowrap font-bold">
-                      {trx.jenis === 'pemasukan' ? (
-                        <span className="text-emerald-700">+Rp {trx.jumlah.toLocaleString('id-ID')}</span>
-                      ) : (
-                        <span className="text-rose-600">-Rp {trx.jumlah.toLocaleString('id-ID')}</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                    </div>
+                    <p className="text-slate-500 text-[11px] truncate">{trx.keterangan}</p>
+                    <div className="text-[10px] text-slate-400 flex items-center gap-2">
+                      <span>{trx.tanggal}</span> • <span>Petugas: {trx.petugas}</span>
+                    </div>
+                  </div>
+
+                  <div className="text-right">
+                    <div className={`font-black text-sm ${trx.jenis === 'pemasukan' ? 'text-emerald-700' : 'text-rose-600'}`}>
+                      {trx.jenis === 'pemasukan' ? '+' : '-'}Rp {trx.jumlah.toLocaleString('id-ID')}
+                    </div>
+                    <span className="text-[10px] font-semibold text-slate-400 block">{trx.metodePembayaran}</span>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
-        {/* Right Column (1 col): Papan Informasi Transparansi Jamaah */}
-        <div className="bg-gradient-to-b from-slate-900 to-emerald-950 text-white rounded-xl p-5 border border-emerald-800 shadow-sm flex flex-col justify-between space-y-4">
+        {/* Right Column: Information Rekening & QRIS */}
+        <div className="bg-gradient-to-b from-slate-900 to-emerald-950 text-white rounded-2xl p-5 border border-slate-800 shadow-md space-y-4 flex flex-col justify-between">
           <div className="space-y-3">
-            <div className="flex items-center justify-between border-b border-emerald-800/80 pb-2">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-amber-400" />
-                <h3 className="font-bold text-sm text-white">Transparansi Jamaah</h3>
-              </div>
-              <span className="bg-amber-400/20 text-amber-300 text-[10px] font-semibold px-2 py-0.5 rounded border border-amber-400/30">
-                Papan Pengumuman
-              </span>
+            <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
+              <QrCode className="w-5 h-5 text-amber-400" />
+              <h3 className="font-extrabold text-sm text-white">
+                Rekening Infaq Resmi DKM
+              </h3>
             </div>
 
-            <p className="text-xs text-emerald-100/80 leading-relaxed">
-              Ringkasan kas dapat dicetak atau ditampilkan di monitor masjid sebelum Shalat Jumat.
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Salurkan infaq, shadaqah & zakat Anda melalui rekening resmi masjid:
             </p>
 
-            {/* Bank Rekening Info Box */}
-            <div className="bg-emerald-900/60 p-3.5 rounded-lg border border-emerald-700/60 space-y-2">
-              <div className="text-[11px] text-emerald-300 font-semibold uppercase tracking-wider flex items-center justify-between">
-                <span>Rekening Resmi DKM</span>
-                <span className="text-[10px] text-amber-300">Infaq Transfer</span>
-              </div>
-              <div className="font-mono text-sm font-bold text-white tracking-wide">
+            <div className="bg-slate-800/80 p-3.5 rounded-xl border border-slate-700 space-y-1">
+              <span className="text-[10px] uppercase font-bold text-amber-400 tracking-wider">
+                {mosqueProfile.namaBank}
+              </span>
+              <div className="text-base font-extrabold text-white font-mono tracking-wider">
                 {mosqueProfile.nomorRekening}
               </div>
-              <div className="text-xs text-emerald-200">
-                {mosqueProfile.namaBank} a.n <span className="font-semibold text-white">{mosqueProfile.anRekening}</span>
-              </div>
-            </div>
-
-            {/* Infaq Jumat Highlight */}
-            <div className="bg-emerald-950/80 p-3.5 rounded-lg border border-emerald-800 space-y-1">
-              <div className="text-xs text-emerald-300 font-medium">
-                Penerimaan Infaq Kotak Jumat Terakhir:
-              </div>
-              <div className="text-base font-bold text-amber-400">
-                Rp {(transactions
-                  .filter(t => t.kategori.toLowerCase().includes('jumat'))
-                  .reduce((max, t) => t.jumlah > max ? t.jumlah : max, 0)
-                ).toLocaleString('id-ID')}
-              </div>
-              <div className="text-[11px] text-emerald-200/70">
-                Amanah dikelola untuk operasional & kemakmuran masjid.
-              </div>
+              <p className="text-xs text-slate-300 font-medium">
+                a.n {mosqueProfile.anRekening}
+              </p>
             </div>
           </div>
 
-          <div className="pt-3 border-t border-emerald-800/60 flex flex-col gap-2">
-            <button
-              onClick={() => onNavigateTab('monthlyReport')}
-              className="w-full bg-emerald-700 hover:bg-emerald-600 text-white font-medium text-xs py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition"
-            >
-              <FileText className="w-3.5 h-3.5" />
-              <span>Cetak Laporan Bulanan PDF / Buletin</span>
-            </button>
-            <button
-              onClick={() => onNavigateTab('tvMode')}
-              className="w-full bg-amber-500 hover:bg-amber-400 text-emerald-950 font-bold text-xs py-2 px-3 rounded-lg flex items-center justify-center gap-1.5 transition"
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>Buka Layar Display Monitor Masjid</span>
-            </button>
+          <div className="pt-3 border-t border-slate-800 text-[11px] text-slate-400 space-y-1">
+            <div className="flex items-center gap-1.5 text-emerald-400 font-bold">
+              <ShieldCheck className="w-4 h-4" />
+              <span>Transparan & Real-Time</span>
+            </div>
+            <p className="text-slate-400 leading-relaxed">
+              Seluruh laporan pemasukan & pengeluaran kas dapat dipantau langsung oleh jamaah melalui papan pengumuman TV Masjid.
+            </p>
           </div>
         </div>
       </div>

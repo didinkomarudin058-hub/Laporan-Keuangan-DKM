@@ -1,6 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User } from 'firebase/auth';
-import { Download, X, Smartphone } from 'lucide-react';
 import { Navbar } from './components/Navbar';
 import { DashboardOverview } from './components/DashboardOverview';
 import { TransactionList } from './components/TransactionList';
@@ -9,9 +7,8 @@ import { AnalyticsCharts } from './components/AnalyticsCharts';
 import { PublicDisplayBoard } from './components/PublicDisplayBoard';
 import { AddTransactionModal } from './components/AddTransactionModal';
 import { MosqueSettingsModal } from './components/MosqueSettingsModal';
-import { MobileBottomNav } from './components/MobileBottomNav';
 import { PwaInstallModal } from './components/PwaInstallModal';
-
+import { MobileBottomNav } from './components/MobileBottomNav';
 import { FundCategory, MosqueProfile, Transaction, TransactionType } from './types';
 import {
   initialMosqueProfile,
@@ -19,6 +16,7 @@ import {
   CATEGORIES_PEMASUKAN,
   CATEGORIES_PENGELUARAN,
 } from './data/initialData';
+import { User } from 'firebase/auth';
 import {
   subscribeAuth,
   subscribeFirestoreData,
@@ -27,6 +25,7 @@ import {
   deleteTransactionFromFirestore,
   bulkSaveTransactionsToFirestore,
 } from './lib/firebase';
+import { Smartphone, Download, X } from 'lucide-react';
 
 export default function App() {
   // LocalStorage keys
@@ -34,6 +33,22 @@ export default function App() {
   const STORAGE_KEY_PROFILE = 'dkm_profile_v1';
   const STORAGE_KEY_CATEGORIES_PEMASUKAN = 'dkm_categories_pemasukan_v1';
   const STORAGE_KEY_CATEGORIES_PENGELUARAN = 'dkm_categories_pengeluaran_v1';
+  const STORAGE_KEY_POS_DANA = 'dkm_pos_dana_v1';
+  const STORAGE_KEY_METODE_PEMBAYARAN = 'dkm_metode_pembayaran_v1';
+
+  const DEFAULT_POS_DANA = [
+    'Kas Operasional',
+    'Kas Pembangunan',
+    'Kas Yatim & Sosial',
+    'Kas Zakat & Shadaqah',
+  ];
+
+  const DEFAULT_METODE_PEMBAYARAN = [
+    'Tunai',
+    'Transfer Bank',
+    'QRIS',
+    'Cek',
+  ];
 
   // Firebase Auth State
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -89,6 +104,32 @@ export default function App() {
     return CATEGORIES_PENGELUARAN;
   });
 
+  // State: Pos Dana List
+  const [posDanaList, setPosDanaList] = useState<string[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY_POS_DANA);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return DEFAULT_POS_DANA;
+  });
+
+  // State: Metode Pembayaran List
+  const [metodePembayaranList, setMetodePembayaranList] = useState<string[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY_METODE_PEMBAYARAN);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return DEFAULT_METODE_PEMBAYARAN;
+  });
+
   // Save to LocalStorage
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_PROFILE, JSON.stringify(mosqueProfile));
@@ -105,6 +146,14 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_CATEGORIES_PENGELUARAN, JSON.stringify(categoriesPengeluaran));
   }, [categoriesPengeluaran]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_POS_DANA, JSON.stringify(posDanaList));
+  }, [posDanaList]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_METODE_PEMBAYARAN, JSON.stringify(metodePembayaranList));
+  }, [metodePembayaranList]);
 
   // Subscribe to Firebase Auth
   useEffect(() => {
@@ -128,6 +177,12 @@ export default function App() {
       if (data.categoriesPengeluaran) {
         setCategoriesPengeluaran(data.categoriesPengeluaran);
       }
+      if (data.posDanaList) {
+        setPosDanaList(data.posDanaList);
+      }
+      if (data.metodePembayaranList) {
+        setMetodePembayaranList(data.metodePembayaranList);
+      }
       if (data.transactions) {
         setTransactions(data.transactions);
       }
@@ -138,6 +193,8 @@ export default function App() {
       mosqueProfile,
       categoriesPemasukan,
       categoriesPengeluaran,
+      posDanaList,
+      metodePembayaranList,
     });
     bulkSaveTransactionsToFirestore(currentUser.uid, transactions);
 
@@ -200,18 +257,15 @@ export default function App() {
 
   // Handle Browser / Android Hardware Back Button Logic
   useEffect(() => {
-    // Initialize browser history entry
     window.history.replaceState({ tab: activeTab }, '');
   }, []);
 
   useEffect(() => {
-    // Whenever tab changes, push a state so back button can intercept
     window.history.pushState({ tab: activeTab }, '');
   }, [activeTab]);
 
   useEffect(() => {
     const handlePopState = () => {
-      // 1. Priority: If Add Modal or Settings Modal is open, close modal
       if (isAddModalOpen) {
         setIsAddModalOpen(false);
         window.history.pushState({ tab: activeTab }, '');
@@ -228,23 +282,19 @@ export default function App() {
         return;
       }
 
-      // 2. Priority: If not on Dashboard, switch back to Dashboard (1x back press)
       if (activeTab !== 'dashboard') {
         setActiveTab('dashboard');
         window.history.pushState({ tab: 'dashboard' }, '');
         return;
       }
 
-      // 3. Priority: Already on Dashboard! Check double-press to exit app
       const now = Date.now();
       const timeDiff = now - lastBackPressTimeRef.current;
 
       if (timeDiff < 2000) {
-        // Pressed twice within 2 seconds -> Allow closing / exit
         setToastMessage('Menutup aplikasi Kas DKM...');
         setTimeout(() => setToastMessage(null), 1500);
       } else {
-        // First back press -> Notify user to press again within 2 seconds
         lastBackPressTimeRef.current = now;
         window.history.pushState({ tab: 'dashboard' }, '');
         setToastMessage('Tekan sekali lagi untuk keluar dari aplikasi');
@@ -287,7 +337,6 @@ export default function App() {
     editId?: string
   ) => {
     if (editId) {
-      // Edit existing
       const updatedTrx: Transaction = { ...trxData, id: editId };
       setTransactions((prev) =>
         prev.map((t) => (t.id === editId ? updatedTrx : t))
@@ -296,7 +345,6 @@ export default function App() {
         saveTransactionToFirestore(currentUser.uid, updatedTrx);
       }
     } else {
-      // Add new
       const newId = `TRX-${new Date().getFullYear()}${String(
         new Date().getMonth() + 1
       ).padStart(2, '0')}-${String(Math.floor(Math.random() * 900) + 100)}`;
@@ -411,6 +459,66 @@ export default function App() {
     }
   };
 
+  // Pos Dana Handlers
+  const handleAddPosDana = (name: string) => {
+    if (!posDanaList.includes(name)) {
+      const updated = [...posDanaList, name];
+      setPosDanaList(updated);
+      if (currentUser) {
+        saveSettingsToFirestore(currentUser.uid, { posDanaList: updated });
+      }
+    }
+  };
+
+  const handleEditPosDana = (oldName: string, newName: string) => {
+    const updated = posDanaList.map((f) => (f === oldName ? newName : f));
+    setPosDanaList(updated);
+    setTransactions((prev) =>
+      prev.map((t) => (t.danaKat === oldName ? { ...t, danaKat: newName } : t))
+    );
+    if (currentUser) {
+      saveSettingsToFirestore(currentUser.uid, { posDanaList: updated });
+    }
+  };
+
+  const handleDeletePosDana = (name: string) => {
+    const updated = posDanaList.filter((f) => f !== name);
+    setPosDanaList(updated);
+    if (currentUser) {
+      saveSettingsToFirestore(currentUser.uid, { posDanaList: updated });
+    }
+  };
+
+  // Metode Pembayaran Handlers
+  const handleAddMetodePembayaran = (name: string) => {
+    if (!metodePembayaranList.includes(name)) {
+      const updated = [...metodePembayaranList, name];
+      setMetodePembayaranList(updated);
+      if (currentUser) {
+        saveSettingsToFirestore(currentUser.uid, { metodePembayaranList: updated });
+      }
+    }
+  };
+
+  const handleEditMetodePembayaran = (oldName: string, newName: string) => {
+    const updated = metodePembayaranList.map((m) => (m === oldName ? newName : m));
+    setMetodePembayaranList(updated);
+    setTransactions((prev) =>
+      prev.map((t) => (t.metodePembayaran === oldName ? { ...t, metodePembayaran: newName } : t))
+    );
+    if (currentUser) {
+      saveSettingsToFirestore(currentUser.uid, { metodePembayaranList: updated });
+    }
+  };
+
+  const handleDeleteMetodePembayaran = (name: string) => {
+    const updated = metodePembayaranList.filter((m) => m !== name);
+    setMetodePembayaranList(updated);
+    if (currentUser) {
+      saveSettingsToFirestore(currentUser.uid, { metodePembayaranList: updated });
+    }
+  };
+
   // Backup & Restore
   const handleExportBackup = () => {
     const backupData = {
@@ -420,6 +528,8 @@ export default function App() {
       transactions,
       categoriesPemasukan,
       categoriesPengeluaran,
+      posDanaList,
+      metodePembayaranList,
     };
     const blob = new Blob([JSON.stringify(backupData, null, 2)], {
       type: 'application/json',
@@ -449,12 +559,16 @@ export default function App() {
           if (json.categoriesPemasukan) setCategoriesPemasukan(json.categoriesPemasukan);
           if (json.categoriesPengeluaran)
             setCategoriesPengeluaran(json.categoriesPengeluaran);
+          if (json.posDanaList) setPosDanaList(json.posDanaList);
+          if (json.metodePembayaranList) setMetodePembayaranList(json.metodePembayaranList);
 
           if (currentUser) {
             saveSettingsToFirestore(currentUser.uid, {
               mosqueProfile: json.mosqueProfile || mosqueProfile,
               categoriesPemasukan: json.categoriesPemasukan || categoriesPemasukan,
               categoriesPengeluaran: json.categoriesPengeluaran || categoriesPengeluaran,
+              posDanaList: json.posDanaList || posDanaList,
+              metodePembayaranList: json.metodePembayaranList || metodePembayaranList,
             });
             bulkSaveTransactionsToFirestore(currentUser.uid, json.transactions);
           }
@@ -481,16 +595,22 @@ export default function App() {
       setMosqueProfile(initialMosqueProfile);
       setCategoriesPemasukan(CATEGORIES_PEMASUKAN);
       setCategoriesPengeluaran(CATEGORIES_PENGELUARAN);
+      setPosDanaList(DEFAULT_POS_DANA);
+      setMetodePembayaranList(DEFAULT_METODE_PEMBAYARAN);
       localStorage.removeItem(STORAGE_KEY_TRANSACTIONS);
       localStorage.removeItem(STORAGE_KEY_PROFILE);
       localStorage.removeItem(STORAGE_KEY_CATEGORIES_PEMASUKAN);
       localStorage.removeItem(STORAGE_KEY_CATEGORIES_PENGELUARAN);
+      localStorage.removeItem(STORAGE_KEY_POS_DANA);
+      localStorage.removeItem(STORAGE_KEY_METODE_PEMBAYARAN);
 
       if (currentUser) {
         saveSettingsToFirestore(currentUser.uid, {
           mosqueProfile: initialMosqueProfile,
           categoriesPemasukan: CATEGORIES_PEMASUKAN,
           categoriesPengeluaran: CATEGORIES_PENGELUARAN,
+          posDanaList: DEFAULT_POS_DANA,
+          metodePembayaranList: DEFAULT_METODE_PEMBAYARAN,
         });
         bulkSaveTransactionsToFirestore(currentUser.uid, initialTransactions);
       }
@@ -499,30 +619,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900 font-sans antialiased selection:bg-emerald-200 relative">
-      {/* PWA Installation Prompt Banner */}
-      {showInstallBanner && (
-        <div className="bg-emerald-800 text-white px-4 py-2 text-xs flex items-center justify-between shadow-md z-50 sticky top-0 border-b border-emerald-700">
-          <div className="flex items-center gap-2">
-            <Smartphone className="w-4 h-4 text-amber-300" />
-            <span>Install aplikasi <strong>Kas DKM</strong> di Android / Desktop Anda!</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleInstallPWA}
-              className="bg-amber-400 hover:bg-amber-300 text-emerald-950 font-bold px-3 py-1 rounded text-xs transition cursor-pointer flex items-center gap-1"
-            >
-              <Download className="w-3.5 h-3.5" /> Install App
-            </button>
-            <button
-              onClick={() => setShowInstallBanner(false)}
-              className="text-emerald-200 hover:text-white p-1"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Top App Navbar */}
       <Navbar
         mosqueProfile={mosqueProfile}
@@ -541,6 +637,7 @@ export default function App() {
             mosqueProfile={mosqueProfile}
             selectedMonth={reportMonth}
             selectedYear={reportYear}
+            posDanaList={posDanaList}
             onOpenAddModal={handleOpenAddModal}
             onNavigateTab={setActiveTab}
             onSelectFundFilter={(fund) => {
@@ -559,6 +656,7 @@ export default function App() {
             initialFundFilter={selectedFundFilter}
             categoriesPemasukan={categoriesPemasukan}
             categoriesPengeluaran={categoriesPengeluaran}
+            posDanaList={posDanaList}
           />
         )}
 
@@ -578,7 +676,7 @@ export default function App() {
         )}
 
         {activeTab === 'analytics' && (
-          <AnalyticsCharts transactions={transactions} />
+          <AnalyticsCharts transactions={transactions} posDanaList={posDanaList} />
         )}
 
         {activeTab === 'tvMode' && (
@@ -628,6 +726,8 @@ export default function App() {
         defaultFundCategory={defaultAddFundCategory}
         categoriesPemasukan={categoriesPemasukan}
         categoriesPengeluaran={categoriesPengeluaran}
+        posDanaList={posDanaList}
+        metodePembayaranList={metodePembayaranList}
         onOpenCategoryManager={() => {
           setIsAddModalOpen(false);
           handleOpenSettingsModal('categories');
@@ -647,6 +747,14 @@ export default function App() {
         onEditCategory={handleEditCategory}
         onDeleteCategory={handleDeleteCategory}
         onResetCategories={handleResetCategories}
+        posDanaList={posDanaList}
+        onAddPosDana={handleAddPosDana}
+        onEditPosDana={handleEditPosDana}
+        onDeletePosDana={handleDeletePosDana}
+        metodePembayaranList={metodePembayaranList}
+        onAddMetodePembayaran={handleAddMetodePembayaran}
+        onEditMetodePembayaran={handleEditMetodePembayaran}
+        onDeleteMetodePembayaran={handleDeleteMetodePembayaran}
         onExportBackup={handleExportBackup}
         onImportBackup={handleImportBackup}
         onResetData={handleResetData}

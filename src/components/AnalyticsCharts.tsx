@@ -17,9 +17,13 @@ import { Transaction, FundCategory } from '../types';
 
 interface AnalyticsChartsProps {
   transactions: Transaction[];
+  posDanaList?: string[];
 }
 
-export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ transactions }) => {
+export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
+  transactions,
+  posDanaList = ['Kas Operasional', 'Kas Pembangunan', 'Kas Yatim & Sosial', 'Kas Zakat & Shadaqah'],
+}) => {
   // 1. Monthly Cashflow Data (Grouping by YYYY-MM)
   const monthlyDataMap: Record<string, { month: string; pemasukan: number; pengeluaran: number; surplus: number }> = {};
 
@@ -45,15 +49,10 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ transactions }
 
   const monthlyTrendData = Object.values(monthlyDataMap);
 
-  // 2. Fund Category Distribution (Kas Operasional, Kas Pembangunan, etc.)
-  const fundCategories: FundCategory[] = [
-    'Kas Operasional',
-    'Kas Pembangunan',
-    'Kas Yatim & Sosial',
-    'Kas Zakat & Shadaqah',
-  ];
+  // 2. Fund Category Distribution (Dynamic Pos Dana)
+  const fundCategories: FundCategory[] = posDanaList;
 
-  const fundColors = ['#059669', '#2563eb', '#d97706', '#9333ea'];
+  const fundColors = ['#059669', '#2563eb', '#d97706', '#9333ea', '#0d9488', '#0284c7', '#7c3aed', '#db2777'];
 
   const fundDistributionData = fundCategories.map((cat, idx) => {
     const catT = transactions.filter((t) => t.danaKat === cat);
@@ -62,7 +61,7 @@ export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({ transactions }
     return {
       name: cat,
       value: Math.max(inc - exp, 0),
-      color: fundColors[idx],
+      color: fundColors[idx % fundColors.length],
     };
   });
 

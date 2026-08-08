@@ -6,6 +6,8 @@ import {
   signOut,
   sendPasswordResetEmail,
   onAuthStateChanged,
+  GoogleAuthProvider,
+  signInWithPopup,
   User,
 } from 'firebase/auth';
 import {
@@ -35,23 +37,36 @@ export const db = getFirestore(
 export const getAuthErrorMessage = (errorCode: string): string => {
   switch (errorCode) {
     case 'auth/invalid-email':
-      return 'Format email tidak valid.';
+      return 'Format email tidak valid. Pastikan penulisan email sudah benar (contoh: dkm@gmail.com).';
     case 'auth/user-disabled':
-      return 'Akun ini telah dinonaktifkan.';
+      return 'Akun ini telah dinonaktifkan oleh administrator.';
     case 'auth/user-not-found':
-      return 'Akun dengan email ini tidak ditemukan.';
+      return 'Akun dengan email ini tidak ditemukan. Silakan buat akun baru.';
     case 'auth/wrong-password':
     case 'auth/invalid-credential':
-      return 'Email atau password yang Anda masukkan salah.';
+      return 'Email atau password yang Anda masukkan salah. Periksa kembali.';
     case 'auth/email-already-in-use':
-      return 'Email ini sudah terdaftar. Silakan masuk.';
+      return 'Email ini sudah terdaftar. Silakan gunakan tab "Masuk Akun" untuk login.';
     case 'auth/weak-password':
-      return 'Password terlalu lemah. Gunakan minimal 6 karakter.';
+      return 'Password terlalu lemah. Masukkan password minimal 6 karakter.';
     case 'auth/too-many-requests':
-      return 'Terlalu banyak percobaan gagal. Silakan coba lagi nanti.';
+      return 'Terlalu banyak percobaan gagal. Silakan tunggu beberapa saat lalu coba lagi.';
     case 'auth/network-request-failed':
       return 'Gagal terhubung ke jaringan. Periksa koneksi internet Anda.';
+    case 'auth/operation-not-allowed':
+      return 'Metode pendaftaran Email/Password belum diaktifkan di Firebase Console. Silakan gunakan tombol "Masuk / Daftar dengan Google" di bawah.';
+    case 'auth/popup-closed-by-user':
+      return 'Jendela pendaftaran Google ditutup sebelum selesai.';
+    case 'auth/cancelled-popup-request':
+      return 'Proses pendaftaran Google dibatalkan.';
+    case 'auth/popup-blocked':
+      return 'Jendela popup diblokir oleh browser. Izinkan popup untuk melanjutkan.';
+    case 'auth/account-exists-with-different-credential':
+      return 'Akun dengan email ini sudah ada dengan metode masuk yang berbeda.';
     default:
+      if (errorCode && errorCode.includes('operation-not-allowed')) {
+        return 'Pendaftaran email/password belum diaktifkan. Gunakan "Masuk / Daftar dengan Google" di bawah.';
+      }
       return 'Terjadi kesalahan autentikasi: ' + errorCode;
   }
 };
@@ -69,6 +84,17 @@ export const registerWithEmail = async (email: string, pass: string) => {
 export const loginWithEmail = async (email: string, pass: string) => {
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, pass);
+    return { user: userCredential.user, error: null };
+  } catch (err: any) {
+    return { user: null, error: getAuthErrorMessage(err.code || err.message) };
+  }
+};
+
+export const loginWithGoogle = async () => {
+  try {
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    const userCredential = await signInWithPopup(auth, provider);
     return { user: userCredential.user, error: null };
   } catch (err: any) {
     return { user: null, error: getAuthErrorMessage(err.code || err.message) };
@@ -105,6 +131,8 @@ export const subscribeFirestoreData = (
     transactions?: Transaction[];
     categoriesPemasukan?: string[];
     categoriesPengeluaran?: string[];
+    posDanaList?: string[];
+    metodePembayaranList?: string[];
   }) => void
 ) => {
   if (!userId) return () => {};
@@ -118,6 +146,8 @@ export const subscribeFirestoreData = (
         mosqueProfile: data.mosqueProfile,
         categoriesPemasukan: data.categoriesPemasukan,
         categoriesPengeluaran: data.categoriesPengeluaran,
+        posDanaList: data.posDanaList,
+        metodePembayaranList: data.metodePembayaranList,
       });
     }
   });
@@ -147,6 +177,8 @@ export const saveSettingsToFirestore = async (
     mosqueProfile?: MosqueProfile;
     categoriesPemasukan?: string[];
     categoriesPengeluaran?: string[];
+    posDanaList?: string[];
+    metodePembayaranList?: string[];
   }
 ) => {
   if (!userId) return;
@@ -183,7 +215,7 @@ export const deleteTransactionFromFirestore = async (userId: string, trxId: stri
 export const bulkSaveTransactionsToFirestore = async (userId: string, transactions: Transaction[]) => {
   if (!userId) return;
   try {
-    // Write in chunks of 450 (Firestore batch limit is 500)
+    // Write in chunks of 400 (Firestore batch limit is 500)
     const chunkSize = 400;
     for (let i = 0; i < transactions.length; i += chunkSize) {
       const chunk = transactions.slice(i, i + chunkSize);

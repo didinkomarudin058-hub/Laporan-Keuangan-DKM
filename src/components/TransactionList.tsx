@@ -25,6 +25,7 @@ interface TransactionListProps {
   initialFundFilter?: FundCategory | 'semua';
   categoriesPemasukan?: string[];
   categoriesPengeluaran?: string[];
+  posDanaList?: string[];
 }
 
 export const TransactionList: React.FC<TransactionListProps> = ({
@@ -35,6 +36,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
   initialFundFilter = 'semua',
   categoriesPemasukan = [],
   categoriesPengeluaran = [],
+  posDanaList = ['Kas Operasional', 'Kas Pembangunan', 'Kas Yatim & Sosial', 'Kas Zakat & Shadaqah'],
 }) => {
   // State filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -199,11 +201,12 @@ export const TransactionList: React.FC<TransactionListProps> = ({
               onChange={(e) => { setSelectedFund(e.target.value as any); setCurrentPage(1); }}
               className="w-full py-2 px-2.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 bg-white"
             >
-              <option value="semua">Semua Pos Kas</option>
-              <option value="Kas Operasional">Kas Operasional</option>
-              <option value="Kas Pembangunan">Kas Pembangunan</option>
-              <option value="Kas Yatim & Sosial">Kas Yatim & Sosial</option>
-              <option value="Kas Zakat & Shadaqah">Kas Zakat & Shadaqah</option>
+              <option value="semua">Semua Pos Kas ({posDanaList.length})</option>
+              {posDanaList.map((f) => (
+                <option key={f} value={f}>
+                  {f}
+                </option>
+              ))}
             </select>
           </div>
 
