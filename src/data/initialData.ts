@@ -3,7 +3,7 @@ import { MosqueProfile, Transaction } from '../types';
 export const initialMosqueProfile: MosqueProfile = {
   namaMasjid: "Masjid Raya Al-Barokah",
   alamat: "Jl. Masjid No. 15, Komplek Kebayoran Baru",
-  kota: "Jakarta Selatan, DKI Jakarta",
+  kota: "Sumberjaya",
   telepon: "(021) 7280-4921 / 0812-9876-5432",
   email: "dkm.albarokah@gmail.com",
   nomorRekening: "127-00-0987654-3",

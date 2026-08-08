@@ -90,6 +90,15 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
     return `${parseInt(d, 10)} ${monthNames[mIdx]} ${y}`;
   };
 
+  // Helper for titimangsa location (defaults or converts Pandeglang to Desa/Sumberjaya)
+  const formatTitimangsaLocation = (kotaStr: string) => {
+    if (!kotaStr) return 'Sumberjaya';
+    if (/pandeglang/i.test(kotaStr)) {
+      return 'Sumberjaya';
+    }
+    return kotaStr;
+  };
+
   const effectiveStartDate = startDateFilter || `${currentMonthStr}-01`;
   const effectiveEndDate = endDateFilter || `${currentMonthStr}-${String(lastDayOfMonth).padStart(2, '0')}`;
 
@@ -688,7 +697,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
         {/* Signatures Section */}
         <div className="pt-8 border-t border-slate-300">
           <div className="text-xs text-slate-600 text-right font-medium mb-6">
-            {mosqueProfile.kota}, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+            {formatTitimangsaLocation(mosqueProfile.kota)}, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
           </div>
 
           <div className="grid grid-cols-3 text-center gap-4 text-xs font-semibold">
