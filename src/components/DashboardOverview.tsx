@@ -143,9 +143,19 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
     };
   });
 
-  // Recent 6 transactions
+  const formatDateDDMMYYYY = (dateStr: string) => {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      const [y, m, d] = parts;
+      return `${d.padStart(2, '0')}-${m.padStart(2, '0')}-${y}`;
+    }
+    return dateStr;
+  };
+
+  // Recent 6 transactions sorted from start date (ascending date)
   const recentTransactions = [...transactions]
-    .sort((a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime())
+    .sort((a, b) => a.tanggal.localeCompare(b.tanggal))
     .slice(0, 6);
 
   const monthNamesIndonesian = [
@@ -175,23 +185,6 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             <p className="text-xs sm:text-sm text-emerald-100/90 font-sans max-w-2xl leading-relaxed">
               "{mosqueProfile.motto}"
             </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              onClick={() => onOpenAddModal()}
-              className="bg-amber-400 hover:bg-amber-300 text-emerald-950 font-black text-xs py-2.5 px-4 rounded-xl shadow-lg hover:shadow-xl transition flex items-center gap-2 transform active:scale-95 cursor-pointer"
-            >
-              <PlusCircle className="w-4 h-4 stroke-[2.5]" />
-              <span>+ Catat Transaksi Baru</span>
-            </button>
-            <button
-              onClick={() => onNavigateTab('monthlyReport')}
-              className="bg-emerald-800/80 hover:bg-emerald-700 text-white font-bold text-xs py-2.5 px-4 rounded-xl border border-emerald-600/80 shadow-sm transition flex items-center gap-2 cursor-pointer"
-            >
-              <FileText className="w-4 h-4 text-amber-300" />
-              <span>Laporan Keuangan</span>
-            </button>
           </div>
         </div>
       </div>
@@ -395,7 +388,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                     </div>
                     <p className="text-slate-500 text-[11px] truncate">{trx.keterangan}</p>
                     <div className="text-[10px] text-slate-400 flex items-center gap-2">
-                      <span>{trx.tanggal}</span> • <span>Petugas: {trx.petugas}</span>
+                      <span>{formatDateDDMMYYYY(trx.tanggal)}</span> • <span>Petugas: {trx.petugas}</span>
                     </div>
                   </div>
 

@@ -21,7 +21,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   onOpenSettingsModal,
 }) => {
   return (
-    <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 text-slate-400 px-2 py-2 shadow-2xl flex justify-around items-center">
+    <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 text-slate-400 px-2 py-2 shadow-2xl flex justify-around items-center print:hidden">
       {/* 1. Ikhtisar */}
       <button
         onClick={() => setActiveTab('dashboard')}

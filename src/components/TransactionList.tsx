@@ -52,6 +52,16 @@ export const TransactionList: React.FC<TransactionListProps> = ({
   // Delete confirmation
   const [deletingTrxId, setDeletingTrxId] = useState<string | null>(null);
 
+  const formatDateDDMMYYYY = (dateStr: string) => {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      const [y, m, d] = parts;
+      return `${d.padStart(2, '0')}-${m.padStart(2, '0')}-${y}`;
+    }
+    return dateStr;
+  };
+
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -304,7 +314,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                 paginatedTransactions.map((trx) => (
                   <tr key={trx.id} className="hover:bg-slate-50/80 transition">
                     <td className="py-3 px-3 whitespace-nowrap">
-                      <div className="font-bold text-slate-800">{trx.tanggal}</div>
+                      <div className="font-bold text-slate-800">{formatDateDDMMYYYY(trx.tanggal)}</div>
                       <span className="text-[10px] text-slate-400 font-mono">{trx.id}</span>
                     </td>
 

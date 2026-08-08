@@ -45,6 +45,16 @@ export const PublicDisplayBoard: React.FC<PublicDisplayBoardProps> = ({
   const yatimBal = getFundBalance('Kas Yatim & Sosial');
   const zakatBal = getFundBalance('Kas Zakat & Shadaqah');
 
+  const formatDateDDMMYYYY = (dateStr: string) => {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      const [y, m, d] = parts;
+      return `${d.padStart(2, '0')}-${m.padStart(2, '0')}-${y}`;
+    }
+    return dateStr;
+  };
+
   // Last Friday Infaq Amount
   const fridayInfaqTrx = transactions
     .filter(t => t.kategori.toLowerCase().includes('jumat'))
@@ -105,7 +115,7 @@ export const PublicDisplayBoard: React.FC<PublicDisplayBoardProps> = ({
             Rp {(fridayInfaqTrx?.jumlah || 0).toLocaleString('id-ID')}
           </div>
           <div className="text-[11px] text-amber-300 mt-0.5">
-            Tgl {fridayInfaqTrx?.tanggal || '-'} • Jazakumullah Khairan Katsiran
+            Tgl {fridayInfaqTrx ? formatDateDDMMYYYY(fridayInfaqTrx.tanggal) : '-'} • Jazakumullah Khairan Katsiran
           </div>
         </div>
       </div>

@@ -69,7 +69,18 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
     setEndDateFilter(`${currentMonthStr}-${String(lastDayOfMonth).padStart(2, '0')}`);
   }, [selectedMonth, selectedYear, currentMonthStr]);
 
-  // Date formatting helper
+  // Date formatting helper for DD-MM-YYYY (e.g. 28-08-1989)
+  const formatDateDDMMYYYY = (dateStr: string) => {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      const [y, m, d] = parts;
+      return `${d.padStart(2, '0')}-${m.padStart(2, '0')}-${y}`;
+    }
+    return dateStr;
+  };
+
+  // Date formatting helper for Indonesian text
   const formatDateIndo = (dateStr: string) => {
     if (!dateStr) return '';
     const [y, m, d] = dateStr.split('-');
@@ -82,7 +93,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
   const effectiveStartDate = startDateFilter || `${currentMonthStr}-01`;
   const effectiveEndDate = endDateFilter || `${currentMonthStr}-${String(lastDayOfMonth).padStart(2, '0')}`;
 
-  const periodDateRangeStr = `${formatDateIndo(effectiveStartDate)} s/d ${formatDateIndo(effectiveEndDate)}`;
+  const periodDateRangeStr = `${formatDateDDMMYYYY(effectiveStartDate)} s/d ${formatDateDDMMYYYY(effectiveEndDate)}`;
   const periodDateRangeStrUpper = periodDateRangeStr.toUpperCase();
 
   // 1. Calculate Saldo Awal (Transactions before effectiveStartDate)
@@ -102,21 +113,27 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
     return true;
   });
 
-  // 3. Filtered Transactions based on Category & Pos Dana Kas
-  const filteredPeriodTransactions = periodTransactions.filter((t) => {
-    if (selectedCategoryFilter !== 'semua' && t.kategori !== selectedCategoryFilter) return false;
-    if (selectedFundFilter !== 'semua' && t.danaKat !== selectedFundFilter) return false;
-    return true;
-  });
+  // 3. Filtered Transactions based on Category & Pos Dana Kas (Sorted Ascending by Date: Tanggal Awal Ke Akhir)
+  const filteredPeriodTransactions = periodTransactions
+    .filter((t) => {
+      if (selectedCategoryFilter !== 'semua' && t.kategori !== selectedCategoryFilter) return false;
+      if (selectedFundFilter !== 'semua' && t.danaKat !== selectedFundFilter) return false;
+      return true;
+    })
+    .sort((a, b) => a.tanggal.localeCompare(b.tanggal));
 
-  const periodIncomeDetails = periodTransactions.filter((t) => t.jenis === 'pemasukan');
-  const periodExpenseDetails = periodTransactions.filter((t) => t.jenis === 'pengeluaran');
+  const periodIncomeDetails = periodTransactions
+    .filter((t) => t.jenis === 'pemasukan')
+    .sort((a, b) => a.tanggal.localeCompare(b.tanggal));
+  const periodExpenseDetails = periodTransactions
+    .filter((t) => t.jenis === 'pengeluaran')
+    .sort((a, b) => a.tanggal.localeCompare(b.tanggal));
 
   const totalIncome = periodIncomeDetails.reduce((sum, t) => sum + t.jumlah, 0);
   const totalExpense = periodExpenseDetails.reduce((sum, t) => sum + t.jumlah, 0);
   const endingBalance = startingBalance + totalIncome - totalExpense;
 
-  // Filtered Summaries
+  // Filtered Summaries (Ascending by Date: Tanggal Awal Ke Akhir)
   const filteredIncomeDetails = filteredPeriodTransactions.filter((t) => t.jenis === 'pemasukan');
   const filteredExpenseDetails = filteredPeriodTransactions.filter((t) => t.jenis === 'pengeluaran');
 
@@ -594,7 +611,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
                   <tbody className="divide-y divide-slate-200">
                     {filteredIncomeDetails.map((inc) => (
                       <tr key={inc.id}>
-                        <td className="p-2 border-r border-slate-300 whitespace-nowrap font-mono">{inc.tanggal}</td>
+                        <td className="p-2 border-r border-slate-300 whitespace-nowrap font-mono">{formatDateDDMMYYYY(inc.tanggal)}</td>
                         <td className="p-2 border-r border-slate-300 font-medium">
                           <span className="bg-emerald-50 text-emerald-800 px-1.5 py-0.5 rounded border border-emerald-200 mr-1 font-semibold">
                             {inc.kategori}
@@ -640,7 +657,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
                   <tbody className="divide-y divide-slate-200">
                     {filteredExpenseDetails.map((exp) => (
                       <tr key={exp.id}>
-                        <td className="p-2 border-r border-slate-300 whitespace-nowrap font-mono">{exp.tanggal}</td>
+                        <td className="p-2 border-r border-slate-300 whitespace-nowrap font-mono">{formatDateDDMMYYYY(exp.tanggal)}</td>
                         <td className="p-2 border-r border-slate-300 font-medium">
                           <span className="bg-rose-50 text-rose-800 px-1.5 py-0.5 rounded border border-rose-200 mr-1 font-semibold">
                             {exp.kategori}

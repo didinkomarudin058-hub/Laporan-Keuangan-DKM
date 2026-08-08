@@ -26,7 +26,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenSettingsModal,
 }) => {
   return (
-    <header id="dkm-app-navbar" className="bg-emerald-900 text-white shadow-md border-b border-emerald-800 sticky top-0 z-30">
+    <header id="dkm-app-navbar" className="bg-emerald-900 text-white shadow-md border-b border-emerald-800 sticky top-0 z-30 print:hidden">
       {/* Main Header Banner */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-3">
         {/* Brand & Mosque Name + Address */}
