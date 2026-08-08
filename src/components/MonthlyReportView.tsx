@@ -506,9 +506,17 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
         {/* Kop Surat Masjid */}
         <div className="text-center border-b-2 border-slate-900 pb-4 space-y-1">
           <div className="flex items-center justify-center gap-3">
-            <div className="w-12 h-12 bg-emerald-800 rounded-full flex items-center justify-center text-amber-300 font-bold border-2 border-emerald-600 shrink-0">
-              <Building2 className="w-7 h-7" />
-            </div>
+            {mosqueProfile.logoUrl ? (
+              <img
+                src={mosqueProfile.logoUrl}
+                alt="Logo Masjid"
+                className="w-14 h-14 object-contain rounded-full border-2 border-emerald-600 shrink-0 bg-white p-0.5"
+              />
+            ) : (
+              <div className="w-12 h-12 bg-emerald-800 rounded-full flex items-center justify-center text-amber-300 font-bold border-2 border-emerald-600 shrink-0">
+                <Building2 className="w-7 h-7" />
+              </div>
+            )}
             <div className="text-left">
               <h1 className="text-xl font-extrabold uppercase tracking-tight text-slate-900">
                 DEWAN KEMAKMURAN MASJID (DKM)

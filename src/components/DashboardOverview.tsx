@@ -170,21 +170,32 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         <div className="absolute right-0 top-0 translate-x-8 -translate-y-8 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
         
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="bg-amber-400 text-emerald-950 text-[11px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
-                DKM Dashboard
-              </span>
-              <span className="text-emerald-200 text-xs flex items-center gap-1 font-medium">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Terverifikasi & Akuntabel
-              </span>
+          <div className="flex items-start sm:items-center gap-4">
+            {mosqueProfile.logoUrl && (
+              <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-2xl p-1 shadow-lg border-2 border-emerald-400/40 shrink-0 flex items-center justify-center overflow-hidden">
+                <img
+                  src={mosqueProfile.logoUrl}
+                  alt="Logo Masjid"
+                  className="w-full h-full object-contain"
+                />
+              </div>
+            )}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="bg-amber-400 text-emerald-950 text-[11px] font-extrabold px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
+                  DKM Dashboard
+                </span>
+                <span className="text-emerald-200 text-xs flex items-center gap-1 font-medium">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Terverifikasi & Akuntabel
+                </span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+                {mosqueProfile.namaMasjid}
+              </h1>
+              <p className="text-xs sm:text-sm text-emerald-100/90 font-sans max-w-2xl leading-relaxed">
+                "{mosqueProfile.motto}"
+              </p>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-              {mosqueProfile.namaMasjid}
-            </h1>
-            <p className="text-xs sm:text-sm text-emerald-100/90 font-sans max-w-2xl leading-relaxed">
-              "{mosqueProfile.motto}"
-            </p>
           </div>
         </div>
       </div>

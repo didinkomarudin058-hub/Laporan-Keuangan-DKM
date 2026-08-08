@@ -109,6 +109,28 @@ export const MosqueSettingsModal: React.FC<MosqueSettingsModalProps> = ({
 
   if (!isOpen) return null;
 
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 3 * 1024 * 1024) {
+      alert('Ukuran file logo maksimal 3 MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (reader.result) {
+        setProfile((prev) => ({ ...prev, logoUrl: reader.result as string }));
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveLogo = () => {
+    setProfile((prev) => ({ ...prev, logoUrl: undefined }));
+  };
+
   const handleProfileSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSaveProfile(profile);
@@ -292,6 +314,57 @@ export const MosqueSettingsModal: React.FC<MosqueSettingsModalProps> = ({
           {activeTab === 'profile' && (
             <form onSubmit={handleProfileSubmit} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Logo Upload Section */}
+                <div className="sm:col-span-2 bg-emerald-50/70 p-4 rounded-xl border border-emerald-200">
+                  <label className="block text-xs font-extrabold text-emerald-950 uppercase tracking-wider mb-2">
+                    Logo Resmi Masjid / Musholla
+                  </label>
+                  <div className="flex flex-col sm:flex-row items-center gap-4">
+                    <div className="relative w-20 h-20 bg-white rounded-2xl border-2 border-emerald-300 shadow-xs flex items-center justify-center overflow-hidden shrink-0">
+                      {profile.logoUrl ? (
+                        <img
+                          src={profile.logoUrl}
+                          alt="Logo Masjid"
+                          className="w-full h-full object-contain p-1"
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center text-emerald-700 p-1 text-center">
+                          <Building2 className="w-8 h-8" />
+                          <span className="text-[9px] font-bold mt-0.5 leading-tight">Tanpa Logo</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex-1 space-y-2 text-center sm:text-left">
+                      <p className="text-xs text-slate-600 leading-relaxed">
+                        Logo ini otomatis ditampilkan pada bilah navigasi utama, papan TV informasi, dan Kop Surat laporan keuangan PDF.
+                      </p>
+                      <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                        <label className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-lg shadow-xs cursor-pointer transition flex items-center gap-1.5">
+                          <Upload className="w-3.5 h-3.5" />
+                          <span>{profile.logoUrl ? 'Ganti Logo' : 'Upload Logo Masjid'}</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleLogoUpload}
+                            className="hidden"
+                          />
+                        </label>
+                        {profile.logoUrl && (
+                          <button
+                            type="button"
+                            onClick={handleRemoveLogo}
+                            className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-lg border border-rose-200 transition flex items-center gap-1 cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Hapus Logo</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-bold text-slate-700 mb-1">
                     Nama Resmi Masjid / Musholla

@@ -32,6 +32,7 @@ export interface MosqueProfile {
   sekretarisDKM: string;
   motto: string;
   qrisImageUrl?: string;
+  logoUrl?: string;
 }
 
 export interface MonthlyReport {

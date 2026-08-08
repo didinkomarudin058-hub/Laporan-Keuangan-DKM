@@ -65,8 +65,16 @@ export const PublicDisplayBoard: React.FC<PublicDisplayBoardProps> = ({
       {/* Top Header Bar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-emerald-800/80 pb-6">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-800 flex items-center justify-center text-amber-300 shadow-lg border border-emerald-400/30 shrink-0">
-            <Building2 className="w-9 h-9" />
+          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-800 flex items-center justify-center text-amber-300 shadow-lg border border-emerald-400/30 shrink-0 overflow-hidden">
+            {mosqueProfile.logoUrl ? (
+              <img
+                src={mosqueProfile.logoUrl}
+                alt="Logo Masjid"
+                className="w-full h-full object-contain p-1 bg-white rounded-2xl"
+              />
+            ) : (
+              <Building2 className="w-9 h-9" />
+            )}
           </div>
           <div>
             <div className="flex items-center gap-2">
