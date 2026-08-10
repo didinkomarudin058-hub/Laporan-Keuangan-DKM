@@ -394,7 +394,7 @@ export const MosqueSettingsModal: React.FC<MosqueSettingsModalProps> = ({
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Desa / Kelurahan <span className="text-emerald-700 font-normal">(Untuk Titimangsa Cetak)</span>
+                    Desa <span className="text-emerald-700 font-normal">(Untuk Titimangsa Cetak)</span>
                   </label>
                   <input
                     type="text"

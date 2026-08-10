@@ -87,12 +87,12 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
     return dateStr;
   };
 
-  // Helper for titimangsa location (only village/desa, no kab/prov/kec)
+  // Helper for titimangsa location (only village name, no 'Desa' prefix, no kab/prov/kec)
   const getTitimangsaVillage = (profile: MosqueProfile) => {
     if (profile.desa && profile.desa.trim()) {
       let v = profile.desa.trim();
       v = v.replace(/^desa\s+/gi, '').replace(/^kelurahan\s+/gi, '').replace(/^kel\.\s+/gi, '').trim();
-      return v ? `Desa ${v}` : profile.desa.trim();
+      return v;
     }
     const raw = profile.kota || profile.alamat || '';
     if (!raw) return '';
@@ -103,6 +103,8 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
       if (/kabupaten|kab\b|kab\.|provinsi|prov\b|prov\./i.test(p)) continue;
       if (/kecamatan|kec\b|kec\./i.test(p)) continue;
       const cleaned = p
+        .replace(/^desa\s+/gi, '')
+        .replace(/^kelurahan\s+/gi, '')
         .replace(/kabupaten\b/gi, '')
         .replace(/kab\.\b/gi, '')
         .replace(/kab\b/gi, '')
@@ -491,14 +493,20 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
             </div>
           </div>
           <p className="text-xs text-slate-600 font-medium text-center">
-            {[
-              mosqueProfile.alamat,
-              mosqueProfile.desa ? `Desa/Kel. ${mosqueProfile.desa}` : '',
-              mosqueProfile.kecamatan ? `Kec. ${mosqueProfile.kecamatan}` : '',
-              mosqueProfile.kota,
-            ]
-              .filter(Boolean)
-              .join(', ')} • Telp: {mosqueProfile.telepon}
+            {(() => {
+              const parts = [];
+              if (mosqueProfile.alamat) parts.push(mosqueProfile.alamat.replace(/,\s*$/, ''));
+              if (mosqueProfile.desa) {
+                const d = mosqueProfile.desa.replace(/^desa\s+/gi, '').replace(/^kelurahan\s+/gi, '').replace(/^kel\.\s+/gi, '').trim();
+                if (d) parts.push(`Desa ${d}`);
+              }
+              if (mosqueProfile.kecamatan) {
+                const k = mosqueProfile.kecamatan.replace(/^kec\.?\s+/gi, '').trim();
+                if (k) parts.push(`Kec. ${k}`);
+              }
+              if (mosqueProfile.kota) parts.push(mosqueProfile.kota);
+              return parts.join(' ');
+            })()} • Telp: {mosqueProfile.telepon}
           </p>
           <p className="text-[11px] text-slate-500 italic text-center">
             Email: {mosqueProfile.email} | Rekening Infaq: {mosqueProfile.namaBank} {mosqueProfile.nomorRekening} a.n {mosqueProfile.anRekening}
