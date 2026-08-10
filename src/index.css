@@ -2,24 +2,31 @@
 
 @media print {
   @page {
-    margin: 12mm;
+    margin: 10mm;
     size: auto;
   }
 
-  body {
+  html,
+  body,
+  #root,
+  div,
+  main {
     background: #ffffff !important;
+    background-color: #ffffff !important;
     color: #000000 !important;
-    font-size: 11pt !important;
-    padding: 0 !important;
-    margin: 0 !important;
+    box-shadow: none !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  /* Hide all non-essential web controls, navbars, footers, buttons */
+  /* Hide all non-essential web controls, navbars, footers, buttons, fixed toasts */
   #dkm-app-navbar,
   footer,
-  .print\:hidden {
+  .print\:hidden,
+  .fixed,
+  .backdrop-blur-sm,
+  .backdrop-blur-md,
+  nav {
     display: none !important;
   }
 
@@ -29,15 +36,25 @@
     width: 100% !important;
     padding: 0 !important;
     margin: 0 !important;
+    background: #ffffff !important;
   }
 
-  /* Ensure printable elements don't get awkwardly split across pages */
+  /* Clean up gray background boxes on section headers and tables during print */
+  .bg-slate-100,
+  .bg-slate-200,
+  .bg-slate-50,
+  .bg-slate-900 {
+    background-color: transparent !important;
+  }
+
   table {
     width: 100% !important;
     border-collapse: collapse !important;
+    background: #ffffff !important;
   }
 
-  tr {
+  tr, td, th {
+    background-color: #ffffff !important;
     page-break-inside: avoid;
   }
 }
