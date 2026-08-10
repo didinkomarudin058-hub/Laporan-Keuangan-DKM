@@ -36,7 +36,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   mosqueProfile,
   selectedMonth,
   selectedYear,
-  posDanaList = ['Kas Operasional', 'Kas Pembangunan', 'Kas Yatim & Sosial', 'Kas Zakat & Shadaqah'],
+  posDanaList = ['Kas Operasional', 'Kas Pembangunan'],
   onOpenAddModal,
   onNavigateTab,
   onSelectFundFilter,
@@ -88,20 +88,6 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
       badgeBg: 'bg-blue-100 text-blue-800 border-blue-200',
       badgeText: 'Renovasi',
       borderAccent: 'border-l-4 border-l-blue-600',
-    },
-    'Kas Yatim & Sosial': {
-      description: 'Santunan anak yatim, bantuan dhuafa & paket sembako',
-      icon: <HeartHandshake className="w-5 h-5 text-amber-600" />,
-      badgeBg: 'bg-amber-100 text-amber-800 border-amber-200',
-      badgeText: 'Sosial Umat',
-      borderAccent: 'border-l-4 border-l-amber-500',
-    },
-    'Kas Zakat & Shadaqah': {
-      description: 'Zakat Fitrah, Zakat Maal & Distribusi Mustahik',
-      icon: <CircleDollarSign className="w-5 h-5 text-purple-600" />,
-      badgeBg: 'bg-purple-100 text-purple-800 border-purple-200',
-      badgeText: 'ZIS',
-      borderAccent: 'border-l-4 border-l-purple-600',
     },
   };
 

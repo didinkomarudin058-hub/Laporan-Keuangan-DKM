@@ -31,7 +31,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
   onMonthYearChange,
   categoriesPemasukan = [],
   categoriesPengeluaran = [],
-  posDanaList = ['Kas Operasional', 'Kas Pembangunan', 'Kas Yatim & Sosial', 'Kas Zakat & Shadaqah'],
+  posDanaList = ['Kas Operasional', 'Kas Pembangunan'],
 }) => {
   // Period Mode State: 'bulanan' | 'tahunan' | 'custom'
   const [reportPeriodType, setReportPeriodType] = useState<'bulanan' | 'tahunan' | 'custom'>('bulanan');
@@ -87,13 +87,9 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
     return dateStr;
   };
 
-  // Helper for titimangsa location (defaults or converts Pandeglang to Desa/Sumberjaya)
+  // Helper for titimangsa location
   const formatTitimangsaLocation = (kotaStr: string) => {
-    if (!kotaStr) return 'Sumberjaya';
-    if (/pandeglang/i.test(kotaStr)) {
-      return 'Sumberjaya';
-    }
-    return kotaStr;
+    return kotaStr || '';
   };
 
   const effectiveStartDate = startDateFilter || `${currentMonthStr}-01`;
@@ -160,8 +156,6 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
   const effectiveFundCategories = posDanaList && posDanaList.length > 0 ? posDanaList : [
     'Kas Operasional',
     'Kas Pembangunan',
-    'Kas Yatim & Sosial',
-    'Kas Zakat & Shadaqah',
   ];
 
   const fundBreakdown = effectiveFundCategories.map((cat) => {
@@ -630,7 +624,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
         {/* Signatures Section */}
         <div className="pt-8 border-t border-slate-300">
           <div className="text-xs text-slate-600 text-right font-medium mb-6">
-            {formatTitimangsaLocation(mosqueProfile.kota)}, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+            {mosqueProfile.kota ? `${mosqueProfile.kota}, ` : ''}{new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
           </div>
 
           <div className="grid grid-cols-3 text-center gap-4 text-xs font-semibold">

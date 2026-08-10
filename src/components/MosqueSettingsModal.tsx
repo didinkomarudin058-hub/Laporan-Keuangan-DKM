@@ -74,7 +74,7 @@ export const MosqueSettingsModal: React.FC<MosqueSettingsModalProps> = ({
   onEditCategory,
   onDeleteCategory,
   onResetCategories,
-  posDanaList = ['Kas Operasional', 'Kas Pembangunan', 'Kas Yatim & Sosial', 'Kas Zakat & Shadaqah'],
+  posDanaList = ['Kas Operasional', 'Kas Pembangunan'],
   onAddPosDana,
   onEditPosDana,
   onDeletePosDana,

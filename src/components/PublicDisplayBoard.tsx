@@ -42,8 +42,6 @@ export const PublicDisplayBoard: React.FC<PublicDisplayBoardProps> = ({
 
   const operasionalBal = getFundBalance('Kas Operasional');
   const pembangunanBal = getFundBalance('Kas Pembangunan');
-  const yatimBal = getFundBalance('Kas Yatim & Sosial');
-  const zakatBal = getFundBalance('Kas Zakat & Shadaqah');
 
   const formatDateDDMMYYYY = (dateStr: string) => {
     if (!dateStr) return '';
@@ -128,8 +126,8 @@ export const PublicDisplayBoard: React.FC<PublicDisplayBoardProps> = ({
         </div>
       </div>
 
-      {/* Grid 4 Pos Kas Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Grid 2 Pos Kas Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Kas Operasional */}
         <div className="bg-emerald-900/40 border border-emerald-800 p-5 rounded-xl space-y-2">
           <div className="flex items-center gap-2 text-emerald-300 text-xs font-bold uppercase tracking-wider">
@@ -155,34 +153,6 @@ export const PublicDisplayBoard: React.FC<PublicDisplayBoardProps> = ({
           </div>
           <p className="text-[11px] text-emerald-200/70">
             Renovasi fisik, tempat wudhu, & perawatan gedung
-          </p>
-        </div>
-
-        {/* Kas Yatim & Sosial */}
-        <div className="bg-emerald-900/40 border border-emerald-800 p-5 rounded-xl space-y-2">
-          <div className="flex items-center gap-2 text-amber-300 text-xs font-bold uppercase tracking-wider">
-            <HeartHandshake className="w-4 h-4 text-amber-400" />
-            Kas Yatim & Sosial
-          </div>
-          <div className="text-xl sm:text-2xl font-extrabold text-white">
-            Rp {yatimBal.toLocaleString('id-ID')}
-          </div>
-          <p className="text-[11px] text-emerald-200/70">
-            Santunan rutin anak yatim & bantuan dhuafa
-          </p>
-        </div>
-
-        {/* Kas Zakat & Shadaqah */}
-        <div className="bg-emerald-900/40 border border-emerald-800 p-5 rounded-xl space-y-2">
-          <div className="flex items-center gap-2 text-purple-300 text-xs font-bold uppercase tracking-wider">
-            <CircleDollarSign className="w-4 h-4 text-purple-400" />
-            Kas Zakat (ZIS)
-          </div>
-          <div className="text-xl sm:text-2xl font-extrabold text-white">
-            Rp {zakatBal.toLocaleString('id-ID')}
-          </div>
-          <p className="text-[11px] text-emerald-200/70">
-            Penerimaan & penyaluran zakat maal/fitrah
           </p>
         </div>
       </div>

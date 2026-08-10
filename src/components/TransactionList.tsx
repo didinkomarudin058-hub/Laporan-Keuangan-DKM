@@ -36,7 +36,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
   initialFundFilter = 'semua',
   categoriesPemasukan = [],
   categoriesPengeluaran = [],
-  posDanaList = ['Kas Operasional', 'Kas Pembangunan', 'Kas Yatim & Sosial', 'Kas Zakat & Shadaqah'],
+  posDanaList = ['Kas Operasional', 'Kas Pembangunan'],
 }) => {
   // State filters
   const [searchTerm, setSearchTerm] = useState('');

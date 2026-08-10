@@ -22,7 +22,7 @@ interface AnalyticsChartsProps {
 
 export const AnalyticsCharts: React.FC<AnalyticsChartsProps> = ({
   transactions,
-  posDanaList = ['Kas Operasional', 'Kas Pembangunan', 'Kas Yatim & Sosial', 'Kas Zakat & Shadaqah'],
+  posDanaList = ['Kas Operasional', 'Kas Pembangunan'],
 }) => {
   // 1. Monthly Cashflow Data (Grouping by YYYY-MM)
   const monthlyDataMap: Record<string, { month: string; pemasukan: number; pengeluaran: number; surplus: number }> = {};

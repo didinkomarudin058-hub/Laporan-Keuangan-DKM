@@ -39,8 +39,6 @@ export default function App() {
   const DEFAULT_POS_DANA = [
     'Kas Operasional',
     'Kas Pembangunan',
-    'Kas Yatim & Sosial',
-    'Kas Zakat & Shadaqah',
   ];
 
   const DEFAULT_METODE_PEMBAYARAN = [
@@ -71,7 +69,13 @@ export default function App() {
     const saved = localStorage.getItem(STORAGE_KEY_TRANSACTIONS);
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.map((t: any) => ({
+            ...t,
+            danaKat: /yatim|zakat/i.test(t.danaKat || '') ? 'Kas Operasional' : t.danaKat,
+          }));
+        }
       } catch (e) {
         console.error(e);
       }
@@ -109,7 +113,11 @@ export default function App() {
     const saved = localStorage.getItem(STORAGE_KEY_POS_DANA);
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          const filtered = parsed.filter((item: string) => !/yatim|zakat/i.test(item));
+          if (filtered.length > 0) return filtered;
+        }
       } catch (e) {
         console.error(e);
       }

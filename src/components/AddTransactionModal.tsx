@@ -23,7 +23,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   defaultFundCategory = 'Kas Operasional',
   categoriesPemasukan,
   categoriesPengeluaran,
-  posDanaList = ['Kas Operasional', 'Kas Pembangunan', 'Kas Yatim & Sosial', 'Kas Zakat & Shadaqah'],
+  posDanaList = ['Kas Operasional', 'Kas Pembangunan'],
   metodePembayaranList = ['Tunai', 'Transfer Bank', 'QRIS', 'Cek'],
   onOpenCategoryManager,
 }) => {
