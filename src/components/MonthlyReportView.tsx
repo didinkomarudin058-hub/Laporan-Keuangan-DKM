@@ -2,20 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { 
   FileText, 
   Printer, 
-  Sparkles, 
   Calendar, 
   Building2, 
-  Loader2, 
-  Copy, 
-  Check, 
   Wallet,
   Filter,
   RotateCcw,
   Tag,
-  CheckCircle2,
-  List
+  CalendarDays
 } from 'lucide-react';
-import { MosqueProfile, Transaction, FundCategory } from '../types';
+import { MosqueProfile, Transaction } from '../types';
 
 interface MonthlyReportViewProps {
   transactions: Transaction[];
@@ -38,13 +33,8 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
   categoriesPengeluaran = [],
   posDanaList = ['Kas Operasional', 'Kas Pembangunan', 'Kas Yatim & Sosial', 'Kas Zakat & Shadaqah'],
 }) => {
-  const [aiNarrative, setAiNarrative] = useState<string | null>(null);
-  const [isLoadingAi, setIsLoadingAi] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [aiError, setAiError] = useState<string | null>(null);
-
-  // Print Mode State: 'ringkas' (Core Summary & Signatures - Default) vs 'lengkap' (Full Details)
-  const [printMode, setPrintMode] = useState<'ringkas' | 'lengkap'>('ringkas');
+  // Period Mode State: 'bulanan' | 'tahunan' | 'custom'
+  const [reportPeriodType, setReportPeriodType] = useState<'bulanan' | 'tahunan' | 'custom'>('bulanan');
 
   // Interactive Filters State
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('semua');
@@ -55,6 +45,17 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
     'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
   ];
 
+  // Dynamic Year Options
+  const yearOptions = Array.from(
+    new Set([
+      new Date().getFullYear(),
+      selectedYear,
+      ...transactions.map((t) => new Date(t.tanggal).getFullYear()).filter((y) => !isNaN(y)),
+      2025,
+      2026,
+    ])
+  ).sort((a, b) => b - a);
+
   // Helper date strings
   const currentMonthStr = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`;
   const lastDayOfMonth = new Date(selectedYear, selectedMonth, 0).getDate();
@@ -62,12 +63,18 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
   const [startDateFilter, setStartDateFilter] = useState<string>(`${currentMonthStr}-01`);
   const [endDateFilter, setEndDateFilter] = useState<string>(`${currentMonthStr}-${String(lastDayOfMonth).padStart(2, '0')}`);
 
-  // Reset date range filters when quick month/year selector changes
+  // Automatically adjust start and end date based on reportPeriodType, selectedMonth, selectedYear
   useEffect(() => {
-    const lastDay = new Date(selectedYear, selectedMonth, 0).getDate();
-    setStartDateFilter(`${currentMonthStr}-01`);
-    setEndDateFilter(`${currentMonthStr}-${String(lastDayOfMonth).padStart(2, '0')}`);
-  }, [selectedMonth, selectedYear, currentMonthStr]);
+    if (reportPeriodType === 'bulanan') {
+      const lastDay = new Date(selectedYear, selectedMonth, 0).getDate();
+      const mStr = String(selectedMonth).padStart(2, '0');
+      setStartDateFilter(`${selectedYear}-${mStr}-01`);
+      setEndDateFilter(`${selectedYear}-${mStr}-${String(lastDay).padStart(2, '0')}`);
+    } else if (reportPeriodType === 'tahunan') {
+      setStartDateFilter(`${selectedYear}-01-01`);
+      setEndDateFilter(`${selectedYear}-12-31`);
+    }
+  }, [reportPeriodType, selectedMonth, selectedYear]);
 
   // Date formatting helper for DD-MM-YYYY (e.g. 28-08-1989)
   const formatDateDDMMYYYY = (dateStr: string) => {
@@ -78,16 +85,6 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
       return `${d.padStart(2, '0')}-${m.padStart(2, '0')}-${y}`;
     }
     return dateStr;
-  };
-
-  // Date formatting helper for Indonesian text
-  const formatDateIndo = (dateStr: string) => {
-    if (!dateStr) return '';
-    const [y, m, d] = dateStr.split('-');
-    if (!y || !m || !d) return dateStr;
-    const mIdx = parseInt(m, 10) - 1;
-    if (mIdx < 0 || mIdx > 11) return dateStr;
-    return `${parseInt(d, 10)} ${monthNames[mIdx]} ${y}`;
   };
 
   // Helper for titimangsa location (defaults or converts Pandeglang to Desa/Sumberjaya)
@@ -122,7 +119,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
     return true;
   });
 
-  // 3. Filtered Transactions based on Category & Pos Dana Kas (Sorted Ascending by Date: Tanggal Awal Ke Akhir)
+  // 3. Filtered Transactions based on Category & Pos Dana Kas (Sorted Ascending by Date)
   const filteredPeriodTransactions = periodTransactions
     .filter((t) => {
       if (selectedCategoryFilter !== 'semua' && t.kategori !== selectedCategoryFilter) return false;
@@ -142,7 +139,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
   const totalExpense = periodExpenseDetails.reduce((sum, t) => sum + t.jumlah, 0);
   const endingBalance = startingBalance + totalIncome - totalExpense;
 
-  // Filtered Summaries (Ascending by Date: Tanggal Awal Ke Akhir)
+  // Filtered Summaries (Ascending by Date)
   const filteredIncomeDetails = filteredPeriodTransactions.filter((t) => t.jenis === 'pemasukan');
   const filteredExpenseDetails = filteredPeriodTransactions.filter((t) => t.jenis === 'pengeluaran');
 
@@ -191,6 +188,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
 
   // Reset interactive filters
   const handleResetFilters = () => {
+    setReportPeriodType('bulanan');
     const lastDay = new Date(selectedYear, selectedMonth, 0).getDate();
     setStartDateFilter(`${currentMonthStr}-01`);
     setEndDateFilter(`${currentMonthStr}-${String(lastDay).padStart(2, '0')}`);
@@ -199,54 +197,9 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
   };
 
   const isFilterActive =
-    startDateFilter !== `${currentMonthStr}-01` ||
-    endDateFilter !== `${currentMonthStr}-${String(lastDayOfMonth).padStart(2, '0')}` ||
+    reportPeriodType !== 'bulanan' ||
     selectedCategoryFilter !== 'semua' ||
     selectedFundFilter !== 'semua';
-
-  // Generate AI Executive Narrative
-  const handleGenerateAiNarrative = async () => {
-    setIsLoadingAi(true);
-    setAiError(null);
-    setAiNarrative(null);
-
-    try {
-      const response = await fetch('/api/gemini/generate-narrative', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mosqueName: mosqueProfile.namaMasjid,
-          periodStr: periodDateRangeStr,
-          startingBalance,
-          totalIncome,
-          totalExpense,
-          endingBalance,
-          fundBreakdown,
-          sampleIncomes: periodIncomeDetails.slice(0, 5),
-          sampleExpenses: periodExpenseDetails.slice(0, 5),
-        }),
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || 'Gagal terhubung ke layanan AI Gemini.');
-      }
-
-      setAiNarrative(data.narrative);
-    } catch (err: any) {
-      console.error(err);
-      setAiError(err.message || 'Terjadi kesalahan saat memproses narasi AI.');
-    } finally {
-      setIsLoadingAi(false);
-    }
-  };
-
-  const handleCopyNarrative = () => {
-    if (!aiNarrative) return;
-    navigator.clipboard.writeText(aiNarrative);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   const handlePrintReport = () => {
     window.print();
@@ -255,56 +208,105 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
   return (
     <div className="space-y-6 pb-12">
       {/* Top Bar Header */}
-      <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 print:hidden">
+      <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4 print:hidden">
         <div>
           <h2 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
             <FileText className="w-5 h-5 text-emerald-700" />
-            Laporan Keuangan Kas Interaktif
+            Laporan Keuangan Kas Masjid
           </h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Analisis rekapitulasi kas, filter bebas rentang awal/akhir (antar bulan & tahun), serta narasi AI.
+            Pilih jenis laporan (Bulanan / Tahunan), filter rentang tanggal & rekapitulasi kas resmi.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          {/* Quick Month/Year Selector */}
-          <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-200" title="Pilih Bulan & Tahun Cepat">
-            <Calendar className="w-4 h-4 text-emerald-700 ml-1" />
-            <select
-              value={selectedMonth}
-              onChange={(e) => onMonthYearChange(Number(e.target.value), selectedYear)}
-              className="text-xs font-bold text-slate-800 bg-transparent border-none focus:outline-none cursor-pointer"
+          {/* Period Mode Selector Pill Tabs */}
+          <div className="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200 text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => setReportPeriodType('bulanan')}
+              className={`px-3 py-1.5 rounded-md transition cursor-pointer flex items-center gap-1 ${
+                reportPeriodType === 'bulanan'
+                  ? 'bg-emerald-700 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
             >
-              {monthNames.map((m, idx) => (
-                <option key={m} value={idx + 1}>
-                  {m}
-                </option>
-              ))}
-            </select>
+              <Calendar className="w-3.5 h-3.5" />
+              <span>Bulanan</span>
+            </button>
 
-            <select
-              value={selectedYear}
-              onChange={(e) => onMonthYearChange(selectedMonth, Number(e.target.value))}
-              className="text-xs font-bold text-slate-800 bg-transparent border-none focus:outline-none cursor-pointer border-l border-slate-300 pl-2"
+            <button
+              type="button"
+              onClick={() => setReportPeriodType('tahunan')}
+              className={`px-3 py-1.5 rounded-md transition cursor-pointer flex items-center gap-1 ${
+                reportPeriodType === 'tahunan'
+                  ? 'bg-emerald-700 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
             >
-              <option value={2026}>2026</option>
-              <option value={2025}>2025</option>
-            </select>
+              <CalendarDays className="w-3.5 h-3.5" />
+              <span>Tahunan</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setReportPeriodType('custom')}
+              className={`px-3 py-1.5 rounded-md transition cursor-pointer flex items-center gap-1 ${
+                reportPeriodType === 'custom'
+                  ? 'bg-emerald-700 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Filter className="w-3.5 h-3.5" />
+              <span>Custom Date</span>
+            </button>
           </div>
 
-          {/* AI Narration Generator Button */}
-          <button
-            onClick={handleGenerateAiNarrative}
-            disabled={isLoadingAi}
-            className="bg-gradient-to-r from-emerald-800 to-teal-800 hover:from-emerald-700 hover:to-teal-700 text-amber-300 font-bold text-xs py-2 px-3.5 rounded-lg shadow-sm flex items-center gap-2 border border-emerald-700/80 transition cursor-pointer disabled:opacity-50"
-          >
-            {isLoadingAi ? (
-              <Loader2 className="w-4 h-4 animate-spin text-amber-300" />
-            ) : (
-              <Sparkles className="w-4 h-4 text-amber-300" />
-            )}
-            <span>{isLoadingAi ? 'Menyusun Narasi AI...' : 'Buat Narasi AI Shalat Jumat'}</span>
-          </button>
+          {/* Quick Month/Year Selector Dropdowns */}
+          {reportPeriodType === 'bulanan' && (
+            <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+              <select
+                value={selectedMonth}
+                onChange={(e) => onMonthYearChange(Number(e.target.value), selectedYear)}
+                className="text-xs font-bold text-slate-800 bg-transparent border-none focus:outline-none cursor-pointer"
+              >
+                {monthNames.map((m, idx) => (
+                  <option key={m} value={idx + 1}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={selectedYear}
+                onChange={(e) => onMonthYearChange(selectedMonth, Number(e.target.value))}
+                className="text-xs font-bold text-slate-800 bg-transparent border-none focus:outline-none cursor-pointer border-l border-slate-300 pl-2"
+              >
+                {yearOptions.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {reportPeriodType === 'tahunan' && (
+            <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+              <span className="text-xs font-bold text-slate-500 pl-1">Tahun:</span>
+              <select
+                value={selectedYear}
+                onChange={(e) => onMonthYearChange(selectedMonth, Number(e.target.value))}
+                className="text-xs font-bold text-slate-800 bg-transparent border-none focus:outline-none cursor-pointer pr-1"
+              >
+                {yearOptions.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Print Button */}
           <button
@@ -312,48 +314,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
             className="bg-amber-500 hover:bg-amber-400 text-emerald-950 font-bold text-xs py-2 px-3.5 rounded-lg shadow-sm flex items-center gap-1.5 transition cursor-pointer"
           >
             <Printer className="w-4 h-4" />
-            <span>Cetak PDF / Buletin</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Mode Cetak Selector Bar */}
-      <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 print:hidden">
-        <div className="flex items-center gap-2 text-xs text-emerald-950">
-          <Printer className="w-4 h-4 text-emerald-700 shrink-0" />
-          <div>
-            <span className="font-bold">Pilihan Format Hasil Cetak Laporan:</span>
-            <p className="text-[11px] text-emerald-800">
-              Pilih format tampilan dokumen sebelum menekan tombol cetak.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-emerald-300 shadow-xs shrink-0">
-          <button
-            type="button"
-            onClick={() => setPrintMode('ringkas')}
-            className={`px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-              printMode === 'ringkas'
-                ? 'bg-emerald-700 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>Cetak Ringkas (Intinya Saja)</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setPrintMode('lengkap')}
-            className={`px-3 py-1.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-              printMode === 'lengkap'
-                ? 'bg-emerald-700 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-            }`}
-          >
-            <List className="w-3.5 h-3.5" />
-            <span>Cetak Lengkap (Semua Transaksi)</span>
+            <span>Cetak PDF Laporan</span>
           </button>
         </div>
       </div>
@@ -363,7 +324,9 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
           <div className="flex items-center gap-2">
             <Filter className="w-4 h-4 text-emerald-400" />
-            <h3 className="font-bold text-sm text-white">Filter Rentang Tanggal & Kategori Laporan</h3>
+            <h3 className="font-bold text-sm text-white">
+              Filter Rentang Tanggal & Kategori ({reportPeriodType === 'tahunan' ? 'Laporan Tahunan' : reportPeriodType === 'bulanan' ? 'Laporan Bulanan' : 'Laporan Custom'})
+            </h3>
             <span className="text-xs text-amber-300 font-mono font-semibold">({periodDateRangeStr})</span>
           </div>
           {isFilterActive && (
@@ -386,7 +349,10 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
             <input
               type="date"
               value={startDateFilter}
-              onChange={(e) => setStartDateFilter(e.target.value)}
+              onChange={(e) => {
+                setStartDateFilter(e.target.value);
+                setReportPeriodType('custom');
+              }}
               className="w-full py-1.5 px-2.5 text-xs bg-slate-800 border border-slate-700 text-white rounded-lg focus:outline-none focus:border-emerald-500 cursor-pointer"
             />
           </div>
@@ -399,7 +365,10 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
             <input
               type="date"
               value={endDateFilter}
-              onChange={(e) => setEndDateFilter(e.target.value)}
+              onChange={(e) => {
+                setEndDateFilter(e.target.value);
+                setReportPeriodType('custom');
+              }}
               className="w-full py-1.5 px-2.5 text-xs bg-slate-800 border border-slate-700 text-white rounded-lg focus:outline-none focus:border-emerald-500 cursor-pointer"
             />
           </div>
@@ -479,37 +448,6 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
         </div>
       </div>
 
-      {/* AI Narrative Section */}
-      {aiNarrative && (
-        <div className="bg-emerald-950 text-white rounded-xl p-5 border border-emerald-800 shadow-md space-y-3 print:hidden">
-          <div className="flex items-center justify-between border-b border-emerald-800/80 pb-2">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-amber-400" />
-              <h3 className="font-bold text-sm text-white">
-                Narasi Resmi AI Pengumuman Shalat Jumat & Buletin
-              </h3>
-            </div>
-            <button
-              onClick={handleCopyNarrative}
-              className="bg-emerald-800 hover:bg-emerald-700 text-amber-300 text-xs px-2.5 py-1 rounded font-medium flex items-center gap-1 border border-emerald-700 transition cursor-pointer"
-            >
-              {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-              <span>{copied ? 'Tersalin!' : 'Salin Teks'}</span>
-            </button>
-          </div>
-
-          <div className="prose prose-invert prose-sm max-w-none text-emerald-100/90 text-xs leading-relaxed whitespace-pre-wrap font-sans bg-emerald-900/50 p-4 rounded-lg border border-emerald-800">
-            {aiNarrative}
-          </div>
-        </div>
-      )}
-
-      {aiError && (
-        <div className="bg-rose-50 border border-rose-200 text-rose-800 p-4 rounded-xl text-xs print:hidden">
-          <span className="font-bold">Error Gemini AI:</span> {aiError}
-        </div>
-      )}
-
       {/* Official Printable Statement Sheet */}
       <div className="bg-white rounded-xl p-8 border border-slate-200 shadow-md space-y-6 print:shadow-none print:border-none print:p-0 print:m-0">
         {/* Kop Surat Masjid */}
@@ -546,7 +484,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
         {/* Title Statement */}
         <div className="text-center space-y-1">
           <h3 className="text-base font-extrabold uppercase tracking-wider text-slate-900 border-b border-slate-300 inline-block px-4 pb-0.5">
-            LAPORAN KEUANGAN KAS MASJID {printMode === 'ringkas' ? '(RINGKASAN REKAPITULASI)' : ''}
+            LAPORAN KEUANGAN KAS MASJID {reportPeriodType === 'tahunan' ? `TAHUNAN (TAHUN ${selectedYear})` : reportPeriodType === 'bulanan' ? `BULANAN (${monthNames[selectedMonth - 1].toUpperCase()} ${selectedYear})` : ''}
           </h3>
           <p className="text-xs font-semibold text-slate-700">
             PERIODE: {periodDateRangeStrUpper}
@@ -558,7 +496,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
           </p>
         </div>
 
-        {/* Top Summary Table (Rekapitulasi Utama - Intinya Saja) */}
+        {/* Top Summary Table (Rekapitulasi Utama) */}
         <div className="space-y-2">
           <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800 bg-slate-100 p-2 rounded">
             I. REKAPITULASI POSISI KAS MASJID PER POS DANA
@@ -599,100 +537,95 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
           </div>
         </div>
 
-        {/* Detailed Tables (ONLY shown when printMode === 'lengkap') */}
-        {printMode === 'lengkap' && (
-          <>
-            {/* Detailed Income Table */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between bg-slate-100 p-2 rounded">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
-                  II. RINCIAN PEMASUKAN DANA ({periodDateRangeStr})
-                </h4>
-                <span className="text-xs font-bold text-emerald-800">
-                  Total: +Rp {filteredIncomeTotal.toLocaleString('id-ID')}
-                </span>
-              </div>
+        {/* Detailed Income Table */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between bg-slate-100 p-2 rounded">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+              II. RINCIAN PEMASUKAN DANA ({periodDateRangeStr})
+            </h4>
+            <span className="text-xs font-bold text-emerald-800">
+              Total: +Rp {filteredIncomeTotal.toLocaleString('id-ID')}
+            </span>
+          </div>
 
-              {filteredIncomeDetails.length === 0 ? (
-                <p className="text-xs text-slate-500 italic p-2">Tidak ada transaksi pemasukan sesuai kriteria filter.</p>
-              ) : (
-                <table className="w-full text-left text-xs border-collapse border border-slate-300">
-                  <thead>
-                    <tr className="bg-slate-100 font-bold border-b border-slate-300">
-                      <th className="p-2 border-r border-slate-300">Tgl</th>
-                      <th className="p-2 border-r border-slate-300">Keterangan / Donatur</th>
-                      <th className="p-2 border-r border-slate-300">Kategori & Pos Kas</th>
-                      <th className="p-2 text-right">Jumlah (Rp)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    {filteredIncomeDetails.map((inc) => (
-                      <tr key={inc.id}>
-                        <td className="p-2 border-r border-slate-300 whitespace-nowrap font-mono">{formatDateDDMMYYYY(inc.tanggal)}</td>
-                        <td className="p-2 border-r border-slate-300 font-medium">
-                          {inc.keterangan} {inc.donatur ? `[Donatur: ${inc.donatur}]` : ''}
-                        </td>
-                        <td className="p-2 border-r border-slate-300">
-                          <span className="bg-emerald-50 text-emerald-800 px-1.5 py-0.5 rounded border border-emerald-200 mr-1 font-semibold">
-                            {inc.kategori}
-                          </span>
-                          <span className="text-slate-500">({inc.danaKat})</span>
-                        </td>
-                        <td className="p-2 text-right font-semibold text-emerald-800">
-                          +{inc.jumlah.toLocaleString('id-ID')}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
+          {filteredIncomeDetails.length === 0 ? (
+            <p className="text-xs text-slate-500 italic p-2">Tidak ada transaksi pemasukan sesuai kriteria filter.</p>
+          ) : (
+            <table className="w-full text-left text-xs border-collapse border border-slate-300">
+              <thead>
+                <tr className="bg-slate-100 font-bold border-b border-slate-300">
+                  <th className="p-2 border-r border-slate-300">Tgl</th>
+                  <th className="p-2 border-r border-slate-300">Keterangan / Donatur</th>
+                  <th className="p-2 border-r border-slate-300">Kategori & Pos Kas</th>
+                  <th className="p-2 text-right">Jumlah (Rp)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {filteredIncomeDetails.map((inc) => (
+                  <tr key={inc.id}>
+                    <td className="p-2 border-r border-slate-300 whitespace-nowrap font-mono">{formatDateDDMMYYYY(inc.tanggal)}</td>
+                    <td className="p-2 border-r border-slate-300 font-medium">
+                      {inc.keterangan} {inc.donatur ? `[Donatur: ${inc.donatur}]` : ''}
+                    </td>
+                    <td className="p-2 border-r border-slate-300">
+                      <span className="bg-emerald-50 text-emerald-800 px-1.5 py-0.5 rounded border border-emerald-200 mr-1 font-semibold">
+                        {inc.kategori}
+                      </span>
+                      <span className="text-slate-500">({inc.danaKat})</span>
+                    </td>
+                    <td className="p-2 text-right font-semibold text-emerald-800">
+                      +{inc.jumlah.toLocaleString('id-ID')}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
 
-            {/* Detailed Expense Table */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between bg-slate-100 p-2 rounded">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
-                  III. RINCIAN PENGELUARAN DANA ({periodDateRangeStr})
-                </h4>
-                <span className="text-xs font-bold text-rose-800">
-                  Total: -Rp {filteredExpenseTotal.toLocaleString('id-ID')}
-                </span>
-              </div>
+        {/* Detailed Expense Table */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between bg-slate-100 p-2 rounded">
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
+              III. RINCIAN PENGELUARAN DANA ({periodDateRangeStr})
+            </h4>
+            <span className="text-xs font-bold text-rose-800">
+              Total: -Rp {filteredExpenseTotal.toLocaleString('id-ID')}
+            </span>
+          </div>
 
-              {filteredExpenseDetails.length === 0 ? (
-                <p className="text-xs text-slate-500 italic p-2">Tidak ada transaksi pengeluaran sesuai kriteria filter.</p>
-              ) : (
-                <table className="w-full text-left text-xs border-collapse border border-slate-300">
-                  <thead>
-                    <tr className="bg-slate-100 font-bold border-b border-slate-300">
-                      <th className="p-2 border-r border-slate-300">Tgl</th>
-                      <th className="p-2 border-r border-slate-300">Keterangan Pengeluaran</th>
-                      <th className="p-2 border-r border-slate-300">Kategori & Pos Kas</th>
-                      <th className="p-2 text-right">Jumlah (Rp)</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    {filteredExpenseDetails.map((exp) => (
-                      <tr key={exp.id}>
-                        <td className="p-2 border-r border-slate-300 whitespace-nowrap font-mono">{formatDateDDMMYYYY(exp.tanggal)}</td>
-                        <td className="p-2 border-r border-slate-300 font-medium">{exp.keterangan}</td>
-                        <td className="p-2 border-r border-slate-300">
-                          <span className="bg-rose-50 text-rose-800 px-1.5 py-0.5 rounded border border-rose-200 mr-1 font-semibold">
-                            {exp.kategori}
-                          </span>
-                          <span className="text-slate-500">({exp.danaKat})</span>
-                        </td>
-                        <td className="p-2 text-right font-semibold text-rose-800">
-                          -{exp.jumlah.toLocaleString('id-ID')}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          </>
-        )}
+          {filteredExpenseDetails.length === 0 ? (
+            <p className="text-xs text-slate-500 italic p-2">Tidak ada transaksi pengeluaran sesuai kriteria filter.</p>
+          ) : (
+            <table className="w-full text-left text-xs border-collapse border border-slate-300">
+              <thead>
+                <tr className="bg-slate-100 font-bold border-b border-slate-300">
+                  <th className="p-2 border-r border-slate-300">Tgl</th>
+                  <th className="p-2 border-r border-slate-300">Keterangan Pengeluaran</th>
+                  <th className="p-2 border-r border-slate-300">Kategori & Pos Kas</th>
+                  <th className="p-2 text-right">Jumlah (Rp)</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {filteredExpenseDetails.map((exp) => (
+                  <tr key={exp.id}>
+                    <td className="p-2 border-r border-slate-300 whitespace-nowrap font-mono">{formatDateDDMMYYYY(exp.tanggal)}</td>
+                    <td className="p-2 border-r border-slate-300 font-medium">{exp.keterangan}</td>
+                    <td className="p-2 border-r border-slate-300">
+                      <span className="bg-rose-50 text-rose-800 px-1.5 py-0.5 rounded border border-rose-200 mr-1 font-semibold">
+                        {exp.kategori}
+                      </span>
+                      <span className="text-slate-500">({exp.danaKat})</span>
+                    </td>
+                    <td className="p-2 text-right font-semibold text-rose-800">
+                      -{exp.jumlah.toLocaleString('id-ID')}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
 
         {/* Signatures Section */}
         <div className="pt-8 border-t border-slate-300">
@@ -705,7 +638,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
               <p className="text-slate-500">Mengetahui,</p>
               <p className="font-bold text-slate-900 mt-0.5">Ketua DKM {mosqueProfile.namaMasjid}</p>
               <div className="h-16"></div>
-              <p className="font-bold text-slate-900 border-b border-slate-900 inline-block px-4">
+              <p className="font-bold text-slate-900 inline-block px-4">
                 ({mosqueProfile.ketuaDKM})
               </p>
             </div>
@@ -714,7 +647,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
               <p className="text-slate-500">Penyusun Laporan,</p>
               <p className="font-bold text-slate-900 mt-0.5">Bendahara DKM</p>
               <div className="h-16"></div>
-              <p className="font-bold text-slate-900 border-b border-slate-900 inline-block px-4">
+              <p className="font-bold text-slate-900 inline-block px-4">
                 ({mosqueProfile.bendaharaDKM})
               </p>
             </div>
@@ -723,7 +656,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
               <p className="text-slate-500">Verifikator,</p>
               <p className="font-bold text-slate-900 mt-0.5">Sekretaris DKM</p>
               <div className="h-16"></div>
-              <p className="font-bold text-slate-900 border-b border-slate-900 inline-block px-4">
+              <p className="font-bold text-slate-900 inline-block px-4">
                 ({mosqueProfile.sekretarisDKM})
               </p>
             </div>
