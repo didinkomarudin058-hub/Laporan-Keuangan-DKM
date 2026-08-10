@@ -200,7 +200,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
   };
 
   return (
-    <div className="space-y-6 pb-12 print:pb-0 print:space-y-0">
+    <div className="space-y-6 pb-12">
       {/* Top Bar Header */}
       <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4 print:hidden">
         <div>
@@ -622,7 +622,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
         </div>
 
         {/* Signatures Section */}
-        <div className="pt-8 border-t border-slate-300 signatures-section">
+        <div className="pt-8 border-t border-slate-300">
           <div className="text-xs text-slate-600 text-right font-medium mb-6">
             {mosqueProfile.kota ? `${mosqueProfile.kota}, ` : ''}{new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
           </div>
@@ -633,7 +633,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
               <p className="font-bold text-slate-900 mt-0.5">Ketua DKM {mosqueProfile.namaMasjid}</p>
               <div className="h-16"></div>
               <p className="font-bold text-slate-900 inline-block px-4">
-                (_______________________)
+                ({mosqueProfile.ketuaDKM})
               </p>
             </div>
 
