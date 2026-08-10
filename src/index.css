@@ -6,20 +6,26 @@
     size: auto;
   }
 
-  body {
+  html,
+  body,
+  #root,
+  main,
+  div {
     background: #ffffff !important;
+    background-color: #ffffff !important;
     color: #000000 !important;
-    font-size: 11pt !important;
-    padding: 0 !important;
-    margin: 0 !important;
+    box-shadow: none !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
-  /* Hide all non-essential web controls, navbars, footers, buttons */
+  /* Hide all non-essential web controls, navbars, footers, buttons, floating navs */
   #dkm-app-navbar,
   footer,
-  .print\:hidden {
+  .print\:hidden,
+  .fixed,
+  .backdrop-blur-md,
+  .backdrop-blur-sm {
     display: none !important;
   }
 
@@ -29,6 +35,7 @@
     width: 100% !important;
     padding: 0 !important;
     margin: 0 !important;
+    background: #ffffff !important;
   }
 
   /* Ensure printable elements don't get awkwardly split across pages */
