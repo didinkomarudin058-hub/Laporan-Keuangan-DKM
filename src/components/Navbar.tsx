@@ -47,7 +47,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               {mosqueProfile.namaMasjid}
             </h1>
             <p className="text-xs text-emerald-200/90 font-normal">
-              {mosqueProfile.alamat}, {mosqueProfile.kota}
+              {[mosqueProfile.alamat, mosqueProfile.desa ? `Desa ${mosqueProfile.desa}` : '', mosqueProfile.kota].filter(Boolean).join(', ')}
             </p>
           </div>
         </div>

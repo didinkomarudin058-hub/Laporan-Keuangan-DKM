@@ -378,14 +378,15 @@ export const MosqueSettingsModal: React.FC<MosqueSettingsModalProps> = ({
                   />
                 </div>
 
-                <div>
+                <div className="sm:col-span-2">
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Alamat Lengkap Masjid
+                    Alamat Jalan / RT / RW
                   </label>
                   <input
                     type="text"
                     required
                     value={profile.alamat}
+                    placeholder="Jl. Masjid No. 15, RT 02/05"
                     onChange={(e) => setProfile({ ...profile, alamat: e.target.value })}
                     className="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
                   />
@@ -393,12 +394,39 @@ export const MosqueSettingsModal: React.FC<MosqueSettingsModalProps> = ({
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Kota / Wilayah & Provinsi
+                    Desa / Kelurahan <span className="text-emerald-700 font-normal">(Untuk Titimangsa Cetak)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={profile.desa || ''}
+                    placeholder="Misal: Sumberjaya"
+                    onChange={(e) => setProfile({ ...profile, desa: e.target.value })}
+                    className="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Kecamatan
+                  </label>
+                  <input
+                    type="text"
+                    value={profile.kecamatan || ''}
+                    placeholder="Misal: Tambun Selatan"
+                    onChange={(e) => setProfile({ ...profile, kecamatan: e.target.value })}
+                    className="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 font-medium"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Kota / Kabupaten & Provinsi
                   </label>
                   <input
                     type="text"
                     required
                     value={profile.kota}
+                    placeholder="Misal: Kab. Bekasi, Prov. Jawa Barat"
                     onChange={(e) => setProfile({ ...profile, kota: e.target.value })}
                     className="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
                   />

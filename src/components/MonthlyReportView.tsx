@@ -87,29 +87,32 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
     return dateStr;
   };
 
-  // Helper for titimangsa location (only village/desa, no kab/prov)
-  const formatTitimangsaLocation = (locStr: string) => {
-    if (!locStr) return '';
-    let village = locStr.split(',')[0].trim();
-    village = village
-      .replace(/kabupaten\b/gi, '')
-      .replace(/kab\.\b/gi, '')
-      .replace(/kab\b/gi, '')
-      .replace(/provinsi\b/gi, '')
-      .replace(/prov\.\b/gi, '')
-      .replace(/prov\b/gi, '')
-      .trim();
-    return village;
-  };
+  // Helper for titimangsa location (only village/desa, no kab/prov/kec)
+  const getTitimangsaVillage = (profile: MosqueProfile) => {
+    if (profile.desa && profile.desa.trim()) {
+      let v = profile.desa.trim();
+      v = v.replace(/^desa\s+/gi, '').replace(/^kelurahan\s+/gi, '').replace(/^kel\.\s+/gi, '').trim();
+      return v ? `Desa ${v}` : profile.desa.trim();
+    }
+    const raw = profile.kota || profile.alamat || '';
+    if (!raw) return '';
 
-  // Helper for clean mosque name in signature (no DKM / Dewan Kemakmuran Masjid prefix)
-  const getCleanNamaMasjid = (fullName: string) => {
-    if (!fullName) return '';
-    return fullName
-      .replace(/^dewan\s+kemakmuran\s+masjid\s*\(dkm\)\s*/gi, '')
-      .replace(/^dewan\s+kemakmuran\s+masjid\s*/gi, '')
-      .replace(/^dkm\s+/gi, '')
-      .trim();
+    const parts = raw.split(',');
+    for (const part of parts) {
+      const p = part.trim();
+      if (/kabupaten|kab\b|kab\.|provinsi|prov\b|prov\./i.test(p)) continue;
+      if (/kecamatan|kec\b|kec\./i.test(p)) continue;
+      const cleaned = p
+        .replace(/kabupaten\b/gi, '')
+        .replace(/kab\.\b/gi, '')
+        .replace(/kab\b/gi, '')
+        .replace(/provinsi\b/gi, '')
+        .replace(/prov\.\b/gi, '')
+        .replace(/prov\b/gi, '')
+        .trim();
+      if (cleaned) return cleaned;
+    }
+    return '';
   };
 
   const effectiveStartDate = startDateFilter || `${currentMonthStr}-01`;
@@ -465,32 +468,39 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
       {/* Official Printable Statement Sheet */}
       <div className="bg-white rounded-xl p-8 border border-slate-200 shadow-md space-y-6 print:shadow-none print:border-none print:p-0 print:m-0">
         {/* Kop Surat Masjid */}
-        <div className="text-center border-b-2 border-slate-900 pb-4 space-y-1">
-          <div className="flex items-center justify-center gap-3">
+        <div className="text-center border-b-2 border-slate-900 pb-4 space-y-1.5">
+          <div className="flex flex-col items-center justify-center gap-2">
             {mosqueProfile.logoUrl ? (
               <img
                 src={mosqueProfile.logoUrl}
                 alt="Logo Masjid"
-                className="w-14 h-14 object-contain rounded-full border-2 border-emerald-600 shrink-0 bg-white p-0.5"
+                className="w-14 h-14 object-contain rounded-full border-2 border-emerald-600 shrink-0 bg-white p-0.5 shadow-xs"
               />
             ) : (
-              <div className="w-12 h-12 bg-emerald-800 rounded-full flex items-center justify-center text-amber-300 font-bold border-2 border-emerald-600 shrink-0">
+              <div className="w-12 h-12 bg-emerald-800 rounded-full flex items-center justify-center text-amber-300 font-bold border-2 border-emerald-600 shrink-0 shadow-xs">
                 <Building2 className="w-7 h-7" />
               </div>
             )}
-            <div className="text-left">
+            <div className="text-center">
               <h1 className="text-xl font-extrabold uppercase tracking-tight text-slate-900">
                 DEWAN KEMAKMURAN MASJID (DKM)
               </h1>
-              <h2 className="text-lg font-bold text-emerald-800 uppercase tracking-wide">
+              <h2 className="text-lg font-black text-emerald-800 uppercase tracking-wide text-center">
                 {mosqueProfile.namaMasjid}
               </h2>
             </div>
           </div>
-          <p className="text-xs text-slate-600 font-medium">
-            {mosqueProfile.alamat}, {mosqueProfile.kota} • Telp: {mosqueProfile.telepon}
+          <p className="text-xs text-slate-600 font-medium text-center">
+            {[
+              mosqueProfile.alamat,
+              mosqueProfile.desa ? `Desa/Kel. ${mosqueProfile.desa}` : '',
+              mosqueProfile.kecamatan ? `Kec. ${mosqueProfile.kecamatan}` : '',
+              mosqueProfile.kota,
+            ]
+              .filter(Boolean)
+              .join(', ')} • Telp: {mosqueProfile.telepon}
           </p>
-          <p className="text-[11px] text-slate-500 italic">
+          <p className="text-[11px] text-slate-500 italic text-center">
             Email: {mosqueProfile.email} | Rekening Infaq: {mosqueProfile.namaBank} {mosqueProfile.nomorRekening} a.n {mosqueProfile.anRekening}
           </p>
         </div>
@@ -644,13 +654,13 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
         {/* Signatures Section */}
         <div className="pt-8 border-t border-slate-300">
           <div className="text-xs text-slate-600 text-right font-medium mb-6">
-            {formatTitimangsaLocation(mosqueProfile.kota) ? `${formatTitimangsaLocation(mosqueProfile.kota)}, ` : ''}{new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+            {getTitimangsaVillage(mosqueProfile) ? `${getTitimangsaVillage(mosqueProfile)}, ` : ''}{new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
           </div>
 
           <div className="grid grid-cols-3 text-center gap-4 text-xs font-semibold">
             <div>
               <p className="text-slate-500">Mengetahui,</p>
-              <p className="font-bold text-slate-900 mt-0.5">Ketua DKM {getCleanNamaMasjid(mosqueProfile.namaMasjid)}</p>
+              <p className="font-bold text-slate-900 mt-0.5">Ketua DKM {mosqueProfile.namaMasjid}</p>
               <div className="h-16"></div>
               <p className="font-bold text-slate-900 inline-block px-4">
                 ({mosqueProfile.ketuaDKM})

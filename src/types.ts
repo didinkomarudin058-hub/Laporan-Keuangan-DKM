@@ -21,6 +21,8 @@ export interface Transaction {
 export interface MosqueProfile {
   namaMasjid: string;
   alamat: string;
+  desa?: string;
+  kecamatan?: string;
   kota: string;
   telepon: string;
   email: string;
