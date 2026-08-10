@@ -285,58 +285,58 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {fundBalances.map((item) => (
             <div
               key={item.name}
-              className={`bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition ${item.borderAccent} space-y-4 flex flex-col justify-between`}
+              className={`bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-xs hover:shadow-sm transition ${item.borderAccent} space-y-2.5 flex flex-col justify-between`}
             >
-              <div className="space-y-2">
+              <div className="space-y-1">
                 <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
                     {item.icon}
-                    <h3 className="font-extrabold text-sm text-slate-900">{item.name}</h3>
+                    <h3 className="font-extrabold text-xs sm:text-sm text-slate-900">{item.name}</h3>
                   </div>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${item.badgeBg}`}>
+                  <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${item.badgeBg}`}>
                     {item.badgeText}
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-500 leading-snug line-clamp-2">
+                <p className="text-[10px] text-slate-500 leading-tight line-clamp-1">
                   {item.description}
                 </p>
               </div>
 
-              <div className="space-y-3 pt-2 border-t border-slate-100">
-                <div>
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                <div className="flex items-baseline justify-between gap-2">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Saldo Akhir Kas
+                    Saldo Kas
                   </span>
-                  <div className="text-lg font-black text-slate-900 mt-0.5">
+                  <div className="text-base font-black text-slate-900">
                     Rp {item.balance.toLocaleString('id-ID')}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
-                  <div className="bg-emerald-50/60 p-2 rounded-lg border border-emerald-100">
-                    <span className="text-emerald-800 font-semibold block text-[10px]">Masuk (Bln Ini)</span>
-                    <span className="font-bold text-emerald-700">+Rp {item.monthIncome.toLocaleString('id-ID')}</span>
+                <div className="grid grid-cols-2 gap-1.5 text-[10px]">
+                  <div className="bg-emerald-50/60 p-1.5 rounded-md border border-emerald-100 flex items-center justify-between">
+                    <span className="text-emerald-800 font-semibold text-[9px]">Masuk</span>
+                    <span className="font-bold text-emerald-700 text-[10px]">+Rp {item.monthIncome.toLocaleString('id-ID')}</span>
                   </div>
-                  <div className="bg-rose-50/60 p-2 rounded-lg border border-rose-100">
-                    <span className="text-rose-800 font-semibold block text-[10px]">Keluar (Bln Ini)</span>
-                    <span className="font-bold text-rose-700">-Rp {item.monthExpense.toLocaleString('id-ID')}</span>
+                  <div className="bg-rose-50/60 p-1.5 rounded-md border border-rose-100 flex items-center justify-between">
+                    <span className="text-rose-800 font-semibold text-[9px]">Keluar</span>
+                    <span className="font-bold text-rose-700 text-[10px]">-Rp {item.monthExpense.toLocaleString('id-ID')}</span>
                   </div>
                 </div>
 
-                <div className="flex gap-2 pt-1">
+                <div className="flex gap-2 pt-0.5">
                   <button
                     onClick={() => onOpenAddModal(item.name)}
-                    className="flex-1 py-1.5 px-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-[11px] rounded-lg border border-emerald-200 transition text-center cursor-pointer"
+                    className="flex-1 py-1 px-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-[10px] rounded-md border border-emerald-200 transition text-center cursor-pointer"
                   >
                     + Catat Kas
                   </button>
                   <button
                     onClick={() => onSelectFundFilter(item.name)}
-                    className="py-1.5 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[11px] rounded-lg transition cursor-pointer"
+                    className="py-1 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[10px] rounded-md transition cursor-pointer"
                     title="Filter mutasi pos ini"
                   >
                     Mutasi
