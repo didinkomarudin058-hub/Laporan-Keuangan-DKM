@@ -296,31 +296,31 @@ export const TransactionList: React.FC<TransactionListProps> = ({
 
       {/* Main Table */}
       <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-sm space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+        <div className="bg-slate-100 p-2.5 rounded-lg border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
           <div>
-            <h3 className="text-lg font-bold text-slate-900 tracking-tight">
-              Rincian Transaksi
+            <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-800">
+              RINCIAN TRANSAKSI
             </h3>
-            <p className="text-xs sm:text-sm text-slate-500 font-normal mt-0.5">
+            <p className="text-xs text-slate-500 font-normal mt-0.5">
               {filteredTransactions.length} transaksi · {startDate ? formatDateIndo(startDate) : 'Semua'} {endDate ? `s/d ${formatDateIndo(endDate)}` : ''}
             </p>
           </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs sm:text-sm border-collapse">
+          <table className="w-full text-left text-xs sm:text-sm border-collapse border border-slate-300">
             <thead>
-              <tr className="border-b border-slate-200 text-[11px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">
-                <th className="py-3 px-3 text-left whitespace-nowrap">TANGGAL</th>
-                <th className="py-3 px-3 text-left min-w-[200px] sm:min-w-[250px]">KETERANGAN</th>
-                <th className="py-3 px-3 text-left whitespace-nowrap">KATEGORI</th>
-                <th className="py-3 px-3 text-left whitespace-nowrap">KAS</th>
-                <th className="py-3 px-3 text-right whitespace-nowrap">PEMASUKAN</th>
-                <th className="py-3 px-3 text-right whitespace-nowrap">PENGELUARAN</th>
+              <tr className="bg-slate-200 text-slate-800 font-bold border-b border-slate-300 text-[11px] sm:text-xs uppercase tracking-wider">
+                <th className="py-3 px-3 border-r border-slate-300 text-left whitespace-nowrap">TANGGAL</th>
+                <th className="py-3 px-3 border-r border-slate-300 text-left min-w-[200px] sm:min-w-[250px]">KETERANGAN</th>
+                <th className="py-3 px-3 border-r border-slate-300 text-left whitespace-nowrap">KATEGORI</th>
+                <th className="py-3 px-3 border-r border-slate-300 text-left whitespace-nowrap">KAS</th>
+                <th className="py-3 px-3 border-r border-slate-300 text-right whitespace-nowrap">PEMASUKAN</th>
+                <th className="py-3 px-3 border-r border-slate-300 text-right whitespace-nowrap">PENGELUARAN</th>
                 <th className="py-3 px-3 text-center whitespace-nowrap">AKSI</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-slate-800 font-normal">
+            <tbody className="divide-y divide-slate-300 text-slate-800 font-normal">
               {paginatedTransactions.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-slate-400">
@@ -328,13 +328,16 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                   </td>
                 </tr>
               ) : (
-                paginatedTransactions.map((trx) => (
-                  <tr key={trx.id} className="hover:bg-slate-50/70 transition">
-                    <td className="py-3.5 px-3 whitespace-nowrap text-slate-800 font-medium">
+                paginatedTransactions.map((trx, idx) => (
+                  <tr
+                    key={trx.id}
+                    className={`${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-slate-100 transition`}
+                  >
+                    <td className="py-3.5 px-3 border-r border-slate-300 whitespace-nowrap text-slate-800 font-medium">
                       {formatDateIndo(trx.tanggal)}
                     </td>
 
-                    <td className="py-3.5 px-3 break-words">
+                    <td className="py-3.5 px-3 border-r border-slate-300 break-words">
                       <span className="text-slate-900 font-normal leading-relaxed">{trx.keterangan}</span>
                       {trx.donatur && (
                         <span className="block text-xs text-emerald-700 mt-0.5">
@@ -343,15 +346,15 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                       )}
                     </td>
 
-                    <td className="py-3.5 px-3 whitespace-nowrap text-slate-700">
+                    <td className="py-3.5 px-3 border-r border-slate-300 whitespace-nowrap text-slate-700">
                       {trx.kategori}
                     </td>
 
-                    <td className="py-3.5 px-3 whitespace-nowrap text-slate-700">
+                    <td className="py-3.5 px-3 border-r border-slate-300 whitespace-nowrap text-slate-700">
                       {trx.danaKat || 'Kas Tunai'}
                     </td>
 
-                    <td className="py-3.5 px-3 text-right whitespace-nowrap font-medium text-emerald-600">
+                    <td className="py-3.5 px-3 border-r border-slate-300 text-right whitespace-nowrap font-medium text-emerald-700">
                       {trx.jenis === 'pemasukan' ? (
                         `Rp ${trx.jumlah.toLocaleString('id-ID')}`
                       ) : (
@@ -359,7 +362,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                       )}
                     </td>
 
-                    <td className="py-3.5 px-3 text-right whitespace-nowrap font-medium text-rose-600">
+                    <td className="py-3.5 px-3 border-r border-slate-300 text-right whitespace-nowrap font-medium text-rose-600">
                       {trx.jenis === 'pengeluaran' ? (
                         `Rp ${trx.jumlah.toLocaleString('id-ID')}`
                       ) : (

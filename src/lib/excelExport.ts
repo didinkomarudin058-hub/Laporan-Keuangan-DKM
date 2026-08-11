@@ -35,7 +35,7 @@ export const exportTransactionsToExcel = async ({
   workbook.lastModifiedBy = 'DKM App';
   workbook.created = new Date();
 
-  const worksheet = workbook.addWorksheet('Rincian Transaksi', {
+  const worksheet = workbook.addWorksheet('II. RINCIAN TRANSAKSI', {
     views: [{ showGridLines: true }],
     pageSetup: {
       orientation: 'portrait',
@@ -69,7 +69,7 @@ export const exportTransactionsToExcel = async ({
 
   // Title section
   worksheet.addRow([]);
-  const titleRow = worksheet.addRow([`LAPORAN TRANSAKSI KEUANGAN`]);
+  const titleRow = worksheet.addRow([`III. RINCIAN TRANSAKSI KEUANGAN`]);
   titleRow.getCell(1).font = { name: 'Calibri', size: 14, bold: true, color: { argb: '065F46' } };
   
   const mosqueRow = worksheet.addRow([mosqueName]);
@@ -157,6 +157,14 @@ export const exportTransactionsToExcel = async ({
       cell.font = { name: 'Calibri', size: 10 };
       cell.border = thinBorder;
       cell.alignment = { vertical: 'middle' };
+
+      if (index % 2 !== 0) {
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'F8FAFC' }, // Light slate zebra tint
+        };
+      }
 
       if (colNumber === 1) {
         cell.alignment = { vertical: 'middle', horizontal: 'center' };
