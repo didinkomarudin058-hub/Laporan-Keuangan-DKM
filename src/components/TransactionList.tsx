@@ -311,13 +311,13 @@ export const TransactionList: React.FC<TransactionListProps> = ({
           <table className="w-full text-left text-xs sm:text-sm border-collapse">
             <thead>
               <tr className="border-b border-slate-200 text-[11px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">
-                <th className="py-3 px-3 text-left">TANGGAL</th>
-                <th className="py-3 px-3 text-left min-w-[320px] sm:min-w-[420px]">KETERANGAN</th>
-                <th className="py-3 px-3 text-left">KATEGORI</th>
-                <th className="py-3 px-3 text-left">KAS</th>
-                <th className="py-3 px-3 text-right">PEMASUKAN</th>
-                <th className="py-3 px-3 text-right">PENGELUARAN</th>
-                <th className="py-3 px-3 text-center">AKSI</th>
+                <th className="py-3 px-3 text-left whitespace-nowrap">TANGGAL</th>
+                <th className="py-3 px-3 text-left">KETERANGAN</th>
+                <th className="py-3 px-3 text-left whitespace-nowrap">KATEGORI</th>
+                <th className="py-3 px-3 text-left whitespace-nowrap">KAS</th>
+                <th className="py-3 px-3 text-right whitespace-nowrap">PEMASUKAN</th>
+                <th className="py-3 px-3 text-right whitespace-nowrap">PENGELUARAN</th>
+                <th className="py-3 px-3 text-center whitespace-nowrap">AKSI</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-800 font-normal">
@@ -334,7 +334,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                       {formatDateIndo(trx.tanggal)}
                     </td>
 
-                    <td className="py-3.5 px-3 min-w-[320px] sm:min-w-[420px]">
+                    <td className="py-3.5 px-3 break-words">
                       <span className="text-slate-900 font-normal leading-relaxed">{trx.keterangan}</span>
                       {trx.donatur && (
                         <span className="block text-xs text-emerald-700 mt-0.5">

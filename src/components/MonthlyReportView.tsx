@@ -625,12 +625,12 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  <th className="py-2.5 px-2.5 text-left">TANGGAL</th>
-                  <th className="py-2.5 px-2.5 text-left min-w-[320px] sm:min-w-[420px]">KETERANGAN</th>
-                  <th className="py-2.5 px-2.5 text-left">KATEGORI</th>
-                  <th className="py-2.5 px-2.5 text-left">KAS</th>
-                  <th className="py-2.5 px-2.5 text-right">PEMASUKAN</th>
-                  <th className="py-2.5 px-2.5 text-right">PENGELUARAN</th>
+                  <th className="py-2.5 px-2.5 text-left whitespace-nowrap">TANGGAL</th>
+                  <th className="py-2.5 px-2.5 text-left">KETERANGAN</th>
+                  <th className="py-2.5 px-2.5 text-left whitespace-nowrap">KATEGORI</th>
+                  <th className="py-2.5 px-2.5 text-left whitespace-nowrap">KAS</th>
+                  <th className="py-2.5 px-2.5 text-right whitespace-nowrap">PEMASUKAN</th>
+                  <th className="py-2.5 px-2.5 text-right whitespace-nowrap">PENGELUARAN</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-800 font-normal">
@@ -646,7 +646,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
                       <td className="py-3 px-2.5 whitespace-nowrap text-slate-800 font-medium">
                         {formatDateIndo(trx.tanggal)}
                       </td>
-                      <td className="py-3 px-2.5 min-w-[320px] sm:min-w-[420px]">
+                      <td className="py-3 px-2.5 break-words">
                         <span className="text-slate-900 font-normal leading-relaxed">
                           {trx.keterangan}
                         </span>

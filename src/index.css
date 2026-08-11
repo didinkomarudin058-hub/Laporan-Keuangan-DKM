@@ -36,10 +36,25 @@
     margin: 0 !important;
   }
 
-  /* Ensure printable elements don't get awkwardly split across pages */
+  /* Ensure printable elements don't get awkwardly split across pages or clipped */
+  .overflow-x-auto {
+    overflow: visible !important;
+  }
+
   table {
     width: 100% !important;
+    max-width: 100% !important;
     border-collapse: collapse !important;
+    table-layout: auto !important;
+  }
+
+  th, td {
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+  }
+
+  .whitespace-nowrap {
+    white-space: nowrap !important;
   }
 
   tr {

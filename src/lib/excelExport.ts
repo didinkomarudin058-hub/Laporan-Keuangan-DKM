@@ -36,7 +36,13 @@ export const exportTransactionsToExcel = async ({
   workbook.created = new Date();
 
   const worksheet = workbook.addWorksheet('Rincian Transaksi', {
-    views: [{ showGridLines: true }]
+    views: [{ showGridLines: true }],
+    pageSetup: {
+      orientation: 'portrait',
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 0,
+    }
   });
 
   // Border style definitions
@@ -82,12 +88,12 @@ export const exportTransactionsToExcel = async ({
   // Column definitions
   const columns = [
     { header: 'NO', key: 'no', width: 6 },
-    { header: 'TANGGAL', key: 'tanggal', width: 16 },
-    { header: 'KETERANGAN', key: 'keterangan', width: 75 },
-    { header: 'KATEGORI', key: 'kategori', width: 26 },
-    { header: 'KAS', key: 'kas', width: 18 },
-    { header: 'PEMASUKAN (RP)', key: 'pemasukan', width: 22 },
-    { header: 'PENGELUARAN (RP)', key: 'pengeluaran', width: 22 },
+    { header: 'TANGGAL', key: 'tanggal', width: 15 },
+    { header: 'KETERANGAN', key: 'keterangan', width: 36 },
+    { header: 'KATEGORI', key: 'kategori', width: 20 },
+    { header: 'KAS', key: 'kas', width: 16 },
+    { header: 'PEMASUKAN (RP)', key: 'pemasukan', width: 18 },
+    { header: 'PENGELUARAN (RP)', key: 'pengeluaran', width: 18 },
   ];
 
   // Header Row
