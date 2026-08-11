@@ -16,10 +16,15 @@
     print-color-adjust: exact !important;
   }
 
-  /* Hide all non-essential web controls, navbars, footers, buttons */
+  /* Hide all non-essential web controls, navbars, footers, buttons, fixed bars */
   #dkm-app-navbar,
   footer,
-  .print\:hidden {
+  nav,
+  header,
+  .print\:hidden,
+  [class*="print:hidden"],
+  .fixed,
+  .sticky {
     display: none !important;
   }
 
