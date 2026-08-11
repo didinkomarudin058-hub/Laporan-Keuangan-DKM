@@ -611,21 +611,21 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
             II. RINCIAN PEMASUKAN DAN PENGELUARAN PER KATEGORI
           </h4>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
             {/* Table A: Pemasukan per Kategori */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs font-bold text-emerald-900 bg-emerald-50 px-2.5 py-1.5 rounded border border-emerald-200">
+            <div className="space-y-1.5 min-w-0">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] sm:text-xs font-bold text-emerald-900 bg-emerald-50 px-2 sm:px-2.5 py-1.5 rounded border border-emerald-200">
                 <span>PEMASUKAN PER KATEGORI</span>
-                <span>Total: Rp {filteredIncomeTotal.toLocaleString('id-ID')}</span>
+                <span className="text-[10px] sm:text-xs">Total: Rp {filteredIncomeTotal.toLocaleString('id-ID')}</span>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse border border-slate-300">
+                <table className="w-full text-left text-[11px] sm:text-xs border-collapse border border-slate-300">
                   <thead>
-                    <tr className="bg-slate-200 text-slate-800 font-bold border-b border-slate-300 text-[11px] uppercase">
-                      <th className="p-2 border-r border-slate-300 text-center w-10">NO</th>
-                      <th className="p-2 border-r border-slate-300">KATEGORI PEMASUKAN</th>
-                      <th className="p-2 border-r border-slate-300 text-center w-20">TRANSAKSI</th>
-                      <th className="p-2 text-right">JUMLAH (RP)</th>
+                    <tr className="bg-slate-200 text-slate-800 font-bold border-b border-slate-300 text-[10px] sm:text-[11px] uppercase">
+                      <th className="p-1.5 sm:p-2 border-r border-slate-300 text-center w-7 sm:w-8">NO</th>
+                      <th className="p-1.5 sm:p-2 border-r border-slate-300">KATEGORI</th>
+                      <th className="p-1.5 sm:p-2 border-r border-slate-300 text-center w-12 sm:w-16">TRX</th>
+                      <th className="p-1.5 sm:p-2 text-right">JUMLAH (RP)</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-300 text-slate-800">
@@ -641,7 +641,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
                       if (catIncomeList.length === 0) {
                         return (
                           <tr>
-                            <td colSpan={4} className="p-3 text-center text-slate-400 italic">
+                            <td colSpan={4} className="p-2 text-center text-slate-400 italic">
                               Tidak ada data pemasukan
                             </td>
                           </tr>
@@ -650,17 +650,17 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
 
                       return catIncomeList.map((item, idx) => (
                         <tr key={item.kategori} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                          <td className="p-2 border-r border-slate-300 text-center">{idx + 1}</td>
-                          <td className="p-2 border-r border-slate-300 font-medium">{item.kategori}</td>
-                          <td className="p-2 border-r border-slate-300 text-center">{item.count}</td>
-                          <td className="p-2 text-right text-emerald-800 font-semibold">Rp {item.total.toLocaleString('id-ID')}</td>
+                          <td className="p-1.5 sm:p-2 border-r border-slate-300 text-center">{idx + 1}</td>
+                          <td className="p-1.5 sm:p-2 border-r border-slate-300 font-medium break-words">{item.kategori}</td>
+                          <td className="p-1.5 sm:p-2 border-r border-slate-300 text-center">{item.count}</td>
+                          <td className="p-1.5 sm:p-2 text-right text-emerald-800 font-semibold whitespace-nowrap">Rp {item.total.toLocaleString('id-ID')}</td>
                         </tr>
                       ));
                     })()}
-                    <tr className="bg-emerald-100/80 font-bold border-t-2 border-slate-900 text-slate-900 text-xs">
-                      <td colSpan={2} className="p-2 text-center border-r border-slate-300 uppercase">TOTAL PEMASUKAN</td>
-                      <td className="p-2 text-center border-r border-slate-300">{filteredIncomeDetails.length}</td>
-                      <td className="p-2 text-right text-emerald-900 font-extrabold">Rp {filteredIncomeTotal.toLocaleString('id-ID')}</td>
+                    <tr className="bg-emerald-100/80 font-bold border-t-2 border-slate-900 text-slate-900 text-[10px] sm:text-xs">
+                      <td colSpan={2} className="p-1.5 sm:p-2 text-center border-r border-slate-300 uppercase">TOTAL PEMASUKAN</td>
+                      <td className="p-1.5 sm:p-2 text-center border-r border-slate-300">{filteredIncomeDetails.length}</td>
+                      <td className="p-1.5 sm:p-2 text-right text-emerald-900 font-extrabold whitespace-nowrap">Rp {filteredIncomeTotal.toLocaleString('id-ID')}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -668,19 +668,19 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
             </div>
 
             {/* Table B: Pengeluaran per Kategori */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs font-bold text-rose-900 bg-rose-50 px-2.5 py-1.5 rounded border border-rose-200">
+            <div className="space-y-1.5 min-w-0">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] sm:text-xs font-bold text-rose-900 bg-rose-50 px-2 sm:px-2.5 py-1.5 rounded border border-rose-200">
                 <span>PENGELUARAN PER KATEGORI</span>
-                <span>Total: Rp {filteredExpenseTotal.toLocaleString('id-ID')}</span>
+                <span className="text-[10px] sm:text-xs">Total: Rp {filteredExpenseTotal.toLocaleString('id-ID')}</span>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse border border-slate-300">
+                <table className="w-full text-left text-[11px] sm:text-xs border-collapse border border-slate-300">
                   <thead>
-                    <tr className="bg-slate-200 text-slate-800 font-bold border-b border-slate-300 text-[11px] uppercase">
-                      <th className="p-2 border-r border-slate-300 text-center w-10">NO</th>
-                      <th className="p-2 border-r border-slate-300">KATEGORI PENGELUARAN</th>
-                      <th className="p-2 border-r border-slate-300 text-center w-20">TRANSAKSI</th>
-                      <th className="p-2 text-right">JUMLAH (RP)</th>
+                    <tr className="bg-slate-200 text-slate-800 font-bold border-b border-slate-300 text-[10px] sm:text-[11px] uppercase">
+                      <th className="p-1.5 sm:p-2 border-r border-slate-300 text-center w-7 sm:w-8">NO</th>
+                      <th className="p-1.5 sm:p-2 border-r border-slate-300">KATEGORI</th>
+                      <th className="p-1.5 sm:p-2 border-r border-slate-300 text-center w-12 sm:w-16">TRX</th>
+                      <th className="p-1.5 sm:p-2 text-right">JUMLAH (RP)</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-300 text-slate-800">
@@ -696,7 +696,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
                       if (catExpenseList.length === 0) {
                         return (
                           <tr>
-                            <td colSpan={4} className="p-3 text-center text-slate-400 italic">
+                            <td colSpan={4} className="p-2 text-center text-slate-400 italic">
                               Tidak ada data pengeluaran
                             </td>
                           </tr>
@@ -705,17 +705,17 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
 
                       return catExpenseList.map((item, idx) => (
                         <tr key={item.kategori} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                          <td className="p-2 border-r border-slate-300 text-center">{idx + 1}</td>
-                          <td className="p-2 border-r border-slate-300 font-medium">{item.kategori}</td>
-                          <td className="p-2 border-r border-slate-300 text-center">{item.count}</td>
-                          <td className="p-2 text-right text-rose-800 font-semibold">Rp {item.total.toLocaleString('id-ID')}</td>
+                          <td className="p-1.5 sm:p-2 border-r border-slate-300 text-center">{idx + 1}</td>
+                          <td className="p-1.5 sm:p-2 border-r border-slate-300 font-medium break-words">{item.kategori}</td>
+                          <td className="p-1.5 sm:p-2 border-r border-slate-300 text-center">{item.count}</td>
+                          <td className="p-1.5 sm:p-2 text-right text-rose-800 font-semibold whitespace-nowrap">Rp {item.total.toLocaleString('id-ID')}</td>
                         </tr>
                       ));
                     })()}
-                    <tr className="bg-rose-100/80 font-bold border-t-2 border-slate-900 text-slate-900 text-xs">
-                      <td colSpan={2} className="p-2 text-center border-r border-slate-300 uppercase">TOTAL PENGELUARAN</td>
-                      <td className="p-2 text-center border-r border-slate-300">{filteredExpenseDetails.length}</td>
-                      <td className="p-2 text-right text-rose-900 font-extrabold">Rp {filteredExpenseTotal.toLocaleString('id-ID')}</td>
+                    <tr className="bg-rose-100/80 font-bold border-t-2 border-slate-900 text-slate-900 text-[10px] sm:text-xs">
+                      <td colSpan={2} className="p-1.5 sm:p-2 text-center border-r border-slate-300 uppercase">TOTAL PENGELUARAN</td>
+                      <td className="p-1.5 sm:p-2 text-center border-r border-slate-300">{filteredExpenseDetails.length}</td>
+                      <td className="p-1.5 sm:p-2 text-right text-rose-900 font-extrabold whitespace-nowrap">Rp {filteredExpenseTotal.toLocaleString('id-ID')}</td>
                     </tr>
                   </tbody>
                 </table>
