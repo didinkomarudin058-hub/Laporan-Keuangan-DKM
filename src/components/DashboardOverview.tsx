@@ -387,7 +387,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                       </span>
                     </div>
                     <div className="text-[10px] text-slate-400 flex items-center gap-2">
-                      <span>{formatDateDDMMYYYY(trx.tanggal)}</span> • <span>Petugas: {trx.petugas}</span>
+                      <span>{formatDateDDMMYYYY(trx.tanggal)}</span>
                     </div>
                   </div>
 

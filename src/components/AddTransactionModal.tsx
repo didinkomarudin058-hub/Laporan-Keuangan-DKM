@@ -33,7 +33,6 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   const [keterangan, setKeterangan] = useState('');
   const [jumlah, setJumlah] = useState<number | ''>('');
   const [tanggal, setTanggal] = useState(new Date().toISOString().split('T')[0]);
-  const [petugas, setPetugas] = useState('H. Mohammad Ridwan');
   const [donatur, setDonatur] = useState('');
   const [metodePembayaran, setMetodePembayaran] = useState<string>('Tunai');
 
@@ -48,7 +47,6 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
       setKeterangan(editingTransaction.keterangan);
       setJumlah(editingTransaction.jumlah);
       setTanggal(editingTransaction.tanggal);
-      setPetugas(editingTransaction.petugas);
       setDonatur(editingTransaction.donatur || '');
       setMetodePembayaran(editingTransaction.metodePembayaran || 'Tunai');
     } else {
@@ -89,7 +87,6 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
         kategori: kategori || (jenis === 'pemasukan' ? 'Infaq Kotak Jumat' : 'Kebersihan & Perlengkapan'),
         keterangan,
         jumlah: Number(jumlah),
-        petugas,
         donatur: donatur.trim() ? donatur.trim() : undefined,
         metodePembayaran: metodePembayaran || 'Tunai',
         statusVerification: 'Terverifikasi',
@@ -301,20 +298,6 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
                 ))}
               </select>
             </div>
-          </div>
-
-          {/* Petugas Pencatat */}
-          <div>
-            <label className="block text-xs font-bold text-slate-700 mb-1">
-              Petugas DKM Pencatat
-            </label>
-            <input
-              type="text"
-              required
-              value={petugas}
-              onChange={(e) => setPetugas(e.target.value)}
-              className="w-full py-2 px-3 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
-            />
           </div>
 
           {/* Submit Actions */}

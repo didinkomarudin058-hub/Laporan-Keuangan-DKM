@@ -11,7 +11,7 @@ export interface Transaction {
   kategori: string; // e.g., 'Infaq Kotak Jumat', 'Listrik & Kebersihan', 'Honor Penceramah', 'Donatur Pembangunan'
   keterangan: string;
   jumlah: number;
-  petugas: string; // Name of DKM officer who logged it
+  petugas?: string; // Optional name of DKM officer
   donatur?: string; // Optional name or 'Hamba Allah'
   metodePembayaran: PaymentMethod;
   buktiUrl?: string; // Optional receipt/note image url or preview

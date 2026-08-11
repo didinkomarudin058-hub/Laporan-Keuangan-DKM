@@ -81,7 +81,6 @@ export const TransactionList: React.FC<TransactionListProps> = ({
     const matchesSearch = 
       t.kategori.toLowerCase().includes(searchLower) ||
       t.keterangan.toLowerCase().includes(searchLower) ||
-      t.petugas.toLowerCase().includes(searchLower) ||
       (t.donatur && t.donatur.toLowerCase().includes(searchLower)) ||
       t.id.toLowerCase().includes(searchLower);
 
@@ -126,7 +125,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
 
   // Export to CSV
   const handleExportCSV = () => {
-    const headers = ["ID", "Tanggal", "Jenis", "Pos Kas", "Kategori", "Keterangan", "Jumlah (Rp)", "Petugas DKM", "Donatur", "Metode"];
+    const headers = ["ID", "Tanggal", "Jenis", "Pos Kas", "Kategori", "Keterangan", "Jumlah (Rp)", "Donatur", "Metode"];
     const rows = sortedTransactions.map(t => [
       t.id,
       t.tanggal,
@@ -135,7 +134,6 @@ export const TransactionList: React.FC<TransactionListProps> = ({
       `"${t.kategori}"`,
       `"${t.keterangan.replace(/"/g, '""')}"`,
       t.jumlah,
-      `"${t.petugas}"`,
       `"${t.donatur || '-'}"`,
       t.metodePembayaran
     ]);
@@ -298,7 +296,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                 <th className="py-3 px-3">Tanggal</th>
                 <th className="py-3 px-3">Keterangan & Donatur</th>
                 <th className="py-3 px-3">Kategori & Pos Kas</th>
-                <th className="py-3 px-3">Petugas & Metode</th>
+                <th className="py-3 px-3">Metode Pembayaran</th>
                 <th className="py-3 px-3 text-right">Jumlah (Rp)</th>
                 <th className="py-3 px-3 text-center">Aksi</th>
               </tr>
@@ -336,8 +334,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                     </td>
 
                     <td className="py-3 px-3 whitespace-nowrap">
-                      <div className="text-slate-700 font-medium">{trx.petugas}</div>
-                      <span className="text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 inline-block mt-0.5">
+                      <span className="text-xs font-semibold text-slate-700 bg-slate-100 px-2 py-1 rounded border border-slate-200 inline-block">
                         {trx.metodePembayaran}
                       </span>
                     </td>
