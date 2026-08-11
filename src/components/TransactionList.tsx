@@ -15,7 +15,8 @@ import {
   X,
   Eye
 } from 'lucide-react';
-import { FundCategory, Transaction, TransactionType } from '../types';
+import { FundCategory, MosqueProfile, Transaction, TransactionType } from '../types';
+import { exportTransactionsToExcel } from '../lib/excelExport';
 
 interface TransactionListProps {
   transactions: Transaction[];
@@ -26,6 +27,7 @@ interface TransactionListProps {
   categoriesPemasukan?: string[];
   categoriesPengeluaran?: string[];
   posDanaList?: string[];
+  mosqueProfile?: MosqueProfile;
 }
 
 export const TransactionList: React.FC<TransactionListProps> = ({
@@ -37,6 +39,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
   categoriesPemasukan = [],
   categoriesPengeluaran = [],
   posDanaList = ['Kas Operasional', 'Kas Pembangunan'],
+  mosqueProfile,
 }) => {
   // State filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -58,6 +61,21 @@ export const TransactionList: React.FC<TransactionListProps> = ({
     if (parts.length === 3) {
       const [y, m, d] = parts;
       return `${d.padStart(2, '0')}-${m.padStart(2, '0')}-${y}`;
+    }
+    return dateStr;
+  };
+
+  const formatDateIndo = (dateStr: string) => {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      const [y, m, d] = parts;
+      const monthNames = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+        'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'
+      ];
+      const mIdx = parseInt(m, 10) - 1;
+      return `${parseInt(d, 10)} ${monthNames[mIdx] || m} ${y}`;
     }
     return dateStr;
   };
@@ -123,29 +141,18 @@ export const TransactionList: React.FC<TransactionListProps> = ({
     currentPage * itemsPerPage
   );
 
-  // Export to CSV
-  const handleExportCSV = () => {
-    const headers = ["ID", "Tanggal", "Jenis", "Pos Kas", "Kategori", "Keterangan", "Jumlah (Rp)", "Donatur", "Metode"];
-    const rows = sortedTransactions.map(t => [
-      t.id,
-      t.tanggal,
-      t.jenis === 'pemasukan' ? 'Pemasukan' : 'Pengeluaran',
-      `"${t.danaKat}"`,
-      `"${t.kategori}"`,
-      `"${t.keterangan.replace(/"/g, '""')}"`,
-      t.jumlah,
-      `"${t.donatur || '-'}"`,
-      t.metodePembayaran
-    ]);
+  // Export to Excel (.xlsx) with styled table and borders
+  const handleExportExcel = async () => {
+    const period = startDate && endDate 
+      ? `${formatDateIndo(startDate)} - ${formatDateIndo(endDate)}` 
+      : 'Semua Transaksi';
 
-    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `Laporan_Mutasi_Kas_DKM_${new Date().toISOString().slice(0,10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    await exportTransactionsToExcel({
+      transactions: sortedTransactions,
+      mosqueName: mosqueProfile?.namaMasjid || 'DKM Masjid',
+      periodText: period,
+      filename: `Jurnal_Mutasi_Kas_${mosqueProfile?.namaMasjid ? mosqueProfile.namaMasjid.replace(/\s+/g, '_') : 'DKM'}`,
+    });
   };
 
   return (
@@ -164,12 +171,12 @@ export const TransactionList: React.FC<TransactionListProps> = ({
 
         <div className="flex flex-wrap items-center gap-2">
           <button
-            onClick={handleExportCSV}
+            onClick={handleExportExcel}
             className="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-semibold text-xs py-2 px-3.5 rounded-lg flex items-center gap-1.5 transition cursor-pointer"
-            title="Download CSV / Microsoft Excel"
+            title="Ekspor Laporan Format Microsoft Excel (.xlsx)"
           >
             <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
-            <span>Export CSV / Excel</span>
+            <span>Ekspor Excel (.xlsx)</span>
           </button>
 
           <button
@@ -288,77 +295,90 @@ export const TransactionList: React.FC<TransactionListProps> = ({
       </div>
 
       {/* Main Table */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+          <div>
+            <h3 className="text-lg font-bold text-slate-900 tracking-tight">
+              Rincian Transaksi
+            </h3>
+            <p className="text-xs sm:text-sm text-slate-500 font-normal mt-0.5">
+              {filteredTransactions.length} transaksi · {startDate ? formatDateIndo(startDate) : 'Semua'} {endDate ? `s/d ${formatDateIndo(endDate)}` : ''}
+            </p>
+          </div>
+        </div>
+
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-left text-xs sm:text-sm border-collapse">
             <thead>
-              <tr className="bg-slate-50 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">
-                <th className="py-3 px-3">Tanggal</th>
-                <th className="py-3 px-3">Keterangan & Donatur</th>
-                <th className="py-3 px-3">Kategori & Pos Kas</th>
-                <th className="py-3 px-3">Metode Pembayaran</th>
-                <th className="py-3 px-3 text-right">Jumlah (Rp)</th>
-                <th className="py-3 px-3 text-center">Aksi</th>
+              <tr className="border-b border-slate-200 text-[11px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">
+                <th className="py-3 px-3 text-left">TANGGAL</th>
+                <th className="py-3 px-3 text-left">KETERANGAN</th>
+                <th className="py-3 px-3 text-left">KATEGORI</th>
+                <th className="py-3 px-3 text-left">KAS</th>
+                <th className="py-3 px-3 text-right">PEMASUKAN</th>
+                <th className="py-3 px-3 text-right">PENGELUARAN</th>
+                <th className="py-3 px-3 text-center">AKSI</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
+            <tbody className="divide-y divide-slate-100 text-slate-800 font-normal">
               {paginatedTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-slate-400">
+                  <td colSpan={7} className="py-12 text-center text-slate-400">
                     Tidak ditemukan data transaksi yang sesuai filter.
                   </td>
                 </tr>
               ) : (
                 paginatedTransactions.map((trx) => (
-                  <tr key={trx.id} className="hover:bg-slate-50/80 transition">
-                    <td className="py-3 px-3 whitespace-nowrap">
-                      <div className="font-bold text-slate-800">{formatDateDDMMYYYY(trx.tanggal)}</div>
-                      <span className="text-[10px] text-slate-400 font-mono">{trx.id}</span>
+                  <tr key={trx.id} className="hover:bg-slate-50/70 transition">
+                    <td className="py-3.5 px-3 whitespace-nowrap text-slate-800 font-medium">
+                      {formatDateIndo(trx.tanggal)}
                     </td>
 
-                    <td className="py-3 px-3 max-w-sm">
-                      <p className="text-slate-900 font-bold leading-snug">{trx.keterangan}</p>
+                    <td className="py-3.5 px-3 max-w-xs sm:max-w-md">
+                      <span className="text-slate-900 font-normal leading-relaxed">{trx.keterangan}</span>
                       {trx.donatur && (
-                        <div className="mt-0.5 text-[11px] text-emerald-700 font-medium flex items-center gap-1">
-                          <span>Donatur:</span>
-                          <span className="bg-amber-50 text-amber-800 px-1.5 py-0.2 rounded border border-amber-200/60">{trx.donatur}</span>
-                        </div>
+                        <span className="block text-xs text-emerald-700 mt-0.5">
+                          Donatur: {trx.donatur}
+                        </span>
                       )}
                     </td>
 
-                    <td className="py-3 px-3 whitespace-nowrap">
-                      <div className="font-semibold text-slate-700">{trx.kategori}</div>
-                      <span className="text-[10px] font-medium bg-emerald-50 text-emerald-800 border border-emerald-200 px-1.5 py-0.5 rounded inline-block mt-0.5">
-                        {trx.danaKat}
-                      </span>
+                    <td className="py-3.5 px-3 whitespace-nowrap text-slate-700">
+                      {trx.kategori}
                     </td>
 
-                    <td className="py-3 px-3 whitespace-nowrap">
-                      <span className="text-xs font-semibold text-slate-700 bg-slate-100 px-2 py-1 rounded border border-slate-200 inline-block">
-                        {trx.metodePembayaran}
-                      </span>
+                    <td className="py-3.5 px-3 whitespace-nowrap text-slate-700">
+                      {trx.danaKat || 'Kas Tunai'}
                     </td>
 
-                    <td className="py-3 px-3 text-right whitespace-nowrap font-extrabold text-sm">
+                    <td className="py-3.5 px-3 text-right whitespace-nowrap font-medium text-emerald-600">
                       {trx.jenis === 'pemasukan' ? (
-                        <span className="text-emerald-700">+Rp {trx.jumlah.toLocaleString('id-ID')}</span>
+                        `Rp ${trx.jumlah.toLocaleString('id-ID')}`
                       ) : (
-                        <span className="text-rose-600">-Rp {trx.jumlah.toLocaleString('id-ID')}</span>
+                        <span className="text-emerald-500">—</span>
                       )}
                     </td>
 
-                    <td className="py-3 px-3 text-center whitespace-nowrap">
+                    <td className="py-3.5 px-3 text-right whitespace-nowrap font-medium text-rose-600">
+                      {trx.jenis === 'pengeluaran' ? (
+                        `Rp ${trx.jumlah.toLocaleString('id-ID')}`
+                      ) : (
+                        <span className="text-rose-400">—</span>
+                      )}
+                    </td>
+
+                    <td className="py-3.5 px-3 text-center whitespace-nowrap">
                       <div className="flex items-center justify-center gap-1">
                         <button
                           onClick={() => onEditTransaction(trx)}
-                          className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 rounded transition cursor-pointer"
+                          className="p-1.5 text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 rounded transition cursor-pointer"
                           title="Edit Transaksi"
                         >
                           <Edit3 className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => setDeletingTrxId(trx.id)}
-                          className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded transition cursor-pointer"
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition cursor-pointer"
                           title="Hapus Transaksi"
                         >
                           <Trash2 className="w-4 h-4" />

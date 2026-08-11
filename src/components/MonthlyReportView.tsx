@@ -8,9 +8,11 @@ import {
   Filter,
   RotateCcw,
   Tag,
-  CalendarDays
+  CalendarDays,
+  FileSpreadsheet
 } from 'lucide-react';
 import { MosqueProfile, Transaction } from '../types';
+import { exportTransactionsToExcel } from '../lib/excelExport';
 
 interface MonthlyReportViewProps {
   transactions: Transaction[];
@@ -83,6 +85,22 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
     if (parts.length === 3) {
       const [y, m, d] = parts;
       return `${d.padStart(2, '0')}-${m.padStart(2, '0')}-${y}`;
+    }
+    return dateStr;
+  };
+
+  // Date formatting helper for "4 Mei 2023" or "31 Jul 2026"
+  const formatDateIndo = (dateStr: string) => {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      const [y, m, d] = parts;
+      const monthNames = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+        'Jul', 'Agt', 'Sep', 'Okt', 'Nov', 'Des'
+      ];
+      const mIdx = parseInt(m, 10) - 1;
+      return `${parseInt(d, 10)} ${monthNames[mIdx] || m} ${y}`;
     }
     return dateStr;
   };
@@ -224,6 +242,15 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
     window.print();
   };
 
+  const handleExportExcel = async () => {
+    await exportTransactionsToExcel({
+      transactions: filteredPeriodTransactions,
+      mosqueName: mosqueProfile.namaMasjid || 'Masjid',
+      periodText: `${formatDateIndo(effectiveStartDate)} - ${formatDateIndo(effectiveEndDate)}`,
+      filename: `Laporan_Keuangan_${mosqueProfile.namaMasjid ? mosqueProfile.namaMasjid.replace(/\s+/g, '_') : 'Masjid'}`,
+    });
+  };
+
   return (
     <div className="space-y-6 pb-12">
       {/* Top Bar Header */}
@@ -327,7 +354,16 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
             </div>
           )}
 
-          {/* Print Button */}
+          {/* Export Excel & Print Buttons */}
+          <button
+            onClick={handleExportExcel}
+            className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs py-2 px-3.5 rounded-lg shadow-sm flex items-center gap-1.5 transition cursor-pointer"
+            title="Ekspor Laporan Format Microsoft Excel (.xlsx)"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-200" />
+            <span>Ekspor Excel (.xlsx)</span>
+          </button>
+
           <button
             onClick={handlePrintReport}
             className="bg-amber-500 hover:bg-amber-400 text-emerald-950 font-bold text-xs py-2 px-3.5 rounded-lg shadow-sm flex items-center gap-1.5 transition cursor-pointer"
@@ -569,94 +605,83 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
           </div>
         </div>
 
-        {/* Detailed Income Table */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between bg-slate-100 p-2 rounded">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
-              II. RINCIAN PEMASUKAN DANA ({periodDateRangeStr})
-            </h4>
-            <span className="text-xs font-bold text-emerald-800">
-              Total: +Rp {filteredIncomeTotal.toLocaleString('id-ID')}
-            </span>
+        {/* II. Rincian Transaksi Table (Matching User Design) */}
+        <div className="space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1 pb-1 border-b border-slate-200">
+            <div>
+              <h3 className="text-base font-extrabold text-slate-900 tracking-tight">
+                Rincian Transaksi
+              </h3>
+              <p className="text-xs text-slate-500 font-normal mt-0.5">
+                {filteredPeriodTransactions.length} transaksi · {formatDateIndo(effectiveStartDate)} – {formatDateIndo(effectiveEndDate)}
+              </p>
+            </div>
+            <div className="text-xs text-slate-600 font-medium self-end sm:self-auto">
+              Pemasukan: <span className="font-bold text-emerald-700">Rp {filteredIncomeTotal.toLocaleString('id-ID')}</span> | Pengeluaran: <span className="font-bold text-rose-600">Rp {filteredExpenseTotal.toLocaleString('id-ID')}</span>
+            </div>
           </div>
 
-          {filteredIncomeDetails.length === 0 ? (
-            <p className="text-xs text-slate-500 italic p-2">Tidak ada transaksi pemasukan sesuai kriteria filter.</p>
-          ) : (
-            <table className="w-full text-left text-xs border-collapse border border-slate-300">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="bg-slate-100 font-bold border-b border-slate-300">
-                  <th className="p-2 border-r border-slate-300">Tgl</th>
-                  <th className="p-2 border-r border-slate-300">Keterangan / Donatur</th>
-                  <th className="p-2 border-r border-slate-300">Kategori & Pos Kas</th>
-                  <th className="p-2 text-right">Jumlah (Rp)</th>
+                <tr className="border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  <th className="py-2.5 px-2.5 text-left">TANGGAL</th>
+                  <th className="py-2.5 px-2.5 text-left">KETERANGAN</th>
+                  <th className="py-2.5 px-2.5 text-left">KATEGORI</th>
+                  <th className="py-2.5 px-2.5 text-left">KAS</th>
+                  <th className="py-2.5 px-2.5 text-right">PEMASUKAN</th>
+                  <th className="py-2.5 px-2.5 text-right">PENGELUARAN</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200">
-                {filteredIncomeDetails.map((inc) => (
-                  <tr key={inc.id}>
-                    <td className="p-2 border-r border-slate-300 whitespace-nowrap font-mono">{formatDateDDMMYYYY(inc.tanggal)}</td>
-                    <td className="p-2 border-r border-slate-300 font-medium">
-                      {inc.keterangan} {inc.donatur ? `[Donatur: ${inc.donatur}]` : ''}
-                    </td>
-                    <td className="p-2 border-r border-slate-300">
-                      <span className="bg-emerald-50 text-emerald-800 px-1.5 py-0.5 rounded border border-emerald-200 mr-1 font-semibold">
-                        {inc.kategori}
-                      </span>
-                      <span className="text-slate-500">({inc.danaKat})</span>
-                    </td>
-                    <td className="p-2 text-right font-semibold text-emerald-800">
-                      +{inc.jumlah.toLocaleString('id-ID')}
+              <tbody className="divide-y divide-slate-100 text-slate-800 font-normal">
+                {filteredPeriodTransactions.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-8 text-center text-slate-400 italic">
+                      Tidak ada transaksi pada periode ini.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  filteredPeriodTransactions.map((trx) => (
+                    <tr key={trx.id} className="hover:bg-slate-50/70 transition">
+                      <td className="py-3 px-2.5 whitespace-nowrap text-slate-800 font-medium">
+                        {formatDateIndo(trx.tanggal)}
+                      </td>
+                      <td className="py-3 px-2.5 max-w-xs sm:max-w-md">
+                        <span className="text-slate-900 font-normal leading-relaxed">
+                          {trx.keterangan}
+                        </span>
+                        {trx.donatur && (
+                          <span className="block text-[11px] text-emerald-700 mt-0.5">
+                            Donatur: {trx.donatur}
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 px-2.5 whitespace-nowrap text-slate-700">
+                        {trx.kategori}
+                      </td>
+                      <td className="py-3 px-2.5 whitespace-nowrap text-slate-700">
+                        {trx.danaKat || 'Kas Tunai'}
+                      </td>
+                      <td className="py-3 px-2.5 text-right whitespace-nowrap font-medium text-emerald-600">
+                        {trx.jenis === 'pemasukan' ? (
+                          `Rp ${trx.jumlah.toLocaleString('id-ID')}`
+                        ) : (
+                          <span className="text-emerald-500">—</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-2.5 text-right whitespace-nowrap font-medium text-rose-600">
+                        {trx.jenis === 'pengeluaran' ? (
+                          `Rp ${trx.jumlah.toLocaleString('id-ID')}`
+                        ) : (
+                          <span className="text-rose-400">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
-          )}
-        </div>
-
-        {/* Detailed Expense Table */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between bg-slate-100 p-2 rounded">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-800">
-              III. RINCIAN PENGELUARAN DANA ({periodDateRangeStr})
-            </h4>
-            <span className="text-xs font-bold text-rose-800">
-              Total: -Rp {filteredExpenseTotal.toLocaleString('id-ID')}
-            </span>
           </div>
-
-          {filteredExpenseDetails.length === 0 ? (
-            <p className="text-xs text-slate-500 italic p-2">Tidak ada transaksi pengeluaran sesuai kriteria filter.</p>
-          ) : (
-            <table className="w-full text-left text-xs border-collapse border border-slate-300">
-              <thead>
-                <tr className="bg-slate-100 font-bold border-b border-slate-300">
-                  <th className="p-2 border-r border-slate-300">Tgl</th>
-                  <th className="p-2 border-r border-slate-300">Keterangan Pengeluaran</th>
-                  <th className="p-2 border-r border-slate-300">Kategori & Pos Kas</th>
-                  <th className="p-2 text-right">Jumlah (Rp)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
-                {filteredExpenseDetails.map((exp) => (
-                  <tr key={exp.id}>
-                    <td className="p-2 border-r border-slate-300 whitespace-nowrap font-mono">{formatDateDDMMYYYY(exp.tanggal)}</td>
-                    <td className="p-2 border-r border-slate-300 font-medium">{exp.keterangan}</td>
-                    <td className="p-2 border-r border-slate-300">
-                      <span className="bg-rose-50 text-rose-800 px-1.5 py-0.5 rounded border border-rose-200 mr-1 font-semibold">
-                        {exp.kategori}
-                      </span>
-                      <span className="text-slate-500">({exp.danaKat})</span>
-                    </td>
-                    <td className="p-2 text-right font-semibold text-rose-800">
-                      -{exp.jumlah.toLocaleString('id-ID')}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
         </div>
 
         {/* Signatures Section */}

@@ -676,6 +676,7 @@ export default function App() {
             categoriesPemasukan={categoriesPemasukan}
             categoriesPengeluaran={categoriesPengeluaran}
             posDanaList={posDanaList}
+            mosqueProfile={mosqueProfile}
           />
         )}
 
