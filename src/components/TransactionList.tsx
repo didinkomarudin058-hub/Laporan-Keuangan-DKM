@@ -312,7 +312,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
             <thead>
               <tr className="border-b border-slate-200 text-[11px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">
                 <th className="py-3 px-3 text-left whitespace-nowrap">TANGGAL</th>
-                <th className="py-3 px-3 text-left">KETERANGAN</th>
+                <th className="py-3 px-3 text-left min-w-[200px] sm:min-w-[250px]">KETERANGAN</th>
                 <th className="py-3 px-3 text-left whitespace-nowrap">KATEGORI</th>
                 <th className="py-3 px-3 text-left whitespace-nowrap">KAS</th>
                 <th className="py-3 px-3 text-right whitespace-nowrap">PEMASUKAN</th>

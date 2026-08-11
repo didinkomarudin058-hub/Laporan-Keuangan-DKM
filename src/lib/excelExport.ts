@@ -89,9 +89,9 @@ export const exportTransactionsToExcel = async ({
   const columns = [
     { header: 'NO', key: 'no', width: 6 },
     { header: 'TANGGAL', key: 'tanggal', width: 15 },
-    { header: 'KETERANGAN', key: 'keterangan', width: 36 },
-    { header: 'KATEGORI', key: 'kategori', width: 20 },
-    { header: 'KAS', key: 'kas', width: 16 },
+    { header: 'KETERANGAN', key: 'keterangan', width: 48 },
+    { header: 'KATEGORI', key: 'kategori', width: 16 },
+    { header: 'KAS', key: 'kas', width: 15 },
     { header: 'PEMASUKAN (RP)', key: 'pemasukan', width: 18 },
     { header: 'PENGELUARAN (RP)', key: 'pengeluaran', width: 18 },
   ];
