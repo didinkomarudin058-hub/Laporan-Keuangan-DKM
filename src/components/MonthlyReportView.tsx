@@ -660,8 +660,8 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
         </div>
 
         {/* Signatures Section */}
-        <div className="pt-8 border-t border-slate-300">
-          <div className="text-xs text-slate-600 text-right font-medium mb-6">
+        <div className="pt-3 border-t border-slate-300">
+          <div className="text-xs text-slate-600 text-right font-medium mb-2">
             {getTitimangsaVillage(mosqueProfile) ? `${getTitimangsaVillage(mosqueProfile)}, ` : ''}{new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
           </div>
 
