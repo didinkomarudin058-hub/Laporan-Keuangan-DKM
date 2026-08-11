@@ -312,7 +312,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
             <thead>
               <tr className="border-b border-slate-200 text-[11px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">
                 <th className="py-3 px-3 text-left">TANGGAL</th>
-                <th className="py-3 px-3 text-left">KETERANGAN</th>
+                <th className="py-3 px-3 text-left min-w-[320px] sm:min-w-[420px]">KETERANGAN</th>
                 <th className="py-3 px-3 text-left">KATEGORI</th>
                 <th className="py-3 px-3 text-left">KAS</th>
                 <th className="py-3 px-3 text-right">PEMASUKAN</th>
@@ -334,7 +334,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                       {formatDateIndo(trx.tanggal)}
                     </td>
 
-                    <td className="py-3.5 px-3 max-w-xs sm:max-w-md">
+                    <td className="py-3.5 px-3 min-w-[320px] sm:min-w-[420px]">
                       <span className="text-slate-900 font-normal leading-relaxed">{trx.keterangan}</span>
                       {trx.donatur && (
                         <span className="block text-xs text-emerald-700 mt-0.5">

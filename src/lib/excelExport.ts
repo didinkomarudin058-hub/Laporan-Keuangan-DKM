@@ -83,7 +83,7 @@ export const exportTransactionsToExcel = async ({
   const columns = [
     { header: 'NO', key: 'no', width: 6 },
     { header: 'TANGGAL', key: 'tanggal', width: 16 },
-    { header: 'KETERANGAN', key: 'keterangan', width: 45 },
+    { header: 'KETERANGAN', key: 'keterangan', width: 75 },
     { header: 'KATEGORI', key: 'kategori', width: 26 },
     { header: 'KAS', key: 'kas', width: 18 },
     { header: 'PEMASUKAN (RP)', key: 'pemasukan', width: 22 },
