@@ -3,7 +3,7 @@ import {
   Building2,
   ListFilter,
   FileText,
-  Settings,
+  QrCode,
   Plus,
 } from 'lucide-react';
 
@@ -12,20 +12,21 @@ interface MobileBottomNavProps {
   setActiveTab: (tab: 'dashboard' | 'transactions' | 'monthlyReport' | 'analytics' | 'tvMode') => void;
   onOpenAddModal: () => void;
   onOpenSettingsModal: () => void;
+  onOpenQrModal?: () => void;
 }
 
 export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   activeTab,
   setActiveTab,
   onOpenAddModal,
-  onOpenSettingsModal,
+  onOpenQrModal,
 }) => {
   return (
     <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 text-slate-400 px-2 py-2 shadow-2xl flex justify-around items-center print:hidden">
       {/* 1. Ikhtisar */}
       <button
         onClick={() => setActiveTab('dashboard')}
-        className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg transition text-[11px] font-semibold ${
+        className={`flex flex-col items-center justify-center py-1 px-2 rounded-lg transition text-[11px] font-semibold ${
           activeTab === 'dashboard'
             ? 'text-amber-400 bg-slate-800/80'
             : 'text-slate-400 hover:text-white'
@@ -38,7 +39,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       {/* 2. Transaksi */}
       <button
         onClick={() => setActiveTab('transactions')}
-        className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg transition text-[11px] font-semibold ${
+        className={`flex flex-col items-center justify-center py-1 px-2 rounded-lg transition text-[11px] font-semibold ${
           activeTab === 'transactions'
             ? 'text-amber-400 bg-slate-800/80'
             : 'text-slate-400 hover:text-white'
@@ -60,7 +61,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       {/* 4. Laporan */}
       <button
         onClick={() => setActiveTab('monthlyReport')}
-        className={`flex flex-col items-center justify-center py-1 px-3 rounded-lg transition text-[11px] font-semibold ${
+        className={`flex flex-col items-center justify-center py-1 px-2 rounded-lg transition text-[11px] font-semibold ${
           activeTab === 'monthlyReport'
             ? 'text-amber-400 bg-slate-800/80'
             : 'text-slate-400 hover:text-white'
@@ -70,15 +71,17 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         <span>Laporan</span>
       </button>
 
-      {/* 5. Menu Pengaturan */}
-      <button
-        onClick={onOpenSettingsModal}
-        className="flex flex-col items-center justify-center py-1 px-3 rounded-lg transition text-[11px] font-semibold text-slate-400 hover:text-white"
-        title="Menu Pengaturan DKM"
-      >
-        <Settings className="w-5 h-5 mb-0.5 text-emerald-400" />
-        <span>Menu</span>
-      </button>
+      {/* 5. Scan QR Barcode */}
+      {onOpenQrModal ? (
+        <button
+          onClick={onOpenQrModal}
+          className="flex flex-col items-center justify-center py-1 px-2 rounded-lg transition text-[11px] font-bold text-amber-400 hover:text-amber-300"
+          title="Scan Barcode / QR Laporan Keuangan"
+        >
+          <QrCode className="w-5 h-5 mb-0.5 text-amber-400" />
+          <span>Scan QR</span>
+        </button>
+      ) : null}
     </div>
   );
 };

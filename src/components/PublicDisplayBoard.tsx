@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Building2, ShieldCheck, QrCode, Tv, Calendar, HeartHandshake, CircleDollarSign, Building, Wallet, Sparkles } from 'lucide-react';
+import QRCode from 'qrcode';
 import { MosqueProfile, Transaction } from '../types';
 
 interface PublicDisplayBoardProps {
@@ -12,6 +13,7 @@ export const PublicDisplayBoard: React.FC<PublicDisplayBoardProps> = ({
   mosqueProfile,
 }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [qrDataUrl, setQrDataUrl] = useState<string>('');
 
   // Update clock every second
   useEffect(() => {
@@ -19,6 +21,30 @@ export const PublicDisplayBoard: React.FC<PublicDisplayBoardProps> = ({
       setCurrentTime(new Date());
     }, 1000);
     return () => clearInterval(timer);
+  }, []);
+
+  // Generate QR Code for public report access
+  useEffect(() => {
+    const publicReportUrl = typeof window !== 'undefined'
+      ? `${window.location.origin}${window.location.pathname}?view=public`
+      : 'https://masjid-keuangan.app?view=public';
+
+    QRCode.toDataURL(
+      publicReportUrl,
+      {
+        width: 300,
+        margin: 1,
+        color: {
+          dark: '#0f172a',
+          light: '#ffffff',
+        },
+      },
+      (err, url) => {
+        if (!err && url) {
+          setQrDataUrl(url);
+        }
+      }
+    );
   }, []);
 
   // Compute balances
@@ -179,15 +205,19 @@ export const PublicDisplayBoard: React.FC<PublicDisplayBoardProps> = ({
           </div>
         </div>
 
-        <div className="flex flex-col items-center justify-center p-4 bg-white rounded-xl text-slate-900 shadow-inner space-y-2">
-          <div className="w-32 h-32 bg-slate-100 border-2 border-slate-900 rounded-lg flex flex-col items-center justify-center p-2 text-center">
-            <QrCode className="w-20 h-20 text-slate-900" />
-            <span className="text-[10px] font-black uppercase text-slate-800 tracking-wider mt-1">
-              SCAN QRIS MASJID
+        <div className="flex flex-col items-center justify-center p-4 bg-white rounded-xl text-slate-900 shadow-inner space-y-1.5">
+          <div className="w-32 h-32 bg-white border-2 border-slate-900 rounded-xl flex flex-col items-center justify-center p-1.5 text-center shadow-xs">
+            {qrDataUrl ? (
+              <img src={qrDataUrl} alt="QR Laporan Keuangan" className="w-24 h-24 object-contain" />
+            ) : (
+              <QrCode className="w-20 h-20 text-slate-900" />
+            )}
+            <span className="text-[9px] font-black uppercase text-slate-900 tracking-wider">
+              SCAN QR LAPORAN
             </span>
           </div>
-          <div className="text-[10px] font-bold text-center text-slate-700">
-            Mendukung QRIS Seluruh Bank & E-Wallet
+          <div className="text-[10px] font-extrabold text-center text-emerald-800">
+            Akses Laporan Keuangan Real-Time
           </div>
         </div>
       </div>

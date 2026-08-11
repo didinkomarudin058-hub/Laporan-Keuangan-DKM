@@ -6,6 +6,7 @@ import {
   BarChart3,
   ListFilter,
   Settings,
+  QrCode,
 } from 'lucide-react';
 import { User } from 'firebase/auth';
 import { MosqueProfile } from '../types';
@@ -15,6 +16,7 @@ interface NavbarProps {
   activeTab: 'dashboard' | 'transactions' | 'monthlyReport' | 'analytics' | 'tvMode';
   setActiveTab: (tab: 'dashboard' | 'transactions' | 'monthlyReport' | 'analytics' | 'tvMode') => void;
   onOpenSettingsModal: (tab?: 'profile' | 'account' | 'categories' | 'backup' | 'pwa') => void;
+  onOpenQrModal?: () => void;
   onOpenPwaModal?: () => void;
   currentUser?: User | null;
 }
@@ -24,6 +26,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
   onOpenSettingsModal,
+  onOpenQrModal,
 }) => {
   return (
     <header id="dkm-app-navbar" className="bg-emerald-900 text-white shadow-md border-b border-emerald-800 sticky top-0 z-30 print:hidden">
@@ -47,9 +50,24 @@ export const Navbar: React.FC<NavbarProps> = ({
               {mosqueProfile.namaMasjid}
             </h1>
             <p className="text-xs text-emerald-200/90 font-normal">
-              {[mosqueProfile.alamat, mosqueProfile.desa ? `Desa ${mosqueProfile.desa}` : '', mosqueProfile.kota].filter(Boolean).join(', ')}
+              {[mosqueProfile.alamat, mosqueProfile.desa ? `Desa ${mosqueProfile.desa}` : '', mosqueProfile.kota].filter(Boolean).join(' ')}
             </p>
           </div>
+        </div>
+
+        {/* Top Header Quick QR Button */}
+        <div className="flex items-center gap-2">
+          {onOpenQrModal && (
+            <button
+              onClick={onOpenQrModal}
+              className="py-1.5 px-3 bg-amber-400 hover:bg-amber-300 text-emerald-950 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-md transition-all border border-amber-300 active:scale-95 cursor-pointer"
+              title="Scan Barcode / Cetak QR Laporan Jamaah"
+            >
+              <QrCode className="w-4 h-4 text-emerald-950" />
+              <span className="hidden sm:inline">Scan / QR Laporan</span>
+              <span className="sm:hidden">Scan QR</span>
+            </button>
+          )}
         </div>
       </div>
 
