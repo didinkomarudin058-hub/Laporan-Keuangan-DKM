@@ -8,7 +8,6 @@ import { PublicDisplayBoard } from './components/PublicDisplayBoard';
 import { AddTransactionModal } from './components/AddTransactionModal';
 import { MosqueSettingsModal } from './components/MosqueSettingsModal';
 import { PwaInstallModal } from './components/PwaInstallModal';
-import { QrScanModal } from './components/QrScanModal';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { FundCategory, MosqueProfile, Transaction, TransactionType } from './types';
 import {
@@ -247,9 +246,6 @@ export default function App() {
   // PWA Modal State
   const [isPwaModalOpen, setIsPwaModalOpen] = useState(false);
 
-  // QR Barcode Modal State
-  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
-
   // Toast Banner for Back Button / System Notifications
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const lastBackPressTimeRef = useRef<number>(0);
@@ -301,11 +297,6 @@ export default function App() {
       }
       if (isPwaModalOpen) {
         setIsPwaModalOpen(false);
-        window.history.pushState({ tab: activeTab }, '');
-        return;
-      }
-      if (isQrModalOpen) {
-        setIsQrModalOpen(false);
         window.history.pushState({ tab: activeTab }, '');
         return;
       }
@@ -654,7 +645,6 @@ export default function App() {
         setActiveTab={setActiveTab}
         onOpenSettingsModal={(tab) => handleOpenSettingsModal(tab || 'profile')}
         onOpenPwaModal={() => setIsPwaModalOpen(true)}
-        onOpenQrModal={() => setIsQrModalOpen(true)}
         currentUser={currentUser}
       />
 
@@ -701,7 +691,6 @@ export default function App() {
             }}
             categoriesPemasukan={categoriesPemasukan}
             categoriesPengeluaran={categoriesPengeluaran}
-            onOpenQrModal={() => setIsQrModalOpen(true)}
           />
         )}
 
@@ -730,7 +719,6 @@ export default function App() {
         setActiveTab={setActiveTab}
         onOpenAddModal={() => handleOpenAddModal()}
         onOpenSettingsModal={() => handleOpenSettingsModal('profile')}
-        onOpenQrModal={() => setIsQrModalOpen(true)}
       />
 
       {/* Footer */}
@@ -799,15 +787,6 @@ export default function App() {
         onClose={() => setIsPwaModalOpen(false)}
         deferredPrompt={deferredPrompt}
         onInstallClick={handleInstallPWA}
-      />
-
-      {/* QR Barcode Scan & Poster Modal */}
-      <QrScanModal
-        isOpen={isQrModalOpen}
-        onClose={() => setIsQrModalOpen(false)}
-        mosqueProfile={mosqueProfile}
-        onOpenPublicBoard={() => setActiveTab('tvMode')}
-        onOpenMonthlyReport={() => setActiveTab('monthlyReport')}
       />
     </div>
   );

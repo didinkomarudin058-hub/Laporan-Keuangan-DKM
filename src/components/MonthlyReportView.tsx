@@ -8,8 +8,7 @@ import {
   Filter,
   RotateCcw,
   Tag,
-  CalendarDays,
-  QrCode
+  CalendarDays
 } from 'lucide-react';
 import { MosqueProfile, Transaction } from '../types';
 
@@ -22,7 +21,6 @@ interface MonthlyReportViewProps {
   categoriesPemasukan?: string[];
   categoriesPengeluaran?: string[];
   posDanaList?: string[];
-  onOpenQrModal?: () => void;
 }
 
 export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
@@ -34,7 +32,6 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
   categoriesPemasukan = [],
   categoriesPengeluaran = [],
   posDanaList = ['Kas Operasional', 'Kas Pembangunan'],
-  onOpenQrModal,
 }) => {
   // Period Mode State: 'bulanan' | 'tahunan' | 'custom'
   const [reportPeriodType, setReportPeriodType] = useState<'bulanan' | 'tahunan' | 'custom'>('bulanan');
@@ -338,18 +335,6 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
             <Printer className="w-4 h-4" />
             <span>Cetak PDF Laporan</span>
           </button>
-
-          {/* QR Code Barcode Button */}
-          {onOpenQrModal && (
-            <button
-              onClick={onOpenQrModal}
-              className="bg-emerald-800 hover:bg-emerald-700 text-white font-bold text-xs py-2 px-3.5 rounded-lg shadow-sm flex items-center gap-1.5 transition cursor-pointer border border-emerald-600"
-              title="Scan atau Cetak QR Barcode Laporan Jamaah"
-            >
-              <QrCode className="w-4 h-4 text-amber-300" />
-              <span>QR Laporan Jamaah</span>
-            </button>
-          )}
         </div>
       </div>
 
