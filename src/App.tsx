@@ -13,6 +13,8 @@ import { FundCategory, MosqueProfile, Transaction, TransactionType } from './typ
 import {
   initialMosqueProfile,
   initialTransactions,
+  alMamurMosqueProfile,
+  alMamurTransactions,
   CATEGORIES_PEMASUKAN,
   CATEGORIES_PENGELUARAN,
 } from './data/initialData';
@@ -47,6 +49,13 @@ export default function App() {
     'Cek',
   ];
 
+  // Helper for per-account isolated storage
+  const getAccountKey = (key: string, user: any | null) => {
+    if (!user) return key;
+    const userIdentifier = user.uid || (user.email ? `email_${user.email.replace(/[^a-z0-9]/gi, '_')}` : 'default');
+    return `${key}_acc_${userIdentifier}`;
+  };
+
   // Firebase & Local Auth State
   const [currentUser, setCurrentUser] = useState<User | any | null>(null);
 
@@ -60,7 +69,7 @@ export default function App() {
         console.error(e);
       }
     }
-    return initialMosqueProfile;
+    return alMamurMosqueProfile;
   });
 
   // State: Transactions List
@@ -69,7 +78,7 @@ export default function App() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
+        if (Array.isArray(parsed) && parsed.length > 0) {
           return parsed.map((t: any) => ({
             ...t,
             danaKat: /yatim|zakat/i.test(t.danaKat || '') ? 'Kas Operasional' : t.danaKat,
@@ -79,7 +88,7 @@ export default function App() {
         console.error(e);
       }
     }
-    return initialTransactions;
+    return alMamurTransactions;
   });
 
   // State: Transaction Categories
@@ -137,30 +146,118 @@ export default function App() {
     return DEFAULT_METODE_PEMBAYARAN;
   });
 
-  // Save to LocalStorage
+  // Load account data when currentUser changes
+  useEffect(() => {
+    if (!currentUser) return;
+    const uid = currentUser.uid || '';
+    const email = (currentUser.email || '').toLowerCase();
+    const isAlMamur =
+      email.includes('didinkomarudin') ||
+      uid.includes('didinkomarudin') ||
+      uid.includes('almamur') ||
+      (currentUser.displayName && /al-?ma['’`]?mur/i.test(currentUser.displayName)) ||
+      (currentUser.mosqueName && /al-?ma['’`]?mur/i.test(currentUser.mosqueName));
+
+    const keyProfile = getAccountKey(STORAGE_KEY_PROFILE, currentUser);
+    const keyTrxs = getAccountKey(STORAGE_KEY_TRANSACTIONS, currentUser);
+    const keyCatIn = getAccountKey(STORAGE_KEY_CATEGORIES_PEMASUKAN, currentUser);
+    const keyCatOut = getAccountKey(STORAGE_KEY_CATEGORIES_PENGELUARAN, currentUser);
+    const keyPos = getAccountKey(STORAGE_KEY_POS_DANA, currentUser);
+    const keyPay = getAccountKey(STORAGE_KEY_METODE_PEMBAYARAN, currentUser);
+
+    const savedProfile = localStorage.getItem(keyProfile);
+    if (savedProfile) {
+      try {
+        setMosqueProfile(JSON.parse(savedProfile));
+      } catch (e) {
+        console.error(e);
+      }
+    } else if (isAlMamur) {
+      setMosqueProfile(alMamurMosqueProfile);
+    } else {
+      setMosqueProfile(initialMosqueProfile);
+    }
+
+    const savedTrxs = localStorage.getItem(keyTrxs);
+    if (savedTrxs) {
+      try {
+        const parsed = JSON.parse(savedTrxs);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setTransactions(parsed);
+        } else if (isAlMamur) {
+          setTransactions(alMamurTransactions);
+        } else {
+          setTransactions(initialTransactions);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    } else if (isAlMamur) {
+      setTransactions(alMamurTransactions);
+    } else {
+      setTransactions(initialTransactions);
+    }
+
+    const savedCatIn = localStorage.getItem(keyCatIn);
+    if (savedCatIn) {
+      try { setCategoriesPemasukan(JSON.parse(savedCatIn)); } catch {}
+    }
+    const savedCatOut = localStorage.getItem(keyCatOut);
+    if (savedCatOut) {
+      try { setCategoriesPengeluaran(JSON.parse(savedCatOut)); } catch {}
+    }
+    const savedPos = localStorage.getItem(keyPos);
+    if (savedPos) {
+      try { setPosDanaList(JSON.parse(savedPos)); } catch {}
+    }
+    const savedPay = localStorage.getItem(keyPay);
+    if (savedPay) {
+      try { setMetodePembayaranList(JSON.parse(savedPay)); } catch {}
+    }
+  }, [currentUser?.uid, currentUser?.email]);
+
+  // Save to LocalStorage (both global active & user-scoped)
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_PROFILE, JSON.stringify(mosqueProfile));
-  }, [mosqueProfile]);
+    if (currentUser) {
+      localStorage.setItem(getAccountKey(STORAGE_KEY_PROFILE, currentUser), JSON.stringify(mosqueProfile));
+    }
+  }, [mosqueProfile, currentUser]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_TRANSACTIONS, JSON.stringify(transactions));
-  }, [transactions]);
+    if (currentUser) {
+      localStorage.setItem(getAccountKey(STORAGE_KEY_TRANSACTIONS, currentUser), JSON.stringify(transactions));
+    }
+  }, [transactions, currentUser]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_CATEGORIES_PEMASUKAN, JSON.stringify(categoriesPemasukan));
-  }, [categoriesPemasukan]);
+    if (currentUser) {
+      localStorage.setItem(getAccountKey(STORAGE_KEY_CATEGORIES_PEMASUKAN, currentUser), JSON.stringify(categoriesPemasukan));
+    }
+  }, [categoriesPemasukan, currentUser]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_CATEGORIES_PENGELUARAN, JSON.stringify(categoriesPengeluaran));
-  }, [categoriesPengeluaran]);
+    if (currentUser) {
+      localStorage.setItem(getAccountKey(STORAGE_KEY_CATEGORIES_PENGELUARAN, currentUser), JSON.stringify(categoriesPengeluaran));
+    }
+  }, [categoriesPengeluaran, currentUser]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_POS_DANA, JSON.stringify(posDanaList));
-  }, [posDanaList]);
+    if (currentUser) {
+      localStorage.setItem(getAccountKey(STORAGE_KEY_POS_DANA, currentUser), JSON.stringify(posDanaList));
+    }
+  }, [posDanaList, currentUser]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_METODE_PEMBAYARAN, JSON.stringify(metodePembayaranList));
-  }, [metodePembayaranList]);
+    if (currentUser) {
+      localStorage.setItem(getAccountKey(STORAGE_KEY_METODE_PEMBAYARAN, currentUser), JSON.stringify(metodePembayaranList));
+    }
+  }, [metodePembayaranList, currentUser]);
 
   // Subscribe to Firebase Auth
   useEffect(() => {

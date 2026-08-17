@@ -78,25 +78,66 @@ export interface LocalUserAccount {
   email: string;
   password?: string;
   displayName?: string;
+  mosqueName?: string;
   createdAt: string;
 }
 
 const LOCAL_USERS_KEY = 'dkm_local_users_db_v1';
 const CURRENT_LOCAL_USER_KEY = 'dkm_current_user_v1';
 
+export const DEFAULT_REAL_ACCOUNTS: LocalUserAccount[] = [
+  {
+    uid: 'dkm-user-didinkomarudin058_gmail_com',
+    email: 'didinkomarudin058@gmail.com',
+    displayName: 'H. Didin Komarudin',
+    mosqueName: "Masjid Al-Ma'mur",
+    createdAt: new Date().toISOString(),
+  },
+  {
+    uid: 'dkm-user-dkm_albarokah_gmail_com',
+    email: 'dkm.albarokah@gmail.com',
+    displayName: 'DKM Al-Barokah',
+    mosqueName: 'Masjid Raya Al-Barokah',
+    createdAt: new Date().toISOString(),
+  },
+];
+
 export const getStoredLocalUsers = (): LocalUserAccount[] => {
   try {
     const saved = localStorage.getItem(LOCAL_USERS_KEY);
-    return saved ? JSON.parse(saved) : [];
+    const parsed: LocalUserAccount[] = saved ? JSON.parse(saved) : [];
+    
+    // Ensure default real accounts are always present in the list
+    const combined = [...parsed];
+    DEFAULT_REAL_ACCOUNTS.forEach((def) => {
+      if (!combined.some((u) => u.email.toLowerCase() === def.email.toLowerCase())) {
+        combined.push(def);
+      }
+    });
+
+    if (combined.length !== parsed.length) {
+      localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(combined));
+    }
+    return combined;
   } catch {
-    return [];
+    return DEFAULT_REAL_ACCOUNTS;
   }
 };
 
 export const getStoredCurrentLocalUser = (): any | null => {
   try {
     const saved = localStorage.getItem(CURRENT_LOCAL_USER_KEY);
-    return saved ? JSON.parse(saved) : null;
+    if (saved) return JSON.parse(saved);
+    // Default to the first account (didinkomarudin058@gmail.com - Masjid Al-Ma'mur) if not set
+    const defaultUser = {
+      uid: 'dkm-user-didinkomarudin058_gmail_com',
+      email: 'didinkomarudin058@gmail.com',
+      displayName: "Masjid Al-Ma'mur",
+      mosqueName: "Masjid Al-Ma'mur",
+      isLocal: true,
+    };
+    localStorage.setItem(CURRENT_LOCAL_USER_KEY, JSON.stringify(defaultUser));
+    return defaultUser;
   } catch {
     return null;
   }
@@ -109,6 +150,17 @@ export const setStoredCurrentLocalUser = (user: any | null) => {
     localStorage.removeItem(CURRENT_LOCAL_USER_KEY);
   }
   window.dispatchEvent(new Event('dkm_auth_state_changed'));
+};
+
+export const switchActiveUserAccount = (account: LocalUserAccount) => {
+  const userObj = {
+    uid: account.uid,
+    email: account.email,
+    displayName: account.mosqueName || account.displayName || account.email.split('@')[0],
+    mosqueName: account.mosqueName,
+    isLocal: true,
+  };
+  setStoredCurrentLocalUser(userObj);
 };
 
 // Authentication Services
