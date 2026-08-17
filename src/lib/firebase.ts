@@ -286,7 +286,24 @@ export const subscribeAuth = (callback: (user: any | null) => void) => {
   };
 };
 
-// Firestore Sync Services for Logged-In Account
+// Persistent Mosque Public Cloud ID for Barcode Sharing
+const MOSQUE_CLOUD_ID_KEY = 'dkm_mosque_cloud_public_id_v1';
+
+export const getOrCreateMosquePublicId = (): string => {
+  try {
+    let saved = localStorage.getItem(MOSQUE_CLOUD_ID_KEY);
+    if (!saved) {
+      // Generate a stable unique ID for this DKM mosque instance
+      saved = 'dkm_' + Math.random().toString(36).substring(2, 10) + '_' + Date.now().toString(36);
+      localStorage.setItem(MOSQUE_CLOUD_ID_KEY, saved);
+    }
+    return saved;
+  } catch {
+    return 'dkm_masjid_utama';
+  }
+};
+
+// Firestore Sync Services for Logged-In Account or Public Mosque ID
 export const subscribeFirestoreData = (
   userId: string,
   onDataUpdate: (data: {
@@ -302,30 +319,42 @@ export const subscribeFirestoreData = (
 
   // Listen to Settings doc
   const settingsRef = doc(db, 'users', userId, 'settings', 'config');
-  const unsubscribeSettings = onSnapshot(settingsRef, (docSnap) => {
-    if (docSnap.exists()) {
-      const data = docSnap.data();
-      onDataUpdate({
-        mosqueProfile: data.mosqueProfile,
-        categoriesPemasukan: data.categoriesPemasukan,
-        categoriesPengeluaran: data.categoriesPengeluaran,
-        posDanaList: data.posDanaList,
-        metodePembayaranList: data.metodePembayaranList,
-      });
+  const unsubscribeSettings = onSnapshot(
+    settingsRef,
+    (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        onDataUpdate({
+          mosqueProfile: data.mosqueProfile,
+          categoriesPemasukan: data.categoriesPemasukan,
+          categoriesPengeluaran: data.categoriesPengeluaran,
+          posDanaList: data.posDanaList,
+          metodePembayaranList: data.metodePembayaranList,
+        });
+      }
+    },
+    (err) => {
+      console.warn('Firestore settings subscription notice:', err);
     }
-  });
+  );
 
   // Listen to Transactions Collection
   const transactionsColl = collection(db, 'users', userId, 'transactions');
-  const unsubscribeTransactions = onSnapshot(transactionsColl, (querySnap) => {
-    const trxs: Transaction[] = [];
-    querySnap.forEach((docSnap) => {
-      trxs.push({ id: docSnap.id, ...docSnap.data() } as Transaction);
-    });
-    // Sort by date descending
-    trxs.sort((a, b) => b.tanggal.localeCompare(a.tanggal));
-    onDataUpdate({ transactions: trxs });
-  });
+  const unsubscribeTransactions = onSnapshot(
+    transactionsColl,
+    (querySnap) => {
+      const trxs: Transaction[] = [];
+      querySnap.forEach((docSnap) => {
+        trxs.push({ id: docSnap.id, ...docSnap.data() } as Transaction);
+      });
+      // Sort by date descending
+      trxs.sort((a, b) => b.tanggal.localeCompare(a.tanggal));
+      onDataUpdate({ transactions: trxs });
+    },
+    (err) => {
+      console.warn('Firestore transactions subscription notice:', err);
+    }
+  );
 
   return () => {
     unsubscribeSettings();
@@ -333,7 +362,54 @@ export const subscribeFirestoreData = (
   };
 };
 
-// Save Profile & Categories to Firestore
+export enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+export interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+    tenantId?: string | null;
+    providerInfo?: {
+      providerId?: string | null;
+      email?: string | null;
+    }[];
+  };
+}
+
+export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: auth.currentUser?.uid,
+      email: auth.currentUser?.email,
+      emailVerified: auth.currentUser?.emailVerified,
+      isAnonymous: auth.currentUser?.isAnonymous,
+      tenantId: auth.currentUser?.tenantId,
+      providerInfo: auth.currentUser?.providerData?.map((provider) => ({
+        providerId: provider.providerId,
+        email: provider.email,
+      })) || [],
+    },
+    operationType,
+    path,
+  };
+  console.warn('Firestore Operation Notice:', JSON.stringify(errInfo));
+  return errInfo;
+}
+
+// Save Profile & Categories to Firestore (Only when authenticated)
 export const saveSettingsToFirestore = async (
   userId: string,
   settings: {
@@ -344,39 +420,43 @@ export const saveSettingsToFirestore = async (
     metodePembayaranList?: string[];
   }
 ) => {
-  if (!userId) return;
+  if (!userId || !auth.currentUser || auth.currentUser.uid !== userId) return;
+  const path = `users/${userId}/settings/config`;
   try {
     const settingsRef = doc(db, 'users', userId, 'settings', 'config');
     await setDoc(settingsRef, settings, { merge: true });
   } catch (e) {
-    console.error('Error saving settings to Firestore:', e);
+    handleFirestoreError(e, OperationType.WRITE, path);
   }
 };
 
 // Save individual or all transactions to Firestore
 export const saveTransactionToFirestore = async (userId: string, trx: Transaction) => {
-  if (!userId) return;
+  if (!userId || !auth.currentUser || auth.currentUser.uid !== userId) return;
+  const path = `users/${userId}/transactions/${trx.id}`;
   try {
     const docRef = doc(db, 'users', userId, 'transactions', trx.id);
     await setDoc(docRef, trx);
   } catch (e) {
-    console.error('Error saving transaction to Firestore:', e);
+    handleFirestoreError(e, OperationType.WRITE, path);
   }
 };
 
 export const deleteTransactionFromFirestore = async (userId: string, trxId: string) => {
-  if (!userId) return;
+  if (!userId || !auth.currentUser || auth.currentUser.uid !== userId) return;
+  const path = `users/${userId}/transactions/${trxId}`;
   try {
     const docRef = doc(db, 'users', userId, 'transactions', trxId);
     await deleteDoc(docRef);
   } catch (e) {
-    console.error('Error deleting transaction from Firestore:', e);
+    handleFirestoreError(e, OperationType.DELETE, path);
   }
 };
 
 // Batch upload all transactions to Firestore (for Initial Sync or Import Backup)
 export const bulkSaveTransactionsToFirestore = async (userId: string, transactions: Transaction[]) => {
-  if (!userId) return;
+  if (!userId || !auth.currentUser || auth.currentUser.uid !== userId) return;
+  const path = `users/${userId}/transactions`;
   try {
     // Write in chunks of 400 (Firestore batch limit is 500)
     const chunkSize = 400;
@@ -390,6 +470,6 @@ export const bulkSaveTransactionsToFirestore = async (userId: string, transactio
       await batch.commit();
     }
   } catch (e) {
-    console.error('Error bulk saving transactions to Firestore:', e);
+    handleFirestoreError(e, OperationType.WRITE, path);
   }
 };

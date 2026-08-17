@@ -72,44 +72,20 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Right Header Quick Action Buttons */}
         <div className="flex items-center gap-2">
-          {/* Barcode Transparansi Jamaah Button */}
-          {onOpenQrModal && (
+          {!isJamaahMode ? (
             <button
-              onClick={onOpenQrModal}
-              className="bg-amber-400 hover:bg-amber-300 text-emerald-950 font-bold text-xs px-2.5 sm:px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition shadow-sm cursor-pointer shrink-0"
-              title="Tampilkan Barcode Transparansi Kas untuk Jamaah"
+              onClick={() => onOpenSettingsModal('profile')}
+              className="bg-emerald-800/80 hover:bg-emerald-700 text-emerald-100 font-semibold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition border border-emerald-700 shadow-xs cursor-pointer shrink-0"
+              title="Buka Menu Pengaturan DKM & Barcode"
             >
-              <QrCode className="w-4 h-4 text-emerald-950" />
-              <span className="hidden sm:inline">Barcode Jamaah</span>
-              <span className="sm:hidden">Barcode</span>
+              <Settings className="w-3.5 h-3.5 text-amber-300" />
+              <span>Pengaturan</span>
             </button>
-          )}
-
-          {/* Mode Switcher */}
-          {onToggleJamaahMode && (
-            <button
-              onClick={onToggleJamaahMode}
-              className={`text-xs font-semibold px-2.5 sm:px-3 py-1.5 rounded-lg flex items-center gap-1.5 border transition cursor-pointer shrink-0 ${
-                isJamaahMode
-                  ? 'bg-emerald-800/90 text-emerald-100 hover:bg-emerald-700 border-emerald-600'
-                  : 'bg-emerald-950/80 text-amber-300 hover:bg-emerald-950 border-emerald-700/80'
-              }`}
-              title={isJamaahMode ? 'Beralih ke Panel Pengurus DKM' : 'Beralih ke Mode Pratinjau Jamaah (Hanya Lihat)'}
-            >
-              {isJamaahMode ? (
-                <>
-                  <Lock className="w-3.5 h-3.5 text-amber-400" />
-                  <span className="hidden sm:inline">Panel Pengurus</span>
-                  <span className="sm:hidden">Admin</span>
-                </>
-              ) : (
-                <>
-                  <Eye className="w-3.5 h-3.5 text-amber-300" />
-                  <span className="hidden sm:inline">Mode Jamaah</span>
-                  <span className="sm:hidden">Jamaah</span>
-                </>
-              )}
-            </button>
+          ) : (
+            <div className="inline-flex items-center gap-1 text-[11px] bg-emerald-950/80 text-amber-300 font-bold px-2.5 py-1 rounded-lg border border-emerald-700/80 shadow-xs">
+              <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+              <span>Transparansi Jamaah</span>
+            </div>
           )}
         </div>
       </div>

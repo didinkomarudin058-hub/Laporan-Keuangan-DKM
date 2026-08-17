@@ -23,6 +23,7 @@ interface JamaahQrModalProps {
   isOpen: boolean;
   onClose: () => void;
   mosqueProfile: MosqueProfile;
+  mosqueId?: string;
   onOpenJamaahView?: (tab?: 'dashboard' | 'transactions' | 'monthlyReport' | 'analytics' | 'tvMode') => void;
 }
 
@@ -30,6 +31,7 @@ export const JamaahQrModal: React.FC<JamaahQrModalProps> = ({
   isOpen,
   onClose,
   mosqueProfile,
+  mosqueId,
   onOpenJamaahView,
 }) => {
   const [selectedDestination, setSelectedDestination] = useState<
@@ -49,13 +51,14 @@ export const JamaahQrModal: React.FC<JamaahQrModalProps> = ({
     }
   }, []);
 
-  // Compute full URL for Jamaah
+  // Compute full URL for Jamaah (embeds mosqueId so jamaah sees real data)
   const getFullJamaahUrl = () => {
     if (!baseUrl) return '';
+    const midParam = mosqueId ? `&mid=${encodeURIComponent(mosqueId)}` : '';
     if (selectedDestination === 'portal') {
-      return `${baseUrl}?view=jamaah`;
+      return `${baseUrl}?view=jamaah${midParam}`;
     }
-    return `${baseUrl}?view=jamaah&tab=${selectedDestination}`;
+    return `${baseUrl}?view=jamaah&tab=${selectedDestination}${midParam}`;
   };
 
   const currentUrl = getFullJamaahUrl();

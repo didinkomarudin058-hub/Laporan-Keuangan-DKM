@@ -25,8 +25,9 @@ import {
   saveTransactionToFirestore,
   deleteTransactionFromFirestore,
   bulkSaveTransactionsToFirestore,
+  getOrCreateMosquePublicId,
 } from './lib/firebase';
-import { Smartphone, Download, X, QrCode, ShieldCheck, Lock, Eye } from 'lucide-react';
+import { Smartphone, Download, X, QrCode, ShieldCheck, Lock, Eye, Check } from 'lucide-react';
 
 export default function App() {
   // LocalStorage keys
@@ -164,51 +165,94 @@ export default function App() {
     localStorage.setItem(STORAGE_KEY_METODE_PEMBAYARAN, JSON.stringify(metodePembayaranList));
   }, [metodePembayaranList]);
 
+  // Determine Mosque Cloud ID (Authenticated User UID or Persistent Mosque Public ID)
+  const [mosqueCloudId, setMosqueCloudId] = useState<string>(() => getOrCreateMosquePublicId());
+
+  // URL Query Parameters (e.g. from Barcode scan)
+  const [urlMid, setUrlMid] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('mid');
+    }
+    return null;
+  });
+
+  const effectiveMosqueId = urlMid || currentUser?.uid || mosqueCloudId;
+
   // Subscribe to Firebase Auth
   useEffect(() => {
     const unsubscribe = subscribeAuth((user) => {
       setCurrentUser(user);
+      if (user) {
+        setMosqueCloudId(user.uid);
+      }
     });
     return () => unsubscribe();
   }, []);
 
-  // Subscribe to Firestore Real-Time Data when User is Logged In
+  // Subscribe to Firestore Real-Time Data (Reads real data for Jamaah or Admin)
   useEffect(() => {
-    if (!currentUser) return;
+    // If jamaah scanning via QR code, subscribe to the mosque's public cloud ID
+    if (urlMid) {
+      const unsubscribeData = subscribeFirestoreData(urlMid, (data) => {
+        if (data.mosqueProfile) {
+          setMosqueProfile(data.mosqueProfile);
+        }
+        if (data.categoriesPemasukan && data.categoriesPemasukan.length > 0) {
+          setCategoriesPemasukan(data.categoriesPemasukan);
+        }
+        if (data.categoriesPengeluaran && data.categoriesPengeluaran.length > 0) {
+          setCategoriesPengeluaran(data.categoriesPengeluaran);
+        }
+        if (data.posDanaList && data.posDanaList.length > 0) {
+          setPosDanaList(data.posDanaList);
+        }
+        if (data.metodePembayaranList && data.metodePembayaranList.length > 0) {
+          setMetodePembayaranList(data.metodePembayaranList);
+        }
+        if (data.transactions) {
+          setTransactions(data.transactions);
+        }
+      });
+      return () => unsubscribeData();
+    }
 
-    const unsubscribeData = subscribeFirestoreData(currentUser.uid, (data) => {
-      if (data.mosqueProfile) {
-        setMosqueProfile(data.mosqueProfile);
-      }
-      if (data.categoriesPemasukan) {
-        setCategoriesPemasukan(data.categoriesPemasukan);
-      }
-      if (data.categoriesPengeluaran) {
-        setCategoriesPengeluaran(data.categoriesPengeluaran);
-      }
-      if (data.posDanaList) {
-        setPosDanaList(data.posDanaList);
-      }
-      if (data.metodePembayaranList) {
-        setMetodePembayaranList(data.metodePembayaranList);
-      }
-      if (data.transactions) {
-        setTransactions(data.transactions);
-      }
-    });
+    // If DKM admin is authenticated with Google, subscribe and sync with their cloud data
+    if (currentUser?.uid) {
+      const unsubscribeData = subscribeFirestoreData(currentUser.uid, (data) => {
+        if (data.mosqueProfile) {
+          setMosqueProfile(data.mosqueProfile);
+        }
+        if (data.categoriesPemasukan && data.categoriesPemasukan.length > 0) {
+          setCategoriesPemasukan(data.categoriesPemasukan);
+        }
+        if (data.categoriesPengeluaran && data.categoriesPengeluaran.length > 0) {
+          setCategoriesPengeluaran(data.categoriesPengeluaran);
+        }
+        if (data.posDanaList && data.posDanaList.length > 0) {
+          setPosDanaList(data.posDanaList);
+        }
+        if (data.metodePembayaranList && data.metodePembayaranList.length > 0) {
+          setMetodePembayaranList(data.metodePembayaranList);
+        }
+        if (data.transactions) {
+          setTransactions(data.transactions);
+        }
+      });
 
-    // If initial cloud sync is empty, upload current local state to cloud
-    saveSettingsToFirestore(currentUser.uid, {
-      mosqueProfile,
-      categoriesPemasukan,
-      categoriesPengeluaran,
-      posDanaList,
-      metodePembayaranList,
-    });
-    bulkSaveTransactionsToFirestore(currentUser.uid, transactions);
+      // Sync local state to Cloud on login
+      saveSettingsToFirestore(currentUser.uid, {
+        mosqueProfile,
+        categoriesPemasukan,
+        categoriesPengeluaran,
+        posDanaList,
+        metodePembayaranList,
+      });
+      bulkSaveTransactionsToFirestore(currentUser.uid, transactions);
 
-    return () => unsubscribeData();
-  }, [currentUser?.uid]);
+      return () => unsubscribeData();
+    }
+  }, [currentUser?.uid, urlMid]);
 
   // Tab State
   const [activeTab, setActiveTab] = useState<
@@ -216,11 +260,18 @@ export default function App() {
   >(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
-      if (params.get('view') === 'public') {
+      const tabParam = params.get('tab');
+      if (tabParam === 'monthlyReport' || tabParam === 'report') {
+        return 'monthlyReport';
+      }
+      if (tabParam === 'transactions' || tabParam === 'jurnal') {
+        return 'transactions';
+      }
+      if (tabParam === 'tvMode' || tabParam === 'public') {
         return 'tvMode';
       }
-      if (params.get('view') === 'report') {
-        return 'monthlyReport';
+      if (tabParam === 'analytics') {
+        return 'analytics';
       }
     }
     return 'dashboard';
@@ -233,7 +284,8 @@ export default function App() {
       return (
         params.get('view') === 'jamaah' ||
         params.get('mode') === 'jamaah' ||
-        params.get('view') === 'public_report'
+        params.get('view') === 'public_report' ||
+        Boolean(params.get('mid'))
       );
     }
     return false;
@@ -249,9 +301,12 @@ export default function App() {
         const url = new URL(window.location.href);
         if (next) {
           url.searchParams.set('view', 'jamaah');
+          url.searchParams.set('mid', effectiveMosqueId);
         } else {
           url.searchParams.delete('view');
           url.searchParams.delete('mode');
+          url.searchParams.delete('mid');
+          setUrlMid(null);
         }
         window.history.replaceState({}, '', url.toString());
       }
@@ -274,7 +329,7 @@ export default function App() {
 
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [settingsDefaultTab, setSettingsDefaultTab] = useState<
-    'profile' | 'account' | 'categories' | 'backup' | 'pwa'
+    'profile' | 'barcode' | 'categories' | 'account' | 'backup' | 'pwa'
   >('profile');
 
   // PWA Modal State
@@ -847,6 +902,12 @@ export default function App() {
         mosqueProfile={mosqueProfile}
         onSaveProfile={handleSaveProfile}
         currentUser={currentUser}
+        mosqueId={effectiveMosqueId}
+        transactions={transactions}
+        onOpenJamaahView={(tab) => {
+          if (tab) setActiveTab(tab);
+          setIsJamaahMode(true);
+        }}
         categoriesPemasukan={categoriesPemasukan}
         categoriesPengeluaran={categoriesPengeluaran}
         onAddCategory={handleAddCategory}
@@ -873,6 +934,11 @@ export default function App() {
         isOpen={isQrModalOpen}
         onClose={() => setIsQrModalOpen(false)}
         mosqueProfile={mosqueProfile}
+        mosqueId={effectiveMosqueId}
+        onOpenJamaahView={(tab) => {
+          if (tab) setActiveTab(tab);
+          setIsJamaahMode(true);
+        }}
       />
 
       {/* PWA Installation Modal */}
