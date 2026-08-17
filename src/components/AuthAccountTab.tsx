@@ -16,8 +16,6 @@ import {
   RefreshCw,
   ShieldCheck,
   Sparkles,
-  Building2,
-  Check,
 } from 'lucide-react';
 import { User } from 'firebase/auth';
 import {
@@ -26,9 +24,6 @@ import {
   loginWithGoogle,
   logoutUser,
   sendPasswordReset,
-  getStoredLocalUsers,
-  switchActiveUserAccount,
-  LocalUserAccount,
 } from '../lib/firebase';
 
 interface AuthAccountTabProps {
@@ -53,8 +48,6 @@ export const AuthAccountTab: React.FC<AuthAccountTabProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-  const availableAccounts = getStoredLocalUsers();
-
   const resetForm = () => {
     setEmail('');
     setPassword('');
@@ -66,11 +59,6 @@ export const AuthAccountTab: React.FC<AuthAccountTabProps> = ({
   const handleSwitchMode = (newMode: 'login' | 'register' | 'forgot') => {
     setMode(newMode);
     resetForm();
-  };
-
-  const handleSelectAccount = (account: LocalUserAccount) => {
-    switchActiveUserAccount(account);
-    setSuccessMsg(`Berhasil beralih ke akun ${account.mosqueName || account.email}! Data transaksi aktif dimuat.`);
   };
 
   const handleGoogleAuth = async () => {
@@ -197,69 +185,6 @@ export const AuthAccountTab: React.FC<AuthAccountTabProps> = ({
         </div>
       )}
 
-      {/* Akun DKM Riil Tersimpan & Beralih Akun Cepat */}
-      <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-emerald-700" />
-            <h4 className="text-xs font-bold text-slate-800">
-              Pilihan Akun Riil Masjid DKM
-            </h4>
-          </div>
-          <span className="text-[10px] text-slate-500 font-medium">
-            1-Klik Beralih Akun & Data
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {availableAccounts.map((acc) => {
-            const isActive =
-              currentUser?.email?.toLowerCase() === acc.email.toLowerCase() ||
-              currentUser?.uid === acc.uid;
-
-            return (
-              <button
-                key={acc.uid}
-                type="button"
-                onClick={() => handleSelectAccount(acc)}
-                className={`p-3 rounded-xl text-left border transition flex items-start justify-between gap-2 cursor-pointer ${
-                  isActive
-                    ? 'bg-emerald-800 text-white border-emerald-700 shadow-sm'
-                    : 'bg-white text-slate-800 border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/50'
-                }`}
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5 font-bold text-xs">
-                    <span className="truncate">
-                      {acc.mosqueName || acc.displayName || 'Masjid DKM'}
-                    </span>
-                    {isActive && (
-                      <span className="px-1.5 py-0.5 rounded-full text-[9px] bg-amber-400 text-emerald-950 font-bold">
-                        Aktif
-                      </span>
-                    )}
-                  </div>
-                  <p
-                    className={`text-[11px] truncate mt-0.5 font-mono ${
-                      isActive ? 'text-emerald-200' : 'text-slate-500'
-                    }`}
-                  >
-                    {acc.email}
-                  </p>
-                </div>
-                {isActive ? (
-                  <Check className="w-4 h-4 text-amber-300 shrink-0 mt-0.5" />
-                ) : (
-                  <span className="text-[10px] text-emerald-700 font-bold shrink-0 mt-0.5">
-                    Pilih
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
       {/* Logged In View */}
       {currentUser ? (
         <div className="bg-slate-900 text-white p-5 rounded-2xl space-y-4 border border-slate-800 shadow-md">
@@ -270,7 +195,7 @@ export const AuthAccountTab: React.FC<AuthAccountTabProps> = ({
               </div>
               <div>
                 <span className="text-[10px] uppercase tracking-wider text-slate-400 font-bold block">
-                  Akun DKM Sedang Aktif
+                  Akun DKM Terhubung
                 </span>
                 <span className="text-sm font-bold text-white font-mono">
                   {currentUser.email}
@@ -289,11 +214,12 @@ export const AuthAccountTab: React.FC<AuthAccountTabProps> = ({
           <div className="bg-slate-800/80 p-3 rounded-xl border border-slate-700/80 text-xs text-slate-300 space-y-2">
             <div className="flex items-center gap-2 text-emerald-400 font-semibold">
               <ShieldCheck className="w-4 h-4" />
-              <span>Sinkronisasi & Data Tersimpan Aman</span>
+              <span>Sinkronisasi Lintas Perangkat Berjalan</span>
             </div>
             <p className="text-[11px] text-slate-400 leading-relaxed">
-              Seluruh transaksi kas, profil masjid, dan kategori tersimpan secara otomatis
-              di database akun ini.
+              Seluruh perubahan transaksi, profil masjid, dan kategori kas
+              tersimpan secara otomatis di cloud Firebase. Buka aplikasi di HP,
+              tablet, atau laptop lain dengan akun ini untuk sinkronisasi instan.
             </p>
           </div>
 
