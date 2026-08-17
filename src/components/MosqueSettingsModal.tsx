@@ -18,17 +18,7 @@ import {
   AlertTriangle,
   Wallet,
   CreditCard,
-  QrCode,
-  Printer,
-  Copy,
-  ExternalLink,
-  Eye,
-  FileText,
-  Tv,
-  ListFilter,
-  Share2,
 } from 'lucide-react';
-import QRCode from 'qrcode';
 import { User } from 'firebase/auth';
 import { MosqueProfile, TransactionType, Transaction } from '../types';
 import { AuthAccountTab } from './AuthAccountTab';
@@ -41,9 +31,6 @@ interface MosqueSettingsModalProps {
 
   // Auth & Mosque ID
   currentUser: User | null;
-  mosqueId?: string;
-  transactions?: Transaction[];
-  onOpenJamaahView?: (tab?: 'dashboard' | 'transactions' | 'monthlyReport' | 'analytics' | 'tvMode') => void;
 
   // Categories
   categoriesPemasukan: string[];
@@ -71,7 +58,7 @@ interface MosqueSettingsModalProps {
   onResetData: () => void;
 
   // Optional tab selector
-  defaultTab?: 'profile' | 'barcode' | 'categories' | 'account' | 'backup' | 'pwa';
+  defaultTab?: 'profile' | 'categories' | 'account' | 'backup' | 'pwa';
   onOpenPwaModal?: () => void;
 }
 
@@ -81,9 +68,6 @@ export const MosqueSettingsModal: React.FC<MosqueSettingsModalProps> = ({
   mosqueProfile,
   onSaveProfile,
   currentUser,
-  mosqueId,
-  transactions = [],
-  onOpenJamaahView,
   categoriesPemasukan,
   categoriesPengeluaran,
   onAddCategory,
@@ -105,56 +89,11 @@ export const MosqueSettingsModal: React.FC<MosqueSettingsModalProps> = ({
   onOpenPwaModal,
 }) => {
   const [activeTab, setActiveTab] = useState<
-    'profile' | 'barcode' | 'categories' | 'account' | 'backup' | 'pwa'
+    'profile' | 'categories' | 'account' | 'backup' | 'pwa'
   >(defaultTab);
 
   // Profile Form State
   const [profile, setProfile] = useState<MosqueProfile>({ ...mosqueProfile });
-
-  // Barcode / QR State
-  const [selectedDestination, setSelectedDestination] = useState<
-    'portal' | 'monthlyReport' | 'transactions' | 'tvMode'
-  >('portal');
-  const [qrDataUrl, setQrDataUrl] = useState<string>('');
-  const [copied, setCopied] = useState<boolean>(false);
-  const [baseUrl, setBaseUrl] = useState<string>('');
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const origin = window.location.origin;
-      const pathname = window.location.pathname;
-      setBaseUrl(`${origin}${pathname}`);
-    }
-  }, []);
-
-  // Compute full URL with real Mosque ID for Jamaican Transparency
-  const effectiveMid = mosqueId || currentUser?.uid || 'dkm_masjid_utama';
-  const getFullJamaahUrl = () => {
-    if (!baseUrl) return '';
-    const midParam = `&mid=${encodeURIComponent(effectiveMid)}`;
-    if (selectedDestination === 'portal') {
-      return `${baseUrl}?view=jamaah${midParam}`;
-    }
-    return `${baseUrl}?view=jamaah&tab=${selectedDestination}${midParam}`;
-  };
-
-  const currentUrl = getFullJamaahUrl();
-
-  // Generate QR Code
-  useEffect(() => {
-    if (!currentUrl) return;
-    QRCode.toDataURL(currentUrl, {
-      width: 600,
-      margin: 2,
-      color: {
-        dark: '#064e3b',
-        light: '#ffffff',
-      },
-      errorCorrectionLevel: 'H',
-    })
-      .then((url) => setQrDataUrl(url))
-      .catch((err) => console.error('Error generating QR in Settings:', err));
-  }, [currentUrl]);
 
   // Master Data Sub-Tab State: 'pemasukan' | 'pengeluaran' | 'posDana' | 'metodePembayaran'
   const [activeCatType, setActiveCatType] = useState<
@@ -322,18 +261,6 @@ export const MosqueSettingsModal: React.FC<MosqueSettingsModalProps> = ({
           >
             <Building2 className="w-4 h-4" />
             <span>Profil DKM</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('barcode')}
-            className={`py-2.5 px-3 border-b-2 transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
-              activeTab === 'barcode'
-                ? 'border-emerald-700 text-emerald-800 font-extrabold bg-white rounded-t-lg'
-                : 'border-transparent hover:text-slate-900'
-            }`}
-          >
-            <QrCode className="w-4 h-4 text-emerald-700" />
-            <span>Barcode Jamaah (QR)</span>
           </button>
 
           <button
@@ -643,212 +570,6 @@ export const MosqueSettingsModal: React.FC<MosqueSettingsModalProps> = ({
                 </button>
               </div>
             </form>
-          )}
-
-          {/* TAB: BARCODE TRANSPARANSI JAMAAH */}
-          {activeTab === 'barcode' && (
-            <div className="space-y-6">
-              {/* Banner Info */}
-              <div className="bg-gradient-to-r from-emerald-900 to-teal-900 text-white p-5 rounded-2xl shadow-md space-y-2 relative overflow-hidden">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="space-y-1">
-                    <div className="inline-flex items-center gap-1.5 bg-amber-400 text-emerald-950 font-black text-[11px] px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-xs">
-                      <QrCode className="w-3.5 h-3.5" />
-                      QR Code Transparansi Kas Jamaah
-                    </div>
-                    <h4 className="text-base sm:text-lg font-black text-white">
-                      Buku Kas Riil {mosqueProfile.namaMasjid}
-                    </h4>
-                    <p className="text-xs text-emerald-100/90 leading-relaxed max-w-xl">
-                      Jamaah dapat memindai barcode ini langsung dengan kamera smartphone mereka untuk melihat buku kas riil yang Anda kelola. Hak akses jamaah adalah <strong>Hanya Lihat (Read-Only)</strong> tanpa izin mengedit/menghapus data.
-                    </p>
-                  </div>
-                  <div className="hidden sm:flex w-12 h-12 rounded-xl bg-amber-400 text-emerald-950 items-center justify-center shrink-0 shadow-inner">
-                    <QrCode className="w-7 h-7" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Destination Selector */}
-              <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider">
-                  Pilih Halaman Tujuan Saat Barcode Dipindai:
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedDestination('portal')}
-                    className={`p-3 rounded-xl border text-left transition flex items-start gap-3 cursor-pointer ${
-                      selectedDestination === 'portal'
-                        ? 'border-emerald-600 bg-emerald-50/80 ring-2 ring-emerald-500/20'
-                        : 'border-slate-200 bg-white hover:border-slate-300'
-                    }`}
-                  >
-                    <div className={`p-2 rounded-lg shrink-0 ${selectedDestination === 'portal' ? 'bg-emerald-700 text-white' : 'bg-slate-100 text-slate-700'}`}>
-                      <Building2 className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold text-slate-900">1. Ringkasan Kas Utama</div>
-                      <div className="text-[11px] text-slate-500 mt-0.5">Saldo kas operasional, pembangunan & grafik keuangan</div>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setSelectedDestination('monthlyReport')}
-                    className={`p-3 rounded-xl border text-left transition flex items-start gap-3 cursor-pointer ${
-                      selectedDestination === 'monthlyReport'
-                        ? 'border-emerald-600 bg-emerald-50/80 ring-2 ring-emerald-500/20'
-                        : 'border-slate-200 bg-white hover:border-slate-300'
-                    }`}
-                  >
-                    <div className={`p-2 rounded-lg shrink-0 ${selectedDestination === 'monthlyReport' ? 'bg-emerald-700 text-white' : 'bg-slate-100 text-slate-700'}`}>
-                      <FileText className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold text-slate-900">2. Laporan Bulanan & AI Narasi</div>
-                      <div className="text-[11px] text-slate-500 mt-0.5">Laporan kas resmi bulanan lengkap dengan narasi DKM</div>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setSelectedDestination('transactions')}
-                    className={`p-3 rounded-xl border text-left transition flex items-start gap-3 cursor-pointer ${
-                      selectedDestination === 'transactions'
-                        ? 'border-emerald-600 bg-emerald-50/80 ring-2 ring-emerald-500/20'
-                        : 'border-slate-200 bg-white hover:border-slate-300'
-                    }`}
-                  >
-                    <div className={`p-2 rounded-lg shrink-0 ${selectedDestination === 'transactions' ? 'bg-emerald-700 text-white' : 'bg-slate-100 text-slate-700'}`}>
-                      <ListFilter className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold text-slate-900">3. Jurnal Kas & Bukti Foto Nota</div>
-                      <div className="text-[11px] text-slate-500 mt-0.5">Daftar rincian mutasi kas dan lampiran foto kwitansi/nota</div>
-                    </div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setSelectedDestination('tvMode')}
-                    className={`p-3 rounded-xl border text-left transition flex items-start gap-3 cursor-pointer ${
-                      selectedDestination === 'tvMode'
-                        ? 'border-emerald-600 bg-emerald-50/80 ring-2 ring-emerald-500/20'
-                        : 'border-slate-200 bg-white hover:border-slate-300'
-                    }`}
-                  >
-                    <div className={`p-2 rounded-lg shrink-0 ${selectedDestination === 'tvMode' ? 'bg-emerald-700 text-white' : 'bg-slate-100 text-slate-700'}`}>
-                      <Tv className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold text-slate-900">4. Tampilan TV Display Mading</div>
-                      <div className="text-[11px] text-slate-500 mt-0.5">Mode tayang layar digital masjid / mading elektronik</div>
-                    </div>
-                  </button>
-                </div>
-              </div>
-
-              {/* QR Code Card & Actions */}
-              <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 flex flex-col sm:flex-row items-center gap-6">
-                {/* QR Visual */}
-                <div className="bg-white p-3 rounded-2xl shadow-md border border-slate-200 flex flex-col items-center shrink-0">
-                  {qrDataUrl ? (
-                    <img
-                      src={qrDataUrl}
-                      alt="Barcode QR Transparansi Kas"
-                      className="w-48 h-48 sm:w-52 sm:h-52 object-contain"
-                    />
-                  ) : (
-                    <div className="w-48 h-48 flex items-center justify-center text-slate-400 text-xs">
-                      Membuat Barcode...
-                    </div>
-                  )}
-                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 mt-1">
-                    Scan Barcode Jamaah
-                  </span>
-                </div>
-
-                {/* Information & Action Buttons */}
-                <div className="space-y-3.5 flex-1 w-full text-left">
-                  <div>
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-800">
-                      <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                      <span>Terhubung Langsung ke Database Kas Riil</span>
-                    </div>
-                    <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
-                      Barcode ini memuat tanda pengenal unik kas masjid Anda. Siapapun yang memindai akan disajikan pembukuan kas yang sama persis seperti yang diinput DKM.
-                    </p>
-                  </div>
-
-                  {/* Copy Link Input */}
-                  <div className="space-y-1">
-                    <label className="block text-[11px] font-bold text-slate-600">
-                      Tautan Langsung Jamaah:
-                    </label>
-                    <div className="flex items-center gap-1.5">
-                      <input
-                        type="text"
-                        readOnly
-                        value={currentUrl}
-                        className="w-full py-1.5 px-2.5 bg-white border border-slate-300 rounded-lg text-xs font-mono text-slate-700 select-all"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          navigator.clipboard.writeText(currentUrl);
-                          setCopied(true);
-                          setTimeout(() => setCopied(false), 2000);
-                        }}
-                        className="py-1.5 px-3 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-lg transition flex items-center gap-1 shrink-0 cursor-pointer shadow-xs"
-                      >
-                        {copied ? (
-                          <>
-                            <Check className="w-3.5 h-3.5 text-amber-300" />
-                            <span>Tersalin!</span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3.5 h-3.5" />
-                            <span>Salin</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Action Buttons Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                    {qrDataUrl && (
-                      <a
-                        href={qrDataUrl}
-                        download={`QR_Kas_${mosqueProfile.namaMasjid.replace(/\s+/g, '_')}.png`}
-                        className="py-2 px-3 bg-white hover:bg-slate-100 text-emerald-900 border border-emerald-300 font-bold text-xs rounded-lg shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer text-center"
-                      >
-                        <Download className="w-4 h-4 text-emerald-700" />
-                        <span>Unduh Barcode (PNG)</span>
-                      </a>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onClose();
-                        if (onOpenJamaahView) {
-                          onOpenJamaahView(selectedDestination === 'portal' ? 'dashboard' : selectedDestination);
-                        } else {
-                          window.open(currentUrl, '_blank');
-                        }
-                      }}
-                      className="py-2 px-3 bg-amber-400 hover:bg-amber-300 text-emerald-950 font-extrabold text-xs rounded-lg shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer text-center"
-                    >
-                      <Eye className="w-4 h-4" />
-                      <span>Uji Tampilan Jamaah</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
           )}
 
           {/* TAB 2: AKUN & CLOUD SYNC */}

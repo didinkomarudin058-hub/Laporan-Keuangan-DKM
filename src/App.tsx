@@ -9,7 +9,6 @@ import { AddTransactionModal } from './components/AddTransactionModal';
 import { MosqueSettingsModal } from './components/MosqueSettingsModal';
 import { PwaInstallModal } from './components/PwaInstallModal';
 import { MobileBottomNav } from './components/MobileBottomNav';
-import { JamaahQrModal } from './components/JamaahQrModal';
 import { FundCategory, MosqueProfile, Transaction, TransactionType } from './types';
 import {
   initialMosqueProfile,
@@ -25,9 +24,7 @@ import {
   saveTransactionToFirestore,
   deleteTransactionFromFirestore,
   bulkSaveTransactionsToFirestore,
-  getOrCreateMosquePublicId,
 } from './lib/firebase';
-import { Smartphone, Download, X, QrCode, ShieldCheck, Lock, Eye, Check } from 'lucide-react';
 
 export default function App() {
   // LocalStorage keys
@@ -165,59 +162,16 @@ export default function App() {
     localStorage.setItem(STORAGE_KEY_METODE_PEMBAYARAN, JSON.stringify(metodePembayaranList));
   }, [metodePembayaranList]);
 
-  // Determine Mosque Cloud ID (Authenticated User UID or Persistent Mosque Public ID)
-  const [mosqueCloudId, setMosqueCloudId] = useState<string>(() => getOrCreateMosquePublicId());
-
-  // URL Query Parameters (e.g. from Barcode scan)
-  const [urlMid, setUrlMid] = useState<string | null>(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      return params.get('mid');
-    }
-    return null;
-  });
-
-  const effectiveMosqueId = urlMid || currentUser?.uid || mosqueCloudId;
-
   // Subscribe to Firebase Auth
   useEffect(() => {
     const unsubscribe = subscribeAuth((user) => {
       setCurrentUser(user);
-      if (user) {
-        setMosqueCloudId(user.uid);
-      }
     });
     return () => unsubscribe();
   }, []);
 
-  // Subscribe to Firestore Real-Time Data (Reads real data for Jamaah or Admin)
+  // Subscribe to Firestore Real-Time Data for Authenticated User
   useEffect(() => {
-    // If jamaah scanning via QR code, subscribe to the mosque's public cloud ID
-    if (urlMid) {
-      const unsubscribeData = subscribeFirestoreData(urlMid, (data) => {
-        if (data.mosqueProfile) {
-          setMosqueProfile(data.mosqueProfile);
-        }
-        if (data.categoriesPemasukan && data.categoriesPemasukan.length > 0) {
-          setCategoriesPemasukan(data.categoriesPemasukan);
-        }
-        if (data.categoriesPengeluaran && data.categoriesPengeluaran.length > 0) {
-          setCategoriesPengeluaran(data.categoriesPengeluaran);
-        }
-        if (data.posDanaList && data.posDanaList.length > 0) {
-          setPosDanaList(data.posDanaList);
-        }
-        if (data.metodePembayaranList && data.metodePembayaranList.length > 0) {
-          setMetodePembayaranList(data.metodePembayaranList);
-        }
-        if (data.transactions) {
-          setTransactions(data.transactions);
-        }
-      });
-      return () => unsubscribeData();
-    }
-
-    // If DKM admin is authenticated with Google, subscribe and sync with their cloud data
     if (currentUser?.uid) {
       const unsubscribeData = subscribeFirestoreData(currentUser.uid, (data) => {
         if (data.mosqueProfile) {
@@ -235,24 +189,14 @@ export default function App() {
         if (data.metodePembayaranList && data.metodePembayaranList.length > 0) {
           setMetodePembayaranList(data.metodePembayaranList);
         }
-        if (data.transactions) {
+        if (data.transactions && data.transactions.length > 0) {
           setTransactions(data.transactions);
         }
       });
 
-      // Sync local state to Cloud on login
-      saveSettingsToFirestore(currentUser.uid, {
-        mosqueProfile,
-        categoriesPemasukan,
-        categoriesPengeluaran,
-        posDanaList,
-        metodePembayaranList,
-      });
-      bulkSaveTransactionsToFirestore(currentUser.uid, transactions);
-
       return () => unsubscribeData();
     }
-  }, [currentUser?.uid, urlMid]);
+  }, [currentUser?.uid]);
 
   // Tab State
   const [activeTab, setActiveTab] = useState<
@@ -277,43 +221,6 @@ export default function App() {
     return 'dashboard';
   });
 
-  // Mode Jamaah (Read-only view for public/jamaah)
-  const [isJamaahMode, setIsJamaahMode] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      return (
-        params.get('view') === 'jamaah' ||
-        params.get('mode') === 'jamaah' ||
-        params.get('view') === 'public_report' ||
-        Boolean(params.get('mid'))
-      );
-    }
-    return false;
-  });
-
-  // Barcode / QR Code Modal State
-  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
-
-  const toggleJamaahMode = () => {
-    setIsJamaahMode((prev) => {
-      const next = !prev;
-      if (typeof window !== 'undefined') {
-        const url = new URL(window.location.href);
-        if (next) {
-          url.searchParams.set('view', 'jamaah');
-          url.searchParams.set('mid', effectiveMosqueId);
-        } else {
-          url.searchParams.delete('view');
-          url.searchParams.delete('mode');
-          url.searchParams.delete('mid');
-          setUrlMid(null);
-        }
-        window.history.replaceState({}, '', url.toString());
-      }
-      return next;
-    });
-  };
-
   // Selected Fund Filter for Transaction List
   const [selectedFundFilter, setSelectedFundFilter] = useState<FundCategory | 'semua'>('semua');
 
@@ -329,7 +236,7 @@ export default function App() {
 
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [settingsDefaultTab, setSettingsDefaultTab] = useState<
-    'profile' | 'barcode' | 'categories' | 'account' | 'backup' | 'pwa'
+    'profile' | 'categories' | 'account' | 'backup' | 'pwa'
   >('profile');
 
   // PWA Modal State
@@ -423,14 +330,12 @@ export default function App() {
 
   // Transaction Handlers
   const handleOpenAddModal = (defaultFund?: FundCategory) => {
-    if (isJamaahMode) return;
     setEditingTransaction(null);
     if (defaultFund) setDefaultAddFundCategory(defaultFund);
     setIsAddModalOpen(true);
   };
 
   const handleEditTransaction = (trx: Transaction) => {
-    if (isJamaahMode) return;
     setEditingTransaction(trx);
     setIsAddModalOpen(true);
   };
@@ -737,55 +642,10 @@ export default function App() {
         onOpenSettingsModal={(tab) => handleOpenSettingsModal(tab || 'profile')}
         onOpenPwaModal={() => setIsPwaModalOpen(true)}
         currentUser={currentUser}
-        onOpenQrModal={() => setIsQrModalOpen(true)}
-        isJamaahMode={isJamaahMode}
-        onToggleJamaahMode={toggleJamaahMode}
       />
 
       {/* Main View Container */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 md:pb-12">
-        {/* Banner Khusus Mode Jamaah */}
-        {isJamaahMode && (
-          <div className="mb-6 bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-900 text-white p-4 sm:p-5 rounded-2xl border border-emerald-700 shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3.5">
-              <div className="w-11 h-11 rounded-xl bg-amber-400 text-emerald-950 flex items-center justify-center font-bold shrink-0 shadow-sm">
-                <ShieldCheck className="w-6 h-6" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="font-black text-sm sm:text-base text-white tracking-tight">
-                    Portal Transparansi Kas Jamaah
-                  </h2>
-                  <span className="text-[10px] font-extrabold bg-amber-400 text-emerald-950 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                    Hanya Baca (Read-Only)
-                  </span>
-                </div>
-                <p className="text-xs text-emerald-100/90 mt-0.5 leading-relaxed">
-                  Laporan keuangan dan bukti foto nota resmi {mosqueProfile.namaMasjid}. Terbuka & akuntabel untuk seluruh jamaah.
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
-              <button
-                type="button"
-                onClick={() => setIsQrModalOpen(true)}
-                className="flex-1 sm:flex-none py-2 px-3 bg-amber-400 hover:bg-amber-300 text-emerald-950 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer"
-              >
-                <QrCode className="w-4 h-4" />
-                <span>Barcode QR</span>
-              </button>
-              <button
-                type="button"
-                onClick={toggleJamaahMode}
-                className="flex-1 sm:flex-none py-2 px-3 bg-emerald-950/80 hover:bg-emerald-950 text-amber-300 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition border border-emerald-600 cursor-pointer"
-              >
-                <Lock className="w-3.5 h-3.5" />
-                <span>Panel Pengurus</span>
-              </button>
-            </div>
-          </div>
-        )}
-
         {activeTab === 'dashboard' && (
           <DashboardOverview
             transactions={transactions}
@@ -793,29 +653,26 @@ export default function App() {
             selectedMonth={reportMonth}
             selectedYear={reportYear}
             posDanaList={posDanaList}
-            onOpenAddModal={isJamaahMode ? undefined : handleOpenAddModal}
+            onOpenAddModal={handleOpenAddModal}
             onNavigateTab={setActiveTab}
             onSelectFundFilter={(fund) => {
               setSelectedFundFilter(fund);
               setActiveTab('transactions');
             }}
-            readOnly={isJamaahMode}
-            onOpenQrModal={() => setIsQrModalOpen(true)}
           />
         )}
 
         {activeTab === 'transactions' && (
           <TransactionList
             transactions={transactions}
-            onOpenAddModal={isJamaahMode ? undefined : handleOpenAddModal}
-            onEditTransaction={isJamaahMode ? undefined : handleEditTransaction}
-            onDeleteTransaction={isJamaahMode ? undefined : handleDeleteTransaction}
+            onOpenAddModal={handleOpenAddModal}
+            onEditTransaction={handleEditTransaction}
+            onDeleteTransaction={handleDeleteTransaction}
             initialFundFilter={selectedFundFilter}
             categoriesPemasukan={categoriesPemasukan}
             categoriesPengeluaran={categoriesPengeluaran}
             posDanaList={posDanaList}
             mosqueProfile={mosqueProfile}
-            readOnly={isJamaahMode}
           />
         )}
 
@@ -857,10 +714,8 @@ export default function App() {
       <MobileBottomNav
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        onOpenAddModal={isJamaahMode ? undefined : () => handleOpenAddModal()}
+        onOpenAddModal={() => handleOpenAddModal()}
         onOpenSettingsModal={() => handleOpenSettingsModal('profile')}
-        isJamaahMode={isJamaahMode}
-        onOpenQrModal={() => setIsQrModalOpen(true)}
       />
 
       {/* Footer */}
@@ -880,7 +735,7 @@ export default function App() {
 
       {/* Modals */}
       <AddTransactionModal
-        isOpen={isAddModalOpen && !isJamaahMode}
+        isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onSave={handleSaveTransaction}
         editingTransaction={editingTransaction}
@@ -897,17 +752,11 @@ export default function App() {
 
       {/* Consolidated Menu Pengaturan Modal */}
       <MosqueSettingsModal
-        isOpen={isSettingsModalOpen && !isJamaahMode}
+        isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
         mosqueProfile={mosqueProfile}
         onSaveProfile={handleSaveProfile}
         currentUser={currentUser}
-        mosqueId={effectiveMosqueId}
-        transactions={transactions}
-        onOpenJamaahView={(tab) => {
-          if (tab) setActiveTab(tab);
-          setIsJamaahMode(true);
-        }}
         categoriesPemasukan={categoriesPemasukan}
         categoriesPengeluaran={categoriesPengeluaran}
         onAddCategory={handleAddCategory}
@@ -927,18 +776,6 @@ export default function App() {
         onResetData={handleResetData}
         defaultTab={settingsDefaultTab}
         onOpenPwaModal={() => setIsPwaModalOpen(true)}
-      />
-
-      {/* Barcode / QR Code Modal for Jamaah */}
-      <JamaahQrModal
-        isOpen={isQrModalOpen}
-        onClose={() => setIsQrModalOpen(false)}
-        mosqueProfile={mosqueProfile}
-        mosqueId={effectiveMosqueId}
-        onOpenJamaahView={(tab) => {
-          if (tab) setActiveTab(tab);
-          setIsJamaahMode(true);
-        }}
       />
 
       {/* PWA Installation Modal */}

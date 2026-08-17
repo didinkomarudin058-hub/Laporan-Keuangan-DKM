@@ -32,7 +32,6 @@ interface DashboardOverviewProps {
   onNavigateTab: (tab: 'dashboard' | 'transactions' | 'monthlyReport' | 'analytics' | 'tvMode') => void;
   onSelectFundFilter: (fund: FundCategory | 'semua') => void;
   readOnly?: boolean;
-  onOpenQrModal?: () => void;
 }
 
 export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
@@ -45,7 +44,6 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   onNavigateTab,
   onSelectFundFilter,
   readOnly = false,
-  onOpenQrModal,
 }) => {
   const [activeReceiptTrx, setActiveReceiptTrx] = useState<Transaction | null>(null);
   // Compute overall financial totals
@@ -450,24 +448,14 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             </div>
           </div>
 
-          <div className="pt-3 border-t border-slate-800 text-[11px] text-slate-400 space-y-2.5">
+          <div className="pt-3 border-t border-slate-800 text-[11px] text-slate-400 space-y-2">
             <div className="flex items-center gap-1.5 text-emerald-400 font-bold">
               <ShieldCheck className="w-4 h-4" />
-              <span>Transparan & Real-Time</span>
+              <span>Transparan, Amanah & Real-Time</span>
             </div>
             <p className="text-slate-400 leading-relaxed text-[11px]">
-              Seluruh laporan kas dan foto nota dapat dipantau langsung oleh jamaah melalui barcode transparansi masjid.
+              Setiap pemasukan dan pengeluaran dicatat secara akuntabel demi kemaslahatan masjid dan umat.
             </p>
-            {onOpenQrModal && (
-              <button
-                type="button"
-                onClick={onOpenQrModal}
-                className="w-full py-2 px-3 bg-amber-400 hover:bg-amber-300 text-emerald-950 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer"
-              >
-                <QrCode className="w-4 h-4" />
-                <span>Barcode Transparansi Jamaah</span>
-              </button>
-            )}
           </div>
         </div>
       </div>
