@@ -23,14 +23,15 @@ import { ReceiptModal } from './ReceiptModal';
 
 interface TransactionListProps {
   transactions: Transaction[];
-  onOpenAddModal: (defaultCategory?: FundCategory) => void;
-  onEditTransaction: (transaction: Transaction) => void;
-  onDeleteTransaction: (id: string) => void;
+  onOpenAddModal?: (defaultCategory?: FundCategory) => void;
+  onEditTransaction?: (transaction: Transaction) => void;
+  onDeleteTransaction?: (id: string) => void;
   initialFundFilter?: FundCategory | 'semua';
   categoriesPemasukan?: string[];
   categoriesPengeluaran?: string[];
   posDanaList?: string[];
   mosqueProfile?: MosqueProfile;
+  readOnly?: boolean;
 }
 
 export const TransactionList: React.FC<TransactionListProps> = ({
@@ -43,6 +44,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
   categoriesPengeluaran = [],
   posDanaList = ['Kas Operasional', 'Kas Pembangunan'],
   mosqueProfile,
+  readOnly = false,
 }) => {
   // State filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -182,13 +184,15 @@ export const TransactionList: React.FC<TransactionListProps> = ({
             <span>Ekspor Excel (.xlsx)</span>
           </button>
 
-          <button
-            onClick={() => onOpenAddModal()}
-            className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs py-2 px-3.5 rounded-lg flex items-center gap-1.5 shadow-sm transition cursor-pointer"
-          >
-            <PlusCircle className="w-4 h-4" />
-            <span>+ Catat Transaksi Baru</span>
-          </button>
+          {!readOnly && onOpenAddModal && (
+            <button
+              onClick={() => onOpenAddModal()}
+              className="bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs py-2 px-3.5 rounded-lg flex items-center gap-1.5 shadow-sm transition cursor-pointer"
+            >
+              <PlusCircle className="w-4 h-4" />
+              <span>+ Catat Transaksi Baru</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -320,7 +324,7 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                 <th className="py-3 px-3 border-r border-slate-300 text-left whitespace-nowrap">KAS</th>
                 <th className="py-3 px-3 border-r border-slate-300 text-right whitespace-nowrap">PEMASUKAN</th>
                 <th className="py-3 px-3 border-r border-slate-300 text-right whitespace-nowrap">PENGELUARAN</th>
-                <th className="py-3 px-3 text-center whitespace-nowrap">AKSI</th>
+                <th className="py-3 px-3 text-center whitespace-nowrap">{readOnly ? 'BUKTI' : 'AKSI'}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-300 text-slate-800 font-normal">
@@ -397,20 +401,27 @@ export const TransactionList: React.FC<TransactionListProps> = ({
                             <Eye className="w-4 h-4" />
                           </button>
                         )}
-                        <button
-                          onClick={() => onEditTransaction(trx)}
-                          className="p-1.5 text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 rounded transition cursor-pointer"
-                          title="Edit Transaksi"
-                        >
-                          <Edit3 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => setDeletingTrxId(trx.id)}
-                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition cursor-pointer"
-                          title="Hapus Transaksi"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {!readOnly && onEditTransaction && (
+                          <button
+                            onClick={() => onEditTransaction(trx)}
+                            className="p-1.5 text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 rounded transition cursor-pointer"
+                            title="Edit Transaksi"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                        )}
+                        {!readOnly && onDeleteTransaction && (
+                          <button
+                            onClick={() => setDeletingTrxId(trx.id)}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition cursor-pointer"
+                            title="Hapus Transaksi"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                        {readOnly && !trx.buktiUrl && (
+                          <span className="text-xs text-slate-400 italic">—</span>
+                        )}
                       </div>
                     </td>
                   </tr>

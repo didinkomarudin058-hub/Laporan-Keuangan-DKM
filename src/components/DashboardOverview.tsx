@@ -28,9 +28,11 @@ interface DashboardOverviewProps {
   selectedMonth: number; // 1-12
   selectedYear: number;
   posDanaList?: string[];
-  onOpenAddModal: (defaultCategory?: FundCategory) => void;
+  onOpenAddModal?: (defaultCategory?: FundCategory) => void;
   onNavigateTab: (tab: 'dashboard' | 'transactions' | 'monthlyReport' | 'analytics' | 'tvMode') => void;
   onSelectFundFilter: (fund: FundCategory | 'semua') => void;
+  readOnly?: boolean;
+  onOpenQrModal?: () => void;
 }
 
 export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
@@ -42,6 +44,8 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   onOpenAddModal,
   onNavigateTab,
   onSelectFundFilter,
+  readOnly = false,
+  onOpenQrModal,
 }) => {
   const [activeReceiptTrx, setActiveReceiptTrx] = useState<Transaction | null>(null);
   // Compute overall financial totals
@@ -331,18 +335,20 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                 </div>
 
                 <div className="flex gap-2 pt-0.5">
-                  <button
-                    onClick={() => onOpenAddModal(item.name)}
-                    className="flex-1 py-1 px-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-[10px] rounded-md border border-emerald-200 transition text-center cursor-pointer"
-                  >
-                    + Catat Kas
-                  </button>
+                  {!readOnly && onOpenAddModal && (
+                    <button
+                      onClick={() => onOpenAddModal(item.name)}
+                      className="flex-1 py-1 px-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-[10px] rounded-md border border-emerald-200 transition text-center cursor-pointer"
+                    >
+                      + Catat Kas
+                    </button>
+                  )}
                   <button
                     onClick={() => onSelectFundFilter(item.name)}
-                    className="py-1 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[10px] rounded-md transition cursor-pointer"
-                    title="Filter mutasi pos ini"
+                    className={`${readOnly ? 'w-full' : 'py-1 px-2.5'} py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[10px] rounded-md transition text-center cursor-pointer`}
+                    title="Lihat rincian mutasi pos ini"
                   >
-                    Mutasi
+                    {readOnly ? 'Lihat Mutasi Kas' : 'Mutasi'}
                   </button>
                 </div>
               </div>
@@ -444,14 +450,24 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             </div>
           </div>
 
-          <div className="pt-3 border-t border-slate-800 text-[11px] text-slate-400 space-y-1">
+          <div className="pt-3 border-t border-slate-800 text-[11px] text-slate-400 space-y-2.5">
             <div className="flex items-center gap-1.5 text-emerald-400 font-bold">
               <ShieldCheck className="w-4 h-4" />
               <span>Transparan & Real-Time</span>
             </div>
-            <p className="text-slate-400 leading-relaxed">
-              Seluruh laporan pemasukan & pengeluaran kas dapat dipantau langsung oleh jamaah melalui papan pengumuman TV Masjid.
+            <p className="text-slate-400 leading-relaxed text-[11px]">
+              Seluruh laporan kas dan foto nota dapat dipantau langsung oleh jamaah melalui barcode transparansi masjid.
             </p>
+            {onOpenQrModal && (
+              <button
+                type="button"
+                onClick={onOpenQrModal}
+                className="w-full py-2 px-3 bg-amber-400 hover:bg-amber-300 text-emerald-950 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer"
+              >
+                <QrCode className="w-4 h-4" />
+                <span>Barcode Transparansi Jamaah</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
