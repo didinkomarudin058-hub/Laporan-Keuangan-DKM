@@ -256,6 +256,33 @@ export const sendPasswordReset = async (email: string) => {
   }
 };
 
+export const recoverOrActivateAccount = (email: string) => {
+  const cleanEmail = email.trim().toLowerCase();
+  const localUsers = getStoredLocalUsers();
+  
+  let targetUser = localUsers.find((u) => u.email.toLowerCase() === cleanEmail);
+  
+  if (!targetUser) {
+    const localUid = `dkm-user-${cleanEmail.replace(/[^a-z0-9]/g, '_')}`;
+    targetUser = {
+      uid: localUid,
+      email: cleanEmail,
+      createdAt: new Date().toISOString(),
+    };
+    const updated = [...localUsers, targetUser];
+    localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(updated));
+  }
+
+  const userObj = {
+    uid: targetUser.uid,
+    email: targetUser.email,
+    displayName: targetUser.displayName || targetUser.email.split('@')[0],
+    isLocal: true,
+  };
+  setStoredCurrentLocalUser(userObj);
+  return userObj;
+};
+
 export const subscribeAuth = (callback: (user: any | null) => void) => {
   const checkCurrentState = (fbUser: User | null) => {
     if (fbUser) {

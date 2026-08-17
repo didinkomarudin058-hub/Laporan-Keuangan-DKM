@@ -16,6 +16,7 @@ import {
   RefreshCw,
   ShieldCheck,
   Sparkles,
+  Key,
 } from 'lucide-react';
 import { User } from 'firebase/auth';
 import {
@@ -24,6 +25,7 @@ import {
   loginWithGoogle,
   logoutUser,
   sendPasswordReset,
+  recoverOrActivateAccount,
 } from '../lib/firebase';
 
 interface AuthAccountTabProps {
@@ -59,6 +61,13 @@ export const AuthAccountTab: React.FC<AuthAccountTabProps> = ({
   const handleSwitchMode = (newMode: 'login' | 'register' | 'forgot') => {
     setMode(newMode);
     resetForm();
+  };
+
+  const handleRecoverTargetAccount = (targetEmail: string) => {
+    setErrorMsg(null);
+    setSuccessMsg(null);
+    const user = recoverOrActivateAccount(targetEmail);
+    setSuccessMsg(`Akun ${user.email} berhasil dipulihkan dan diaktifkan secara instan!`);
   };
 
   const handleGoogleAuth = async () => {
@@ -248,6 +257,30 @@ export const AuthAccountTab: React.FC<AuthAccountTabProps> = ({
       ) : (
         /* Not Logged In - Login / Register / Forgot Form */
         <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-sm">
+          {/* Quick Account Recovery / Pulihkan Akun bulqia89@gmail.com */}
+          <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 p-3.5 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-start gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-emerald-700 text-white flex items-center justify-center shrink-0 mt-0.5">
+                <Key className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-slate-800">
+                  Pemulihan Akun: bulqia89@gmail.com
+                </h4>
+                <p className="text-[11px] text-slate-500">
+                  Pulihkan dan hubungkan langsung akun pengurus DKM ini.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleRecoverTargetAccount('bulqia89@gmail.com')}
+              className="px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-lg transition shrink-0 cursor-pointer shadow-xs"
+            >
+              Pulihkan Akun Ini
+            </button>
+          </div>
+
           {/* Mode Tabs */}
           <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
             <button
