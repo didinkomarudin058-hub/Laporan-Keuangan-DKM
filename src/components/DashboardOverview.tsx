@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Wallet, 
   TrendingUp, 
@@ -16,9 +16,11 @@ import {
   FileText,
   Clock,
   Sparkles,
-  Coins
+  Coins,
+  Camera
 } from 'lucide-react';
 import { FundCategory, MosqueProfile, Transaction } from '../types';
+import { ReceiptModal } from './ReceiptModal';
 
 interface DashboardOverviewProps {
   transactions: Transaction[];
@@ -41,6 +43,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   onNavigateTab,
   onSelectFundFilter,
 }) => {
+  const [activeReceiptTrx, setActiveReceiptTrx] = useState<Transaction | null>(null);
   // Compute overall financial totals
   const totalCombinedIncome = transactions
     .filter(t => t.jenis === 'pemasukan')
@@ -385,6 +388,17 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                       <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 font-medium">
                         {trx.danaKat}
                       </span>
+                      {trx.buktiUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setActiveReceiptTrx(trx)}
+                          className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-1.5 py-0.2 rounded border border-emerald-200 cursor-pointer"
+                          title="Klik untuk melihat bukti foto / struk"
+                        >
+                          <Camera className="w-2.5 h-2.5 text-emerald-600" />
+                          <span>Bukti</span>
+                        </button>
+                      )}
                     </div>
                     <div className="text-[10px] text-slate-400 flex items-center gap-2">
                       <span>{formatDateDDMMYYYY(trx.tanggal)}</span>
@@ -441,6 +455,13 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Receipt Image Lightbox Modal */}
+      <ReceiptModal
+        isOpen={!!activeReceiptTrx}
+        onClose={() => setActiveReceiptTrx(null)}
+        transaction={activeReceiptTrx}
+      />
     </div>
   );
 };

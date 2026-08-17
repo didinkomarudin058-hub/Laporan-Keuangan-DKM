@@ -13,10 +13,13 @@ import {
   FileSpreadsheet,
   FileText,
   X,
-  Eye
+  Eye,
+  Camera,
+  Image as ImageIcon
 } from 'lucide-react';
 import { FundCategory, MosqueProfile, Transaction, TransactionType } from '../types';
 import { exportTransactionsToExcel } from '../lib/excelExport';
+import { ReceiptModal } from './ReceiptModal';
 
 interface TransactionListProps {
   transactions: Transaction[];
@@ -339,11 +342,24 @@ export const TransactionList: React.FC<TransactionListProps> = ({
 
                     <td className="py-3.5 px-3 border-r border-slate-300 break-words">
                       <span className="text-slate-900 font-normal leading-relaxed">{trx.keterangan}</span>
-                      {trx.donatur && (
-                        <span className="block text-xs text-emerald-700 mt-0.5">
-                          Donatur: {trx.donatur}
-                        </span>
-                      )}
+                      <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                        {trx.donatur && (
+                          <span className="text-xs text-emerald-700">
+                            Donatur: {trx.donatur}
+                          </span>
+                        )}
+                        {trx.buktiUrl && (
+                          <button
+                            type="button"
+                            onClick={() => setActiveReceiptTrx(trx)}
+                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-200 transition cursor-pointer"
+                            title="Klik untuk melihat bukti foto / nota"
+                          >
+                            <Camera className="w-3 h-3 text-emerald-600" />
+                            <span>Bukti Foto</span>
+                          </button>
+                        )}
+                      </div>
                     </td>
 
                     <td className="py-3.5 px-3 border-r border-slate-300 whitespace-nowrap text-slate-700">
@@ -372,6 +388,15 @@ export const TransactionList: React.FC<TransactionListProps> = ({
 
                     <td className="py-3.5 px-3 text-center whitespace-nowrap">
                       <div className="flex items-center justify-center gap-1">
+                        {trx.buktiUrl && (
+                          <button
+                            onClick={() => setActiveReceiptTrx(trx)}
+                            className="p-1.5 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded transition cursor-pointer"
+                            title="Lihat Bukti Foto"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                        )}
                         <button
                           onClick={() => onEditTransaction(trx)}
                           className="p-1.5 text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 rounded transition cursor-pointer"
@@ -464,6 +489,13 @@ export const TransactionList: React.FC<TransactionListProps> = ({
           </div>
         </div>
       )}
+
+      {/* Receipt Image Lightbox Modal */}
+      <ReceiptModal
+        isOpen={!!activeReceiptTrx}
+        onClose={() => setActiveReceiptTrx(null)}
+        transaction={activeReceiptTrx}
+      />
     </div>
   );
 };

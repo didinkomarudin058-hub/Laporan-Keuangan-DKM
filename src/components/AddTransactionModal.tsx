@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { X, PlusCircle, CheckCircle2, DollarSign, Wallet, Calendar, User, FileText, CreditCard, Tag } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { X, PlusCircle, CheckCircle2, DollarSign, Wallet, Calendar, User, FileText, CreditCard, Tag, Camera, Image as ImageIcon, Trash2, Eye, UploadCloud, Loader2 } from 'lucide-react';
 import { FundCategory, Transaction, TransactionType } from '../types';
+import { compressImageFile } from '../lib/imageUtils';
 
 interface AddTransactionModalProps {
   isOpen: boolean;
@@ -35,6 +36,11 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
   const [tanggal, setTanggal] = useState(new Date().toISOString().split('T')[0]);
   const [donatur, setDonatur] = useState('');
   const [metodePembayaran, setMetodePembayaran] = useState<string>('Tunai');
+  const [buktiUrl, setBuktiUrl] = useState<string | undefined>(undefined);
+  const [isCompressing, setIsCompressing] = useState<boolean>(false);
+  const [previewModalOpen, setPreviewModalOpen] = useState<boolean>(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentCategoryList = jenis === 'pemasukan' ? categoriesPemasukan : categoriesPengeluaran;
 
@@ -49,6 +55,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
       setTanggal(editingTransaction.tanggal);
       setDonatur(editingTransaction.donatur || '');
       setMetodePembayaran(editingTransaction.metodePembayaran || 'Tunai');
+      setBuktiUrl(editingTransaction.buktiUrl || undefined);
     } else {
       setJenis('pemasukan');
       setDanaKat(posDanaList.includes(defaultFundCategory) ? defaultFundCategory : (posDanaList[0] || 'Kas Operasional'));
@@ -58,6 +65,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
       setTanggal(new Date().toISOString().split('T')[0]);
       setDonatur('');
       setMetodePembayaran(metodePembayaranList[0] || 'Tunai');
+      setBuktiUrl(undefined);
     }
   }, [editingTransaction, isOpen, defaultFundCategory, posDanaList, metodePembayaranList, categoriesPemasukan]);
 
@@ -67,6 +75,32 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
     const catList = newJenis === 'pemasukan' ? categoriesPemasukan : categoriesPengeluaran;
     if (catList.length > 0) {
       setKategori(catList[0]);
+    }
+  };
+
+  const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsCompressing(true);
+      const compressedDataUrl = await compressImageFile(file, 1200, 1200, 0.78);
+      setBuktiUrl(compressedDataUrl);
+    } catch (err: any) {
+      alert(err.message || 'Gagal memproses file gambar bukti transaksi.');
+    } finally {
+      setIsCompressing(false);
+      // Reset input value so same file can be re-selected if needed
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleRemoveBukti = () => {
+    setBuktiUrl(undefined);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -89,6 +123,7 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
         jumlah: Number(jumlah),
         donatur: donatur.trim() ? donatur.trim() : undefined,
         metodePembayaran: metodePembayaran || 'Tunai',
+        buktiUrl: buktiUrl || undefined,
         statusVerification: 'Terverifikasi',
       },
       editingTransaction?.id
@@ -300,6 +335,116 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
             </div>
           </div>
 
+          {/* Lampiran Bukti Gambar / Struk (Opsional) */}
+          <div className="space-y-1.5 pt-1">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-bold text-slate-700">
+                Foto Bukti Transaksi / Nota / Struk <span className="text-slate-400 font-normal">(Opsional)</span>
+              </label>
+              {buktiUrl && (
+                <span className="text-[11px] font-semibold text-emerald-700 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                  <span>Foto Terlampir</span>
+                </span>
+              )}
+            </div>
+
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="image/*"
+              capture="environment"
+              onChange={handleImageFileChange}
+              className="hidden"
+              id="bukti-transaksi-input"
+            />
+
+            {!buktiUrl ? (
+              <div
+                onClick={() => !isCompressing && fileInputRef.current?.click()}
+                className={`border-2 border-dashed rounded-xl p-3.5 sm:p-4 text-center transition cursor-pointer flex flex-col items-center justify-center gap-2 ${
+                  isCompressing
+                    ? 'border-emerald-300 bg-emerald-50/50 cursor-wait'
+                    : 'border-slate-300 hover:border-emerald-600 hover:bg-emerald-50/40 bg-slate-50'
+                }`}
+              >
+                {isCompressing ? (
+                  <div className="flex flex-col items-center gap-1 text-emerald-700 py-1">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span className="text-xs font-semibold">Mengoptimalkan ukuran gambar bukti...</span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="w-9 h-9 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center">
+                      <Camera className="w-4 h-4" />
+                    </div>
+                    <div className="space-y-0.5">
+                      <p className="text-xs font-bold text-slate-800">
+                        Klik untuk Ambil Foto / Upload Gambar Bukti
+                      </p>
+                      <p className="text-[11px] text-slate-500">
+                        Format JPG, PNG, WEBP · Otomatis dikompresi agar hemat memori
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    onClick={() => setPreviewModalOpen(true)}
+                    className="w-14 h-14 rounded-lg bg-slate-200 border border-slate-300 overflow-hidden flex-shrink-0 cursor-pointer group relative"
+                  >
+                    <img
+                      src={buktiUrl}
+                      alt="Pratinjau Bukti"
+                      className="w-full h-full object-cover group-hover:scale-105 transition"
+                    />
+                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white">
+                      <Eye className="w-4 h-4" />
+                    </div>
+                  </div>
+                  <div className="min-w-0 space-y-0.5">
+                    <p className="text-xs font-bold text-slate-800 truncate">
+                      Bukti Foto Terlampir
+                    </p>
+                    <p className="text-[11px] text-emerald-700 font-medium">
+                      Siap disimpan bersama catatan kas
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewModalOpen(true)}
+                      className="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <Eye className="w-3 h-3" />
+                      <span>Lihat Ukuran Penuh</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
+                  >
+                    <UploadCloud className="w-3.5 h-3.5 text-slate-500" />
+                    <span className="hidden sm:inline">Ganti</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleRemoveBukti}
+                    className="p-1.5 rounded-lg bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 text-[11px] font-bold transition cursor-pointer"
+                    title="Hapus Bukti"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Submit Actions */}
           <div className="pt-4 border-t border-slate-100 flex items-center justify-end gap-2">
             <button
@@ -311,7 +456,8 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-5 py-2 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-lg shadow-sm transition flex items-center gap-1.5 cursor-pointer"
+              disabled={isCompressing}
+              className="px-5 py-2 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg shadow-sm transition flex items-center gap-1.5 cursor-pointer"
             >
               <CheckCircle2 className="w-4 h-4" />
               <span>Simpan Catatan Transaksi</span>
@@ -319,6 +465,42 @@ export const AddTransactionModal: React.FC<AddTransactionModalProps> = ({
           </div>
         </form>
       </div>
+
+      {/* Internal Preview Lightbox Modal */}
+      {previewModalOpen && buktiUrl && (
+        <div className="fixed inset-0 z-60 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-200 space-y-3 p-4">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+              <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wide">
+                Pratinjau Foto Bukti Transaksi
+              </h4>
+              <button
+                type="button"
+                onClick={() => setPreviewModalOpen(false)}
+                className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-900 transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="max-h-[60vh] overflow-auto flex items-center justify-center bg-slate-900 rounded-xl p-2">
+              <img
+                src={buktiUrl}
+                alt="Pratinjau Bukti"
+                className="max-h-[55vh] max-w-full object-contain rounded"
+              />
+            </div>
+            <div className="flex justify-end pt-1">
+              <button
+                type="button"
+                onClick={() => setPreviewModalOpen(false)}
+                className="px-4 py-1.5 bg-slate-800 text-white rounded-lg text-xs font-bold hover:bg-slate-900 transition"
+              >
+                Tutup Pratinjau
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

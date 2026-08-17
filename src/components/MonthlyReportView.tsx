@@ -9,10 +9,12 @@ import {
   RotateCcw,
   Tag,
   CalendarDays,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Camera
 } from 'lucide-react';
 import { MosqueProfile, Transaction } from '../types';
 import { exportTransactionsToExcel } from '../lib/excelExport';
+import { ReceiptModal } from './ReceiptModal';
 
 interface MonthlyReportViewProps {
   transactions: Transaction[];
@@ -41,6 +43,9 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
   // Interactive Filters State
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>('semua');
   const [selectedFundFilter, setSelectedFundFilter] = useState<string>('semua');
+
+  // Active Receipt Modal
+  const [activeReceiptTrx, setActiveReceiptTrx] = useState<Transaction | null>(null);
 
   const monthNames = [
     'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -772,11 +777,24 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
                         <span className="text-slate-900 font-normal leading-relaxed">
                           {trx.keterangan}
                         </span>
-                        {trx.donatur && (
-                          <span className="block text-[11px] text-emerald-700 mt-0.5">
-                            Donatur: {trx.donatur}
-                          </span>
-                        )}
+                        <div className="flex items-center gap-2 flex-wrap mt-0.5">
+                          {trx.donatur && (
+                            <span className="text-[11px] text-emerald-700">
+                              Donatur: {trx.donatur}
+                            </span>
+                          )}
+                          {trx.buktiUrl && (
+                            <button
+                              type="button"
+                              onClick={() => setActiveReceiptTrx(trx)}
+                              className="no-print inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-200 cursor-pointer"
+                              title="Klik untuk melihat bukti foto / nota"
+                            >
+                              <Camera className="w-2.5 h-2.5 text-emerald-600" />
+                              <span>Bukti Foto</span>
+                            </button>
+                          )}
+                        </div>
                       </td>
                       <td className="py-3 px-2.5 border-r border-slate-300 whitespace-nowrap text-slate-700">
                         {trx.kategori}
@@ -842,6 +860,13 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Receipt Image Lightbox Modal */}
+      <ReceiptModal
+        isOpen={!!activeReceiptTrx}
+        onClose={() => setActiveReceiptTrx(null)}
+        transaction={activeReceiptTrx}
+      />
     </div>
   );
 };
