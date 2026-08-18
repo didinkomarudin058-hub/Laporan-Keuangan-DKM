@@ -93,7 +93,7 @@ export interface BusinessRecord {
 
 export interface LandTenant {
   id: string;
-  unitId?: string; // Reference to unit usaha e.g. Sewa Tanah / Lahan Wakaf
+  unitId?: string; // Reference to unit usaha or 'UNIT-SEWA'
   namaPenyewa: string;
   nomorTelepon: string;
   nomorKTP?: string;
@@ -102,7 +102,10 @@ export interface LandTenant {
   lokasiLahan?: string; // e.g. 'Jl. Masjid Sisi Barat RT 02'
   luasLahan?: string; // e.g. '50 m²', '120 m²', '1 Rante / 400 m²'
   peruntukanUsaha: string; // e.g. 'Kios Kuliner / Warung Makan', 'Bengkel Motor', 'Toko Kelontong', 'Pertanian Tanaman Hias', 'Gudang Material'
-  tarifSewa: number; // Nilai sewa per siklus (Rp)
+  tarifSewa: number; // Nilai sewa normal per siklus (Rp)
+  diskonPersen?: number; // Persentase Potongan Sewa (0 - 100%)
+  keteranganDiskon?: string; // Alasan potongan, misal: "Keringanan Jamaah Dhuafa", "Diskon Sewa Tahunan Dimuka"
+  tarifSetelahDiskon?: number; // Tarif bersih setelah potongan persentase
   tipePeriode: 'bulanan' | 'tahunan' | 'musiman';
   tanggalMulai: string; // YYYY-MM-DD
   tanggalSelesai: string; // YYYY-MM-DD

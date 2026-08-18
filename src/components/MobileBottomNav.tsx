@@ -62,7 +62,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         <span>Laporan</span>
       </button>
 
-      {/* 4. Usaha DKM */}
+      {/* 4. Usaha DKM / Penyewa Tanah */}
       <button
         onClick={() => setActiveTab('business')}
         className={`flex flex-col items-center justify-center py-1 px-1.5 rounded-lg transition text-[10px] font-semibold ${
@@ -71,8 +71,8 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             : 'text-slate-400 hover:text-white'
         }`}
       >
-        <Store className="w-5 h-5 mb-0.5 text-amber-400" />
-        <span>Usaha</span>
+        <Building2 className="w-5 h-5 mb-0.5 text-amber-400" />
+        <span>Penyewa</span>
       </button>
 
       {/* 5. Menu Pengaturan / Fitur Lainnya */}

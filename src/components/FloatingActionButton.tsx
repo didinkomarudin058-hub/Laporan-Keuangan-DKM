@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, ArrowDownLeft, ArrowUpRight, Store, X, Receipt, Sparkles } from 'lucide-react';
+import { Plus, ArrowDownLeft, ArrowUpRight, UserCheck, X, Receipt, Sparkles, Building2 } from 'lucide-react';
 import { TransactionType } from '../types';
 
 interface FloatingActionButtonProps {
@@ -35,6 +35,11 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
     setIsOpen(false);
     callback();
   };
+
+  // Only render on dashboard / ikhtisar tab
+  if (activeTab !== 'dashboard') {
+    return null;
+  }
 
   return (
     <div
@@ -75,18 +80,18 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
             </span>
           </button>
 
-          {/* 3. Catat Hasil Usaha Masjid */}
+          {/* 3. Penyewa Tanah / Aset Wakaf */}
           <button
             id="fab-action-business"
             onClick={() => handleAction(() => onNavigateToBusiness(true))}
             className="flex items-center gap-2.5 px-3.5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 rounded-full shadow-lg hover:shadow-xl transition-all transform hover:-translate-x-1 active:scale-95 text-xs font-semibold group cursor-pointer border border-amber-300/40"
           >
             <span className="bg-amber-700/30 px-2 py-0.5 rounded text-[11px] font-bold text-amber-950">
-              Unit Bisnis DKM
+              Lahan Wakaf
             </span>
-            <span className="whitespace-nowrap font-bold">Catat Setoran Usaha</span>
+            <span className="whitespace-nowrap font-bold">Penyewa Tanah & Sewa</span>
             <span className="w-7 h-7 bg-slate-900 text-amber-400 rounded-full flex items-center justify-center shadow-inner">
-              <Store className="w-3.5 h-3.5" />
+              <UserCheck className="w-3.5 h-3.5" />
             </span>
           </button>
         </div>
@@ -101,7 +106,7 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
             ? 'bg-slate-800 text-white rotate-45 hover:bg-slate-900 border-2 border-slate-700'
             : 'bg-gradient-to-tr from-emerald-700 via-emerald-600 to-teal-500 hover:from-emerald-600 hover:to-teal-400 text-white hover:scale-105 shadow-emerald-700/40 hover:shadow-emerald-700/60 ring-2 ring-white/60'
         }`}
-        title={isOpen ? 'Tutup menu' : 'Tambah transaksi kas / setoran usaha (+)'}
+        title={isOpen ? 'Tutup menu' : 'Tambah transaksi kas / sewa tanah (+)'}
         aria-label="Tombol Tambah Transaksi Kas Melayang"
       >
         <Plus className="w-7 h-7 stroke-[2.8]" />
@@ -109,3 +114,4 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
     </div>
   );
 };
+

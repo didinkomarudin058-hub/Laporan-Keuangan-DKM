@@ -1129,19 +1129,21 @@ export default function App() {
         )}
       </main>
 
-      {/* Floating '+' Action Button */}
-      <FloatingActionButton
-        onOpenAddTransaction={(type) => {
-          if (type) {
-            // open add modal with selected type
-          }
-          handleOpenAddModal();
-        }}
-        onNavigateToBusiness={(openNewRecord) => {
-          setActiveTab('business');
-        }}
-        activeTab={activeTab}
-      />
+      {/* Floating '+' Action Button - Only visible in Ikhtisar / Dashboard */}
+      {activeTab === 'dashboard' && (
+        <FloatingActionButton
+          onOpenAddTransaction={(type) => {
+            if (type) {
+              // open add modal with selected type
+            }
+            handleOpenAddModal();
+          }}
+          onNavigateToBusiness={(openNewRecord) => {
+            setActiveTab('business');
+          }}
+          activeTab={activeTab}
+        />
+      )}
 
       {/* Back Button Toast Notification */}
       {toastMessage && (

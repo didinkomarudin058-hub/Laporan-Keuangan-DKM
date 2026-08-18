@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, UserCheck, MapPin, Calendar, DollarSign, FileText, Phone, CreditCard, ShieldCheck } from 'lucide-react';
+import { X, UserCheck, MapPin, Calendar, DollarSign, FileText, Phone, CreditCard, ShieldCheck, Percent, Sparkles, Tag } from 'lucide-react';
 import { LandTenant, MosqueBusinessUnit, FundCategory } from '../types';
 
 interface TenantModalProps {
@@ -7,7 +7,7 @@ interface TenantModalProps {
   onClose: () => void;
   onSave: (tenantData: Omit<LandTenant, 'id'>) => void;
   editingTenant: LandTenant | null;
-  businessUnits: MosqueBusinessUnit[];
+  businessUnits?: MosqueBusinessUnit[];
   posDanaList: string[];
 }
 
@@ -16,7 +16,7 @@ export const TenantModal: React.FC<TenantModalProps> = ({
   onClose,
   onSave,
   editingTenant,
-  businessUnits,
+  businessUnits = [],
   posDanaList,
 }) => {
   const [formData, setFormData] = useState<{
@@ -30,6 +30,8 @@ export const TenantModal: React.FC<TenantModalProps> = ({
     luasLahan: string;
     peruntukanUsaha: string;
     tarifSewa: number | string;
+    diskonPersen: number | string;
+    keteranganDiskon: string;
     tipePeriode: 'bulanan' | 'tahunan' | 'musiman';
     tanggalMulai: string;
     tanggalSelesai: string;
@@ -37,7 +39,7 @@ export const TenantModal: React.FC<TenantModalProps> = ({
     posDanaTujuan: string;
     catatan: string;
   }>({
-    unitId: '',
+    unitId: 'UNIT-SEWA',
     namaPenyewa: '',
     nomorTelepon: '',
     nomorKTP: '',
@@ -47,6 +49,8 @@ export const TenantModal: React.FC<TenantModalProps> = ({
     luasLahan: '',
     peruntukanUsaha: '',
     tarifSewa: '',
+    diskonPersen: 0,
+    keteranganDiskon: '',
     tipePeriode: 'bulanan',
     tanggalMulai: new Date().toISOString().split('T')[0],
     tanggalSelesai: new Date(new Date().setFullYear(new Date().getFullYear() + 1))
@@ -57,13 +61,10 @@ export const TenantModal: React.FC<TenantModalProps> = ({
     catatan: '',
   });
 
-  const sewaUnits = businessUnits.filter((u) => u.kategori === 'sewa_aset' || /sewa|tanah|lahan|kios/i.test(u.nama));
-  const defaultUnit = sewaUnits[0] || businessUnits[0];
-
   useEffect(() => {
     if (editingTenant) {
       setFormData({
-        unitId: editingTenant.unitId || defaultUnit?.id || '',
+        unitId: editingTenant.unitId || 'UNIT-SEWA',
         namaPenyewa: editingTenant.namaPenyewa,
         nomorTelepon: editingTenant.nomorTelepon,
         nomorKTP: editingTenant.nomorKTP || '',
@@ -73,6 +74,8 @@ export const TenantModal: React.FC<TenantModalProps> = ({
         luasLahan: editingTenant.luasLahan || '',
         peruntukanUsaha: editingTenant.peruntukanUsaha,
         tarifSewa: editingTenant.tarifSewa,
+        diskonPersen: editingTenant.diskonPersen ?? 0,
+        keteranganDiskon: editingTenant.keteranganDiskon || '',
         tipePeriode: editingTenant.tipePeriode,
         tanggalMulai: editingTenant.tanggalMulai,
         tanggalSelesai: editingTenant.tanggalSelesai,
@@ -82,7 +85,7 @@ export const TenantModal: React.FC<TenantModalProps> = ({
       });
     } else {
       setFormData({
-        unitId: defaultUnit?.id || '',
+        unitId: 'UNIT-SEWA',
         namaPenyewa: '',
         nomorTelepon: '',
         nomorKTP: '',
@@ -92,19 +95,26 @@ export const TenantModal: React.FC<TenantModalProps> = ({
         luasLahan: '',
         peruntukanUsaha: '',
         tarifSewa: '',
+        diskonPersen: 0,
+        keteranganDiskon: '',
         tipePeriode: 'bulanan',
         tanggalMulai: new Date().toISOString().split('T')[0],
         tanggalSelesai: new Date(new Date().setFullYear(new Date().getFullYear() + 1))
           .toISOString()
           .split('T')[0],
         statusKontrak: 'aktif',
-        posDanaTujuan: defaultUnit?.posDanaTujuan || 'Kas Operasional',
+        posDanaTujuan: 'Kas Operasional',
         catatan: '',
       });
     }
-  }, [editingTenant, defaultUnit, isOpen]);
+  }, [editingTenant, isOpen]);
 
   if (!isOpen) return null;
+
+  const rawTarif = Number(formData.tarifSewa) || 0;
+  const rawDiskonPersen = Math.min(100, Math.max(0, Number(formData.diskonPersen) || 0));
+  const nominalPotongan = (rawTarif * rawDiskonPersen) / 100;
+  const tarifBersih = Math.max(0, rawTarif - nominalPotongan);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,7 +124,7 @@ export const TenantModal: React.FC<TenantModalProps> = ({
     }
 
     onSave({
-      unitId: formData.unitId || defaultUnit?.id || 'UNIT-00',
+      unitId: formData.unitId || 'UNIT-SEWA',
       namaPenyewa: formData.namaPenyewa.trim(),
       nomorTelepon: formData.nomorTelepon.trim(),
       nomorKTP: formData.nomorKTP.trim(),
@@ -123,7 +133,10 @@ export const TenantModal: React.FC<TenantModalProps> = ({
       lokasiLahan: formData.lokasiLahan.trim(),
       luasLahan: formData.luasLahan.trim(),
       peruntukanUsaha: formData.peruntukanUsaha.trim() || 'Usaha Mandiri Jamaah',
-      tarifSewa: Number(formData.tarifSewa) || 0,
+      tarifSewa: rawTarif,
+      diskonPersen: rawDiskonPersen,
+      keteranganDiskon: rawDiskonPersen > 0 ? formData.keteranganDiskon.trim() : '',
+      tarifSetelahDiskon: tarifBersih,
       tipePeriode: formData.tipePeriode,
       tanggalMulai: formData.tanggalMulai,
       tanggalSelesai: formData.tanggalSelesai,
@@ -136,6 +149,8 @@ export const TenantModal: React.FC<TenantModalProps> = ({
 
     onClose();
   };
+
+  const presetDiscounts = [0, 5, 10, 15, 20, 25, 50];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-200">
@@ -151,7 +166,7 @@ export const TenantModal: React.FC<TenantModalProps> = ({
                 {editingTenant ? 'Edit Data Penyewa Lahan/Tanah' : 'Tambah Penyewa Tanah & Aset Wakaf'}
               </h3>
               <p className="text-xs text-emerald-200">
-                Pencatatan penyewa tanah, tarif sewa, dan pengelolaan masa kontrak DKM
+                Pencatatan penyewa tanah, tarif sewa, fitur potongan persentase, dan masa kontrak DKM
               </p>
             </div>
           </div>
@@ -298,17 +313,20 @@ export const TenantModal: React.FC<TenantModalProps> = ({
             </div>
           </div>
 
-          {/* Section 3: Tarif Sewa & Pos Dana */}
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
-            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-              <DollarSign className="w-4 h-4 text-emerald-700" />
-              <span>Tarif Sewa & Masa Kontrak</span>
-            </h4>
+          {/* Section 3: Tarif Sewa & Fitur Potongan Persentase */}
+          <div className="bg-amber-50/50 p-4 rounded-xl border border-amber-200/90 space-y-3.5">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold text-amber-950 uppercase tracking-wider flex items-center gap-1.5">
+                <DollarSign className="w-4 h-4 text-amber-700" />
+                <span>Tarif Sewa & Potongan (%)</span>
+              </h4>
+            </div>
 
+            {/* Tarif Normal & Siklus */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="sm:col-span-2">
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Tarif Sewa (Rp) <span className="text-rose-500">*</span>
+                <label className="block text-xs font-bold text-slate-800 mb-1">
+                  Tarif Sewa Normal (Rp) <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-500">
@@ -328,7 +346,7 @@ export const TenantModal: React.FC<TenantModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
+                <label className="block text-xs font-bold text-slate-800 mb-1">
                   Siklus Pembayaran
                 </label>
                 <select
@@ -342,6 +360,102 @@ export const TenantModal: React.FC<TenantModalProps> = ({
                 </select>
               </div>
             </div>
+
+            {/* Potongan Persentase Input & Quick Pills */}
+            <div className="space-y-2 pt-2 border-t border-amber-200/70">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <Percent className="w-3.5 h-3.5 text-amber-700" />
+                  <span>Potongan Sewa (%)</span>
+                </label>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {presetDiscounts.map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, diskonPersen: preset })}
+                      className={`px-2 py-0.5 rounded-lg text-[11px] font-bold transition cursor-pointer ${
+                        Number(formData.diskonPersen) === preset
+                          ? 'bg-amber-600 text-white shadow-xs'
+                          : 'bg-white text-slate-700 border border-slate-300 hover:bg-amber-100 hover:border-amber-400'
+                      }`}
+                    >
+                      {preset}%
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="1"
+                    placeholder="0"
+                    value={formData.diskonPersen}
+                    onChange={(e) => setFormData({ ...formData, diskonPersen: e.target.value })}
+                    className="w-full pr-8 pl-3 py-2 text-xs bg-white font-mono font-bold border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-amber-700">
+                    %
+                  </span>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <input
+                    type="text"
+                    placeholder="Alasan potongan (e.g. UMKM Binaan Warga, Sewa 1 Tahun Dimuka, Mitra Khusus)"
+                    value={formData.keteranganDiskon}
+                    onChange={(e) => setFormData({ ...formData, keteranganDiskon: e.target.value })}
+                    className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Real-time Calculation Summary Box */}
+              {rawTarif > 0 && (
+                <div className="bg-white p-3 rounded-xl border border-amber-200 shadow-2xs space-y-1.5 text-xs">
+                  <div className="flex items-center justify-between text-slate-500 text-[11px]">
+                    <span>Tarif Sewa Normal:</span>
+                    <span className="font-mono font-bold text-slate-700">
+                      Rp {rawTarif.toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                  {rawDiskonPersen > 0 && (
+                    <div className="flex items-center justify-between text-amber-800 text-[11px] font-semibold">
+                      <span className="flex items-center gap-1">
+                        <Tag className="w-3 h-3 text-amber-600" />
+                        <span>Potongan ({rawDiskonPersen}%):</span>
+                      </span>
+                      <span className="font-mono font-bold text-rose-600">
+                        - Rp {nominalPotongan.toLocaleString('id-ID')}
+                      </span>
+                    </div>
+                  )}
+                  <div className="pt-1.5 border-t border-slate-100 flex items-center justify-between">
+                    <span className="font-extrabold text-slate-900 text-xs">
+                      Tarif Bersih Setelah Potongan:
+                    </span>
+                    <span className="font-mono text-sm font-black text-emerald-800">
+                      Rp {tarifBersih.toLocaleString('id-ID')}
+                      <span className="text-[10px] font-normal text-slate-500">
+                        {' '}/ {formData.tipePeriode}
+                      </span>
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Section 4: Masa Kontrak & Status */}
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
+            <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+              <Calendar className="w-4 h-4 text-emerald-700" />
+              <span>Masa Kontrak & Pos Dana</span>
+            </h4>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
@@ -407,7 +521,7 @@ export const TenantModal: React.FC<TenantModalProps> = ({
             </div>
           </div>
 
-          {/* Section 4: Catatan & Syarat */}
+          {/* Section 5: Catatan & Syarat */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
               Catatan / Kesepakatan Khusus Sewa Lahan
@@ -442,3 +556,4 @@ export const TenantModal: React.FC<TenantModalProps> = ({
     </div>
   );
 };
+

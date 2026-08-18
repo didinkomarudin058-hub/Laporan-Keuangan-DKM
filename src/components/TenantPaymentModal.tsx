@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, DollarSign, Calendar, CreditCard, ShieldCheck, CheckCircle2, UserCheck, MapPin } from 'lucide-react';
+import { X, DollarSign, Calendar, CreditCard, ShieldCheck, CheckCircle2, UserCheck, MapPin, Tag, Percent } from 'lucide-react';
 import { LandTenant, MosqueProfile, PaymentMethod, FundCategory } from '../types';
 
 interface TenantPaymentModalProps {
@@ -37,14 +37,18 @@ export const TenantPaymentModal: React.FC<TenantPaymentModalProps> = ({
   const [tanggal, setTanggal] = useState<string>(new Date().toISOString().split('T')[0]);
   const [periode, setPeriode] = useState<string>('');
   const [metodePembayaran, setMetodePembayaran] = useState<string>('Transfer Bank');
-  const [posDanaTujuan, setPosDanaTujuan] = useState<string>('Kas Pembangunan');
+  const [posDanaTujuan, setPosDanaTujuan] = useState<string>('Kas Operasional');
   const [keterangan, setKeterangan] = useState<string>('');
   const [petugas, setPetugas] = useState<string>('');
   const [autoPushToKas, setAutoPushToKas] = useState<boolean>(true);
 
   useEffect(() => {
     if (tenant) {
-      setNominal(tenant.tarifSewa || '');
+      const netTarif = tenant.tarifSetelahDiskon !== undefined 
+        ? tenant.tarifSetelahDiskon 
+        : (tenant.tarifSewa * (1 - (tenant.diskonPersen || 0) / 100));
+      
+      setNominal(netTarif || tenant.tarifSewa || '');
       setTanggal(new Date().toISOString().split('T')[0]);
       
       const currMonthName = new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
@@ -56,15 +60,24 @@ export const TenantPaymentModal: React.FC<TenantPaymentModalProps> = ({
           : `Periode Musiman ${currMonthName}`
       );
       
-      setPosDanaTujuan(tenant.posDanaTujuan || 'Kas Pembangunan');
+      setPosDanaTujuan(tenant.posDanaTujuan || 'Kas Operasional');
       setMetodePembayaran(metodePembayaranList[0] || 'Transfer Bank');
-      setKeterangan(`Pembayaran Sewa ${tenant.namaLahan} (${tenant.peruntukanUsaha})`);
+      
+      const diskonNote = (tenant.diskonPersen && tenant.diskonPersen > 0)
+        ? ` (Potongan ${tenant.diskonPersen}%${tenant.keteranganDiskon ? ` - ${tenant.keteranganDiskon}` : ''})`
+        : '';
+      setKeterangan(`Pembayaran Sewa ${tenant.namaLahan}${diskonNote}`);
       setPetugas(mosqueProfile.bendaharaDKM || 'Pengurus Aset Wakaf DKM');
       setAutoPushToKas(true);
     }
   }, [tenant, mosqueProfile, metodePembayaranList, isOpen]);
 
   if (!isOpen || !tenant) return null;
+
+  const discountPercent = tenant.diskonPersen || 0;
+  const normalRate = tenant.tarifSewa || 0;
+  const discountAmount = (normalRate * discountPercent) / 100;
+  const netRate = tenant.tarifSetelahDiskon !== undefined ? tenant.tarifSetelahDiskon : normalRate - discountAmount;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -133,15 +146,40 @@ export const TenantPaymentModal: React.FC<TenantPaymentModalProps> = ({
               </p>
             </div>
             <div className="text-right shrink-0">
-              <span className="text-[10px] text-slate-500 font-medium">Tarif Normal:</span>
-              <div className="text-sm font-mono font-extrabold text-emerald-800">
-                Rp {tenant.tarifSewa.toLocaleString('id-ID')}
-              </div>
-              <span className="text-[10px] font-bold text-slate-500">
+              {discountPercent > 0 ? (
+                <>
+                  <div className="text-xs line-through text-slate-400 font-mono">
+                    Rp {normalRate.toLocaleString('id-ID')}
+                  </div>
+                  <div className="text-sm font-mono font-extrabold text-emerald-800">
+                    Rp {netRate.toLocaleString('id-ID')}
+                  </div>
+                  <span className="inline-block text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-1.5 py-0.2 rounded-md">
+                    Potongan {discountPercent}%
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="text-[10px] text-slate-500 font-medium">Tarif Normal:</span>
+                  <div className="text-sm font-mono font-extrabold text-emerald-800">
+                    Rp {normalRate.toLocaleString('id-ID')}
+                  </div>
+                </>
+              )}
+              <div className="text-[10px] font-bold text-slate-500">
                 / {tenant.tipePeriode === 'bulanan' ? 'bulan' : tenant.tipePeriode === 'tahunan' ? 'tahun' : 'musim'}
-              </span>
+              </div>
             </div>
           </div>
+
+          {discountPercent > 0 && tenant.keteranganDiskon && (
+            <div className="mt-2.5 pt-2 border-t border-emerald-200/60 flex items-center gap-1.5 text-xs text-amber-900 bg-amber-50/80 px-2.5 py-1.5 rounded-lg border border-amber-200">
+              <Tag className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+              <span className="text-[11px] font-medium">
+                <strong>Alasan Potongan:</strong> {tenant.keteranganDiskon} (Hemat Rp {discountAmount.toLocaleString('id-ID')})
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Payment Form */}
@@ -166,6 +204,11 @@ export const TenantPaymentModal: React.FC<TenantPaymentModalProps> = ({
                   className="w-full pl-9 pr-3 py-2 text-sm font-mono font-extrabold text-slate-900 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                 />
               </div>
+              {discountPercent > 0 && (
+                <p className="text-[10px] text-emerald-700 mt-1 font-medium">
+                  ✓ Sudah otomatis disesuaikan potongan {discountPercent}%
+                </p>
+              )}
             </div>
 
             <div>
@@ -205,7 +248,7 @@ export const TenantPaymentModal: React.FC<TenantPaymentModalProps> = ({
               <select
                 value={metodePembayaran}
                 onChange={(e) => setMetodePembayaran(e.target.value)}
-                className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none font-semibold text-slate-800"
+                className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none font-semibold"
               >
                 {metodePembayaranList.map((m) => (
                   <option key={m} value={m}>
@@ -216,16 +259,16 @@ export const TenantPaymentModal: React.FC<TenantPaymentModalProps> = ({
             </div>
           </div>
 
-          {/* Pos Dana Tujuan & Petugas */}
+          {/* Pos Dana & Petugas */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Pos Dana Kas Tujuan
+                Pos Dana Kas Masjid Tujuan
               </label>
               <select
                 value={posDanaTujuan}
                 onChange={(e) => setPosDanaTujuan(e.target.value)}
-                className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none font-semibold text-slate-800"
+                className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none font-semibold"
               >
                 {posDanaList.map((pos) => (
                   <option key={pos} value={pos}>
@@ -237,14 +280,14 @@ export const TenantPaymentModal: React.FC<TenantPaymentModalProps> = ({
 
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                Petugas Penerima DKM
+                Nama Penerima / Petugas
               </label>
               <input
                 type="text"
-                placeholder="Bendahara / Sie Aset DKM"
+                placeholder="Nama Bendahara DKM"
                 value={petugas}
                 onChange={(e) => setPetugas(e.target.value)}
-                className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none font-medium"
               />
             </div>
           </div>
@@ -252,38 +295,38 @@ export const TenantPaymentModal: React.FC<TenantPaymentModalProps> = ({
           {/* Keterangan */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Keterangan Tambahan / Catatan Bukti
+              Catatan Pembayaran
             </label>
             <input
               type="text"
-              placeholder="Contoh: Lunas via transfer BSI a.n. Bpk Suparno"
+              placeholder="Contoh: Pembayaran sewa lunas via BSI"
               value={keterangan}
               onChange={(e) => setKeterangan(e.target.value)}
-              className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white focus:outline-none"
+              className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"
             />
           </div>
 
           {/* Auto Push To Kas Checkbox */}
-          <div className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-xl flex items-start gap-2.5">
+          <div className="bg-emerald-50/80 border border-emerald-200 p-3 rounded-xl flex items-start gap-2.5">
             <input
               type="checkbox"
-              id="tenant-auto-push-kas"
+              id="autoPushKas"
               checked={autoPushToKas}
               onChange={(e) => setAutoPushToKas(e.target.checked)}
-              className="w-4 h-4 mt-0.5 text-emerald-600 rounded focus:ring-emerald-500 cursor-pointer accent-emerald-600"
+              className="mt-0.5 w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300"
             />
-            <label htmlFor="tenant-auto-push-kas" className="text-xs text-slate-700 cursor-pointer">
-              <span className="font-bold text-emerald-900 block">
-                Otomatis setor langsung ke Transaksi Kas Masjid
+            <label htmlFor="autoPushKas" className="text-xs text-slate-700 leading-snug cursor-pointer select-none">
+              <span className="font-bold text-emerald-950 block">
+                Otomatis Masukkan ke Jurnal Kas Masjid (Pemasukan)
               </span>
-              <span className="text-[11px] text-slate-500">
-                Pemasukan sewa tanah akan langsung menambah saldo riil Kas Masjid dan tercatat di Laporan Bulanan.
+              <span className="text-slate-500 text-[11px]">
+                Uang sewa akan langsung menambah saldo pos dana kas masjid terpilih secara real-time.
               </span>
             </label>
           </div>
 
-          {/* Modal Actions */}
-          <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-200">
+          {/* Submit Actions */}
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200">
             <button
               type="button"
               onClick={onClose}
@@ -295,8 +338,8 @@ export const TenantPaymentModal: React.FC<TenantPaymentModalProps> = ({
               type="submit"
               className="px-5 py-2 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-xl transition shadow-md shadow-emerald-700/20 cursor-pointer flex items-center gap-1.5"
             >
-              <CheckCircle2 className="w-4 h-4 text-amber-300" />
-              <span>Simpan & Setor ke Kas</span>
+              <CheckCircle2 className="w-4 h-4" />
+              <span>Simpan & Catat Pembayaran</span>
             </button>
           </div>
         </form>

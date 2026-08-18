@@ -92,8 +92,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                 : 'text-emerald-200/90 hover:text-white hover:bg-emerald-800/50'
             }`}
           >
-            <Store className="w-4 h-4 text-amber-300" />
-            <span>Hasil Usaha DKM</span>
+            <Building2 className="w-4 h-4 text-amber-300" />
+            <span>Penyewa Tanah</span>
           </button>
 
           <button
