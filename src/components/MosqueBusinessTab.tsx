@@ -252,7 +252,7 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
               <span>Penyewa Tanah Masjid</span>
             </h1>
             <p className="text-sm text-emerald-100/90 max-w-2xl leading-relaxed">
-              Kelola data penyewa tanah wakaf/kavling usaha masjid, tarif sewa, skema potongan persentase, dan pencatatan kas otomatis.
+              Kelola data penyewa tanah wakaf/kavling usaha masjid, tarif sewa, skema potongan biaya operasional, dan pencatatan kas otomatis.
             </p>
           </div>
 
@@ -321,10 +321,10 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
           </p>
         </div>
 
-        {/* Card 3: Potongan Persentase Diberikan */}
+        {/* Card 3: Potongan Biaya Operasional */}
         <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider">Potongan</span>
+            <span className="text-xs font-bold uppercase tracking-wider">Potongan Operasional</span>
             <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center">
               <Percent className="w-4 h-4 stroke-[2.5]" />
             </div>
@@ -333,11 +333,11 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
             <span className="text-2xl font-black text-amber-700 font-mono">
               {stats.penyewaDenganDiskon}
             </span>
-            <span className="text-xs font-semibold text-slate-500">Penyewa Dapat Potongan</span>
+            <span className="text-xs font-semibold text-slate-500">Penyewa Ada Potongan</span>
           </div>
           <div className="mt-2 text-[11px] text-amber-800 font-semibold flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded-lg">
             <Tag className="w-3 h-3 text-amber-600" />
-            <span>Total potongan: Rp {stats.totalPotonganDiskonNominal.toLocaleString('id-ID')}</span>
+            <span>Biaya operasional: Rp {stats.totalPotonganDiskonNominal.toLocaleString('id-ID')}</span>
           </div>
         </div>
 
@@ -353,7 +353,7 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
             Rp {Math.round(stats.estimasiKasBulanan).toLocaleString('id-ID')}
           </div>
           <p className="mt-2 text-[11px] text-slate-500 font-medium">
-            Tarif bersih sewa tanah setelah potongan
+            Tarif bersih sewa setelah potongan operasional
           </p>
         </div>
       </div>
@@ -402,8 +402,8 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
             className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-amber-900 bg-amber-50/70 border-amber-200 focus:ring-2 focus:ring-amber-500 focus:outline-none"
           >
             <option value="semua">Semua Skema Tarif</option>
-            <option value="dengan_diskon">🏷️ Ada Potongan (%)</option>
-            <option value="tanpa_diskon">Tarif Standar (0%)</option>
+            <option value="dengan_diskon">🏷️ Ada Potongan Operasional (%)</option>
+            <option value="tanpa_diskon">Tarif Standar (Tanpa Potongan)</option>
           </select>
         </div>
       </div>
@@ -537,7 +537,7 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
                         </span>
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs">
                           <Tag className="w-3 h-3 text-amber-700" />
-                          <span>Potongan {diskonPersen}% (-Rp {nominalPotongan.toLocaleString('id-ID')})</span>
+                          <span>Potongan Operasional {diskonPersen}% (-Rp {nominalPotongan.toLocaleString('id-ID')})</span>
                         </span>
                       </div>
                     )}
@@ -545,7 +545,7 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
 
                   {diskonPersen > 0 && tenant.keteranganDiskon && (
                     <div className="text-[11px] text-amber-900 bg-amber-50/80 px-2.5 py-1 rounded-lg border border-amber-200/80 font-medium">
-                      <strong>Alasan Potongan:</strong> {tenant.keteranganDiskon}
+                      <strong>Rincian Biaya Operasional:</strong> {tenant.keteranganDiskon}
                     </div>
                   )}
 
@@ -675,7 +675,7 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
                       <th className="py-2.5 px-3">Penyewa & Kontak</th>
                       <th className="py-2.5 px-3">Objek Lahan / Usaha</th>
                       <th className="py-2.5 px-3 text-right">Tarif Normal</th>
-                      <th className="py-2.5 px-3 text-center">Potongan (%)</th>
+                      <th className="py-2.5 px-3 text-center">Potongan Ops (%)</th>
                       <th className="py-2.5 px-3 text-right">Tarif Bersih</th>
                       <th className="py-2.5 px-3 text-center">Status</th>
                       <th className="py-2.5 px-3 text-right">Total Terbayar</th>

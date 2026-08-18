@@ -313,12 +313,12 @@ export const TenantModal: React.FC<TenantModalProps> = ({
             </div>
           </div>
 
-          {/* Section 3: Tarif Sewa & Fitur Potongan Persentase */}
+          {/* Section 3: Tarif Sewa & Potongan Biaya Operasional */}
           <div className="bg-amber-50/50 p-4 rounded-xl border border-amber-200/90 space-y-3.5">
             <div className="flex items-center justify-between">
               <h4 className="text-xs font-bold text-amber-950 uppercase tracking-wider flex items-center gap-1.5">
                 <DollarSign className="w-4 h-4 text-amber-700" />
-                <span>Tarif Sewa & Potongan (%)</span>
+                <span>Tarif Sewa & Potongan Biaya Operasional (%)</span>
               </h4>
             </div>
 
@@ -361,12 +361,12 @@ export const TenantModal: React.FC<TenantModalProps> = ({
               </div>
             </div>
 
-            {/* Potongan Persentase Input & Quick Pills */}
+            {/* Potongan Operasional Input & Quick Pills */}
             <div className="space-y-2 pt-2 border-t border-amber-200/70">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
                   <Percent className="w-3.5 h-3.5 text-amber-700" />
-                  <span>Potongan Sewa (%)</span>
+                  <span>Potongan Biaya Operasional (%)</span>
                 </label>
                 <div className="flex items-center gap-1.5 flex-wrap">
                   {presetDiscounts.map((preset) => (
@@ -406,7 +406,7 @@ export const TenantModal: React.FC<TenantModalProps> = ({
                 <div className="sm:col-span-2">
                   <input
                     type="text"
-                    placeholder="Alasan potongan (e.g. UMKM Binaan Warga, Sewa 1 Tahun Dimuka, Mitra Khusus)"
+                    placeholder="Rincian biaya operasional (e.g. Biaya Pembersihan, Keamanan & Pemeliharaan Fasilitas Lahan)"
                     value={formData.keteranganDiskon}
                     onChange={(e) => setFormData({ ...formData, keteranganDiskon: e.target.value })}
                     className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:outline-none"
@@ -427,7 +427,7 @@ export const TenantModal: React.FC<TenantModalProps> = ({
                     <div className="flex items-center justify-between text-amber-800 text-[11px] font-semibold">
                       <span className="flex items-center gap-1">
                         <Tag className="w-3 h-3 text-amber-600" />
-                        <span>Potongan ({rawDiskonPersen}%):</span>
+                        <span>Potongan Biaya Operasional ({rawDiskonPersen}%):</span>
                       </span>
                       <span className="font-mono font-bold text-rose-600">
                         - Rp {nominalPotongan.toLocaleString('id-ID')}
@@ -436,7 +436,7 @@ export const TenantModal: React.FC<TenantModalProps> = ({
                   )}
                   <div className="pt-1.5 border-t border-slate-100 flex items-center justify-between">
                     <span className="font-extrabold text-slate-900 text-xs">
-                      Tarif Bersih Setelah Potongan:
+                      Tarif Bersih Masuk Kas DKM:
                     </span>
                     <span className="font-mono text-sm font-black text-emerald-800">
                       Rp {tarifBersih.toLocaleString('id-ID')}

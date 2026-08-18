@@ -406,7 +406,7 @@ export const initialLandTenants: LandTenant[] = [
     peruntukanUsaha: "Warung Makan & Minuman Soto Kudus",
     tarifSewa: 1500000,
     diskonPersen: 10,
-    keteranganDiskon: "Potongan Kerjasama UMKM Binaan RT 01",
+    keteranganDiskon: "Alokasi Biaya Operasional, Kebersihan & Keamanan Lahan",
     tarifSetelahDiskon: 1350000,
     tipePeriode: "bulanan",
     tanggalMulai: "2026-01-01",

@@ -155,7 +155,7 @@ export const TenantPaymentModal: React.FC<TenantPaymentModalProps> = ({
                     Rp {netRate.toLocaleString('id-ID')}
                   </div>
                   <span className="inline-block text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-1.5 py-0.2 rounded-md">
-                    Potongan {discountPercent}%
+                    Potongan Ops {discountPercent}%
                   </span>
                 </>
               ) : (
@@ -176,7 +176,7 @@ export const TenantPaymentModal: React.FC<TenantPaymentModalProps> = ({
             <div className="mt-2.5 pt-2 border-t border-emerald-200/60 flex items-center gap-1.5 text-xs text-amber-900 bg-amber-50/80 px-2.5 py-1.5 rounded-lg border border-amber-200">
               <Tag className="w-3.5 h-3.5 text-amber-700 shrink-0" />
               <span className="text-[11px] font-medium">
-                <strong>Alasan Potongan:</strong> {tenant.keteranganDiskon} (Hemat Rp {discountAmount.toLocaleString('id-ID')})
+                <strong>Rincian Biaya Operasional:</strong> {tenant.keteranganDiskon} (Alokasi Rp {discountAmount.toLocaleString('id-ID')})
               </span>
             </div>
           )}

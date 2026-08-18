@@ -87,7 +87,7 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
       cleanPhone = '62' + cleanPhone.slice(1);
     }
     const diskonMsg = diskonPersen > 0 
-      ? `• Tarif Normal: Rp ${tarifNormal.toLocaleString('id-ID')}\n• Potongan: ${diskonPersen}% (-Rp ${nominalPotongan.toLocaleString('id-ID')}) ${tenant.keteranganDiskon ? `[${tenant.keteranganDiskon}]` : ''}\n` 
+      ? `• Tarif Normal: Rp ${tarifNormal.toLocaleString('id-ID')}\n• Potongan Operasional: ${diskonPersen}% (-Rp ${nominalPotongan.toLocaleString('id-ID')}) ${tenant.keteranganDiskon ? `[${tenant.keteranganDiskon}]` : ''}\n` 
       : '';
 
     const message = encodeURIComponent(
@@ -195,10 +195,10 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
 
             {diskonPersen > 0 && (
               <div className="flex items-baseline gap-2">
-                <span className="w-36 shrink-0 text-amber-800 font-semibold">Potongan Sewa</span>
+                <span className="w-36 shrink-0 text-amber-800 font-semibold">Potongan Operasional</span>
                 <span className="text-slate-400">:</span>
                 <span className="text-amber-900 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 font-medium flex-1">
-                  <strong>{diskonPersen}%</strong> (Hemat Rp {nominalPotongan.toLocaleString('id-ID')}) {tenant.keteranganDiskon ? `— ${tenant.keteranganDiskon}` : ''}
+                  <strong>{diskonPersen}%</strong> (Alokasi Ops Rp {nominalPotongan.toLocaleString('id-ID')}) {tenant.keteranganDiskon ? `— ${tenant.keteranganDiskon}` : ''}
                 </span>
               </div>
             )}
