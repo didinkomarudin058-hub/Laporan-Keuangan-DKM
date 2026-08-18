@@ -785,18 +785,89 @@ export default function App() {
   };
 
   // Land Tenant Handlers
-  const handleAddTenant = (tenantData: Omit<LandTenant, 'id'>) => {
+  const handleAddTenant = (
+    tenantData: Omit<LandTenant, 'id'>,
+    initialPayment?: {
+      nominal: number;
+      tanggal: string;
+      periode: string;
+      metodePembayaran: string;
+      posDanaTujuan: string;
+      keterangan?: string;
+      autoPushToKas: boolean;
+    }
+  ) => {
+    const newTenantId = `tenant_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
     const newTenant: LandTenant = {
       ...tenantData,
-      id: `tenant_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      id: newTenantId,
     };
-    const updated = [newTenant, ...landTenants];
-    setLandTenants(updated);
-    if (currentUser) {
-      saveSettingsToFirestore(currentUser.uid, { landTenants: updated });
+    const updatedTenants = [newTenant, ...landTenants];
+    setLandTenants(updatedTenants);
+
+    let updatedRecords = businessRecords;
+    if (initialPayment && initialPayment.nominal > 0) {
+      let createdTrxId: string | undefined = undefined;
+      if (initialPayment.autoPushToKas) {
+        const newTrxId = `TRX-SEWA-${new Date().getFullYear()}${String(
+          new Date().getMonth() + 1
+        ).padStart(2, '0')}-${String(Math.floor(Math.random() * 900) + 100)}`;
+        createdTrxId = newTrxId;
+
+        const newTrx: Transaction = {
+          id: newTrxId,
+          tanggal: initialPayment.tanggal,
+          jenis: 'pemasukan',
+          jumlah: initialPayment.nominal,
+          kategori: 'Hasil Usaha & Pengelolaan Aset Masjid',
+          danaKat: (initialPayment.posDanaTujuan as FundCategory) || 'Kas Operasional',
+          keterangan: `Penerimaan Sewa Awal - ${newTenant.namaPenyewa} (${newTenant.namaLahan}) - ${initialPayment.periode}`,
+          petugas: mosqueProfile.bendaharaDKM || 'Sie Aset & Wakaf',
+          metodePembayaran: (initialPayment.metodePembayaran as any) || 'Transfer Bank',
+        };
+
+        setTransactions((prev) => [newTrx, ...prev]);
+        if (currentUser) {
+          saveTransactionToFirestore(currentUser.uid, newTrx);
+        }
+      }
+
+      const newRecordId = `REC-SEWA-${Date.now()}`;
+      const newRecord: BusinessRecord = {
+        id: newRecordId,
+        unitId: newTenant.unitId || 'UNIT-00',
+        unitNama: 'Sewa Tanah & Lahan Wakaf Masjid',
+        tanggal: initialPayment.tanggal,
+        periode: initialPayment.periode,
+        pendapatanKotor: initialPayment.nominal,
+        biayaOperasional: 0,
+        labaBersih: initialPayment.nominal,
+        setoranKasMasjid: initialPayment.nominal,
+        posDanaTujuan: (initialPayment.posDanaTujuan as FundCategory) || 'Kas Operasional',
+        metodePembayaran: (initialPayment.metodePembayaran as any) || 'Transfer Bank',
+        statusSetor: createdTrxId ? 'sudah_masuk_kas' : 'belum_disetor',
+        transactionIdLinked: createdTrxId,
+        keterangan: `Penerimaan Sewa Awal: ${newTenant.namaPenyewa} (${newTenant.namaLahan})`,
+        petugas: mosqueProfile.bendaharaDKM || 'Sie Aset DKM',
+      };
+
+      updatedRecords = [newRecord, ...businessRecords];
+      setBusinessRecords(updatedRecords);
     }
-    setToastMessage(`Penyewa "${newTenant.namaPenyewa}" berhasil ditambahkan!`);
-    setTimeout(() => setToastMessage(null), 3000);
+
+    if (currentUser) {
+      saveSettingsToFirestore(currentUser.uid, {
+        landTenants: updatedTenants,
+        businessRecords: updatedRecords,
+      });
+    }
+
+    setToastMessage(
+      initialPayment && initialPayment.nominal > 0
+        ? `Penyewa "${newTenant.namaPenyewa}" berhasil ditambahkan & pembayaran Rp ${initialPayment.nominal.toLocaleString('id-ID')} masuk ke Unit Usaha Sewa Tanah!`
+        : `Penyewa "${newTenant.namaPenyewa}" berhasil ditambahkan!`
+    );
+    setTimeout(() => setToastMessage(null), 3500);
   };
 
   const handleEditTenant = (id: string, tenantData: Omit<LandTenant, 'id'>) => {

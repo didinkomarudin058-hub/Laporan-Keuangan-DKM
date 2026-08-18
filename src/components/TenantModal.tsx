@@ -1,11 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { X, UserCheck, MapPin, Calendar, DollarSign, FileText, Phone, CreditCard, ShieldCheck } from 'lucide-react';
+import { X, UserCheck, MapPin, Calendar, DollarSign, FileText, Phone, CreditCard, ShieldCheck, CheckCircle2, Coins } from 'lucide-react';
 import { LandTenant, MosqueBusinessUnit, FundCategory } from '../types';
 
 interface TenantModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (tenantData: Omit<LandTenant, 'id'>) => void;
+  onSave: (
+    tenantData: Omit<LandTenant, 'id'>,
+    initialPayment?: {
+      nominal: number;
+      tanggal: string;
+      periode: string;
+      metodePembayaran: string;
+      posDanaTujuan: string;
+      keterangan?: string;
+      autoPushToKas: boolean;
+    }
+  ) => void;
   editingTenant: LandTenant | null;
   businessUnits: MosqueBusinessUnit[];
   posDanaList: string[];
@@ -53,9 +64,14 @@ export const TenantModal: React.FC<TenantModalProps> = ({
       .toISOString()
       .split('T')[0],
     statusKontrak: 'aktif',
-    posDanaTujuan: 'Kas Pembangunan',
+    posDanaTujuan: 'Kas Operasional',
     catatan: '',
   });
+
+  // Initial payment state when creating new tenant
+  const [recordInitialPayment, setRecordInitialPayment] = useState<boolean>(false);
+  const [initialPaymentNominal, setInitialPaymentNominal] = useState<number | string>('');
+  const [initialPaymentMethod, setInitialPaymentMethod] = useState<string>('Transfer Bank');
 
   const sewaUnits = businessUnits.filter((u) => u.kategori === 'sewa_aset' || /sewa|tanah|lahan|kios/i.test(u.nama));
   const defaultUnit = sewaUnits[0] || businessUnits[0];
@@ -77,9 +93,11 @@ export const TenantModal: React.FC<TenantModalProps> = ({
         tanggalMulai: editingTenant.tanggalMulai,
         tanggalSelesai: editingTenant.tanggalSelesai,
         statusKontrak: editingTenant.statusKontrak,
-        posDanaTujuan: editingTenant.posDanaTujuan || 'Kas Pembangunan',
+        posDanaTujuan: editingTenant.posDanaTujuan || 'Kas Operasional',
         catatan: editingTenant.catatan || '',
       });
+      setRecordInitialPayment(false);
+      setInitialPaymentNominal('');
     } else {
       setFormData({
         unitId: defaultUnit?.id || '',
@@ -98,9 +116,11 @@ export const TenantModal: React.FC<TenantModalProps> = ({
           .toISOString()
           .split('T')[0],
         statusKontrak: 'aktif',
-        posDanaTujuan: defaultUnit?.posDanaTujuan || 'Kas Pembangunan',
+        posDanaTujuan: defaultUnit?.posDanaTujuan || 'Kas Operasional',
         catatan: '',
       });
+      setRecordInitialPayment(false);
+      setInitialPaymentNominal('');
     }
   }, [editingTenant, defaultUnit, isOpen]);
 
@@ -113,24 +133,47 @@ export const TenantModal: React.FC<TenantModalProps> = ({
       return;
     }
 
-    onSave({
-      unitId: formData.unitId || defaultUnit?.id,
-      namaPenyewa: formData.namaPenyewa.trim(),
-      nomorTelepon: formData.nomorTelepon.trim(),
-      nomorKTP: formData.nomorKTP.trim(),
-      alamatPenyewa: formData.alamatPenyewa.trim(),
-      namaLahan: formData.namaLahan.trim(),
-      lokasiLahan: formData.lokasiLahan.trim(),
-      luasLahan: formData.luasLahan.trim(),
-      peruntukanUsaha: formData.peruntukanUsaha.trim() || 'Usaha Mandiri Jamaah',
-      tarifSewa: Number(formData.tarifSewa) || 0,
-      tipePeriode: formData.tipePeriode,
-      tanggalMulai: formData.tanggalMulai,
-      tanggalSelesai: formData.tanggalSelesai,
-      statusKontrak: formData.statusKontrak,
-      posDanaTujuan: (formData.posDanaTujuan as FundCategory) || 'Kas Pembangunan',
-      catatan: formData.catatan.trim(),
-    });
+    const initNominal = Number(initialPaymentNominal) || 0;
+    const initialPaymentData =
+      !editingTenant && recordInitialPayment && initNominal > 0
+        ? {
+            nominal: initNominal,
+            tanggal: formData.tanggalMulai,
+            periode: `Periode Awal (${formData.tipePeriode === 'bulanan' ? 'Bulan 1' : 'Tahun 1'})`,
+            metodePembayaran: initialPaymentMethod,
+            posDanaTujuan: formData.posDanaTujuan,
+            keterangan: `Pembayaran Sewa Awal: ${formData.namaPenyewa} (${formData.namaLahan})`,
+            autoPushToKas: true,
+          }
+        : undefined;
+
+    onSave(
+      {
+        unitId: formData.unitId || defaultUnit?.id || 'UNIT-00',
+        namaPenyewa: formData.namaPenyewa.trim(),
+        nomorTelepon: formData.nomorTelepon.trim(),
+        nomorKTP: formData.nomorKTP.trim(),
+        alamatPenyewa: formData.alamatPenyewa.trim(),
+        namaLahan: formData.namaLahan.trim(),
+        lokasiLahan: formData.lokasiLahan.trim(),
+        luasLahan: formData.luasLahan.trim(),
+        peruntukanUsaha: formData.peruntukanUsaha.trim() || 'Usaha Mandiri Jamaah',
+        tarifSewa: Number(formData.tarifSewa) || 0,
+        tipePeriode: formData.tipePeriode,
+        tanggalMulai: formData.tanggalMulai,
+        tanggalSelesai: formData.tanggalSelesai,
+        statusKontrak: formData.statusKontrak,
+        posDanaTujuan: (formData.posDanaTujuan as FundCategory) || 'Kas Operasional',
+        catatan: formData.catatan.trim(),
+        totalTerbayar: editingTenant ? editingTenant.totalTerbayar : initNominal,
+        terakhirBayar: editingTenant
+          ? editingTenant.terakhirBayar
+          : initNominal > 0
+          ? formData.tanggalMulai
+          : undefined,
+      },
+      initialPaymentData
+    );
 
     onClose();
   };
@@ -149,7 +192,7 @@ export const TenantModal: React.FC<TenantModalProps> = ({
                 {editingTenant ? 'Edit Data Penyewa Lahan/Tanah' : 'Tambah Penyewa Tanah & Aset Wakaf'}
               </h3>
               <p className="text-xs text-emerald-200">
-                Pencatatan data sewa kavling lahan wakaf produktif & kios masjid
+                Pencatatan penyewa tanah, tarif sewa, dan akumulasi hasil ke Unit Usaha Sewa Tanah DKM
               </p>
             </div>
           </div>
@@ -296,7 +339,7 @@ export const TenantModal: React.FC<TenantModalProps> = ({
             </div>
           </div>
 
-          {/* Section 3: Tarif & Masa Sewa */}
+          {/* Section 3: Tarif Sewa & Pos Dana */}
           <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
             <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
               <DollarSign className="w-4 h-4 text-emerald-700" />
@@ -319,7 +362,13 @@ export const TenantModal: React.FC<TenantModalProps> = ({
                     required
                     placeholder="1500000"
                     value={formData.tarifSewa}
-                    onChange={(e) => setFormData({ ...formData, tarifSewa: e.target.value })}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setFormData({ ...formData, tarifSewa: val });
+                      if (!editingTenant && recordInitialPayment && !initialPaymentNominal) {
+                        setInitialPaymentNominal(val);
+                      }
+                    }}
                     className="w-full pl-9 pr-3 py-2 text-xs bg-white font-mono font-bold border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                   />
                 </div>
@@ -405,7 +454,74 @@ export const TenantModal: React.FC<TenantModalProps> = ({
             </div>
           </div>
 
-          {/* Section 4: Catatan & Syarat */}
+          {/* Section 4: Akumulasi Pembayaran Awal (Saat Tambah Penyewa Baru) */}
+          {!editingTenant && (
+            <div className="bg-amber-50/70 p-4 rounded-xl border border-amber-200/90 space-y-3">
+              <div className="flex items-start gap-2.5">
+                <input
+                  type="checkbox"
+                  id="record-initial-pay"
+                  checked={recordInitialPayment}
+                  onChange={(e) => {
+                    setRecordInitialPayment(e.target.checked);
+                    if (e.target.checked && !initialPaymentNominal && formData.tarifSewa) {
+                      setInitialPaymentNominal(formData.tarifSewa);
+                    }
+                  }}
+                  className="w-4 h-4 mt-0.5 text-emerald-600 rounded focus:ring-emerald-500 cursor-pointer accent-emerald-600"
+                />
+                <label htmlFor="record-initial-pay" className="cursor-pointer">
+                  <span className="text-xs font-bold text-amber-950 block flex items-center gap-1.5">
+                    <Coins className="w-4 h-4 text-amber-700 inline" />
+                    <span>Catat Pembayaran Sewa Awal / Uang Muka Sekarang</span>
+                  </span>
+                  <span className="text-[11px] text-amber-800 block mt-0.5">
+                    Centang untuk langsung memasukkan rupiah pembayaran pertama ke <strong>Akumulasi Unit Usaha Sewa Tanah</strong> & setor ke Jurnal Kas Masjid.
+                  </span>
+                </label>
+              </div>
+
+              {recordInitialPayment && (
+                <div className="pt-2 border-t border-amber-200/60 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-amber-900 mb-1">
+                      Jumlah Rupiah Diterima (Rp) <span className="text-rose-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-500">
+                        Rp
+                      </span>
+                      <input
+                        type="number"
+                        min="0"
+                        placeholder="Contoh: 1500000"
+                        value={initialPaymentNominal}
+                        onChange={(e) => setInitialPaymentNominal(e.target.value)}
+                        className="w-full pl-9 pr-3 py-2 text-xs font-mono font-bold bg-white border border-amber-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-amber-900 mb-1">
+                      Metode Pembayaran
+                    </label>
+                    <select
+                      value={initialPaymentMethod}
+                      onChange={(e) => setInitialPaymentMethod(e.target.value)}
+                      className="w-full px-3 py-2 text-xs bg-white border border-amber-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none font-semibold text-slate-800"
+                    >
+                      <option value="Transfer Bank">Transfer Bank (BSI)</option>
+                      <option value="Tunai">Tunai / Cash</option>
+                      <option value="QRIS">QRIS DKM</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Section 5: Catatan & Syarat */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
               Catatan / Kesepakatan Khusus Sewa Lahan
@@ -430,9 +546,10 @@ export const TenantModal: React.FC<TenantModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-5 py-2 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-xl transition shadow-md shadow-emerald-700/20 cursor-pointer"
+              className="px-5 py-2 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-xl transition shadow-md shadow-emerald-700/20 cursor-pointer flex items-center gap-1.5"
             >
-              {editingTenant ? 'Simpan Perubahan' : 'Tambah Penyewa Tanah'}
+              <CheckCircle2 className="w-4 h-4 text-amber-300" />
+              <span>{editingTenant ? 'Simpan Perubahan' : 'Tambah Penyewa & Akumulasi Hasil'}</span>
             </button>
           </div>
         </form>
