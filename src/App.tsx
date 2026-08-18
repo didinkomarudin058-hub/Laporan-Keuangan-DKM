@@ -11,7 +11,7 @@ import { PwaInstallModal } from './components/PwaInstallModal';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { MosqueBusinessTab } from './components/MosqueBusinessTab';
 import { FloatingActionButton } from './components/FloatingActionButton';
-import { FundCategory, MosqueProfile, Transaction, TransactionType, MosqueBusinessUnit, BusinessRecord } from './types';
+import { FundCategory, MosqueProfile, Transaction, TransactionType, MosqueBusinessUnit, BusinessRecord, LandTenant } from './types';
 import {
   initialMosqueProfile,
   initialTransactions,
@@ -19,6 +19,7 @@ import {
   CATEGORIES_PENGELUARAN,
   initialBusinessUnits,
   initialBusinessRecords,
+  initialLandTenants,
 } from './data/initialData';
 import { User } from 'firebase/auth';
 import {
@@ -40,6 +41,7 @@ export default function App() {
   const STORAGE_KEY_METODE_PEMBAYARAN = 'dkm_metode_pembayaran_v1';
   const STORAGE_KEY_BUSINESS_UNITS = 'dkm_business_units_v1';
   const STORAGE_KEY_BUSINESS_RECORDS = 'dkm_business_records_v1';
+  const STORAGE_KEY_LAND_TENANTS = 'dkm_land_tenants_v1';
 
   const DEFAULT_POS_DANA = [
     'Kas Operasional',
@@ -171,6 +173,20 @@ export default function App() {
     return initialBusinessRecords;
   });
 
+  // State: Penyewa Tanah & Lahan Wakaf Masjid
+  const [landTenants, setLandTenants] = useState<LandTenant[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY_LAND_TENANTS);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return initialLandTenants;
+  });
+
   // Save to LocalStorage
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_PROFILE, JSON.stringify(mosqueProfile));
@@ -203,6 +219,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_BUSINESS_RECORDS, JSON.stringify(businessRecords));
   }, [businessRecords]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_LAND_TENANTS, JSON.stringify(landTenants));
+  }, [landTenants]);
 
   // Subscribe to Firebase Auth
   useEffect(() => {
@@ -239,6 +259,9 @@ export default function App() {
         }
         if (data.businessRecords && data.businessRecords.length > 0) {
           setBusinessRecords(data.businessRecords);
+        }
+        if (data.landTenants && data.landTenants.length > 0) {
+          setLandTenants(data.landTenants);
         }
       });
 
@@ -761,10 +784,138 @@ export default function App() {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
+  // Land Tenant Handlers
+  const handleAddTenant = (tenantData: Omit<LandTenant, 'id'>) => {
+    const newTenant: LandTenant = {
+      ...tenantData,
+      id: `tenant_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+    };
+    const updated = [newTenant, ...landTenants];
+    setLandTenants(updated);
+    if (currentUser) {
+      saveSettingsToFirestore(currentUser.uid, { landTenants: updated });
+    }
+    setToastMessage(`Penyewa "${newTenant.namaPenyewa}" berhasil ditambahkan!`);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handleEditTenant = (id: string, tenantData: Omit<LandTenant, 'id'>) => {
+    const updated = landTenants.map((t) => (t.id === id ? { ...tenantData, id } : t));
+    setLandTenants(updated);
+    if (currentUser) {
+      saveSettingsToFirestore(currentUser.uid, { landTenants: updated });
+    }
+    setToastMessage('Data penyewa tanah berhasil diperbarui!');
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handleDeleteTenant = (id: string) => {
+    const updated = landTenants.filter((t) => t.id !== id);
+    setLandTenants(updated);
+    if (currentUser) {
+      saveSettingsToFirestore(currentUser.uid, { landTenants: updated });
+    }
+    setToastMessage('Data penyewa berhasil dihapus.');
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handlePayTenantRent = (
+    tenantId: string,
+    payment: {
+      nominal: number;
+      tanggal: string;
+      periode: string;
+      metodePembayaran: string;
+      posDanaTujuan: string;
+      keterangan?: string;
+      petugas?: string;
+      autoPushToKas: boolean;
+    }
+  ) => {
+    const tenant = landTenants.find((t) => t.id === tenantId);
+    if (!tenant) return;
+
+    let createdTrxId: string | undefined = undefined;
+    const nominal = Number(payment.nominal) || 0;
+
+    if (payment.autoPushToKas && nominal > 0) {
+      const newTrxId = `TRX-SEWA-${new Date().getFullYear()}${String(
+        new Date().getMonth() + 1
+      ).padStart(2, '0')}-${String(Math.floor(Math.random() * 900) + 100)}`;
+      createdTrxId = newTrxId;
+
+      const newTrx: Transaction = {
+        id: newTrxId,
+        tanggal: payment.tanggal,
+        jenis: 'pemasukan',
+        jumlah: nominal,
+        kategori: 'Hasil Usaha & Pengelolaan Aset Masjid',
+        danaKat: (payment.posDanaTujuan as FundCategory) || 'Kas Pembangunan',
+        keterangan: `Penerimaan Sewa Tanah - ${tenant.namaPenyewa} (${tenant.namaLahan}) - Periode: ${payment.periode}${payment.keterangan ? ` - ${payment.keterangan}` : ''}`,
+        petugas: payment.petugas || mosqueProfile.bendaharaDKM || 'Sie Aset & Wakaf',
+        metodePembayaran: (payment.metodePembayaran as any) || 'Transfer Bank',
+      };
+
+      setTransactions((prev) => [newTrx, ...prev]);
+      if (currentUser) {
+        saveTransactionToFirestore(currentUser.uid, newTrx);
+      }
+    }
+
+    // Also add to Business Records
+    const newRecordId = `REC-SEWA-${Date.now()}`;
+    const newRecord: BusinessRecord = {
+      id: newRecordId,
+      unitId: tenant.unitId || 'UNIT-00',
+      unitNama: 'Sewa Tanah & Lahan Wakaf Masjid',
+      tanggal: payment.tanggal,
+      periode: payment.periode,
+      pendapatanKotor: nominal,
+      biayaOperasional: 0,
+      labaBersih: nominal,
+      setoranKasMasjid: nominal,
+      posDanaTujuan: payment.posDanaTujuan as FundCategory,
+      metodePembayaran: payment.metodePembayaran as any,
+      statusSetor: createdTrxId ? 'sudah_masuk_kas' : 'belum_disetor',
+      transactionIdLinked: createdTrxId,
+      keterangan: `Sewa Lahan: ${tenant.namaPenyewa} (${tenant.namaLahan})${payment.keterangan ? ` - ${payment.keterangan}` : ''}`,
+      petugas: payment.petugas || mosqueProfile.bendaharaDKM || 'Sie Aset DKM',
+    };
+
+    const updatedRecords = [newRecord, ...businessRecords];
+    setBusinessRecords(updatedRecords);
+
+    // Update Tenant payment stats
+    const updatedTenants = landTenants.map((t) => {
+      if (t.id === tenantId) {
+        return {
+          ...t,
+          terakhirBayar: payment.tanggal,
+          totalTerbayar: (t.totalTerbayar || 0) + nominal,
+          statusKontrak: 'aktif' as const,
+        };
+      }
+      return t;
+    });
+    setLandTenants(updatedTenants);
+
+    if (currentUser) {
+      saveSettingsToFirestore(currentUser.uid, {
+        businessRecords: updatedRecords,
+        landTenants: updatedTenants,
+      });
+    }
+
+    setToastMessage(
+      `Pembayaran sewa Rp ${nominal.toLocaleString('id-ID')} dari ${tenant.namaPenyewa} berhasil dicatat & disetor ke kas!`
+    );
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
   // Backup & Restore
   const handleExportBackup = () => {
     const backupData = {
-      version: '1.1',
+      version: '1.2',
       exportedAt: new Date().toISOString(),
       mosqueProfile,
       transactions,
@@ -774,6 +925,7 @@ export default function App() {
       metodePembayaranList,
       businessUnits,
       businessRecords,
+      landTenants,
     };
     const blob = new Blob([JSON.stringify(backupData, null, 2)], {
       type: 'application/json',
@@ -807,6 +959,7 @@ export default function App() {
           if (json.metodePembayaranList) setMetodePembayaranList(json.metodePembayaranList);
           if (json.businessUnits && Array.isArray(json.businessUnits)) setBusinessUnits(json.businessUnits);
           if (json.businessRecords && Array.isArray(json.businessRecords)) setBusinessRecords(json.businessRecords);
+          if (json.landTenants && Array.isArray(json.landTenants)) setLandTenants(json.landTenants);
 
           if (currentUser) {
             saveSettingsToFirestore(currentUser.uid, {
@@ -817,11 +970,12 @@ export default function App() {
               metodePembayaranList: json.metodePembayaranList || metodePembayaranList,
               businessUnits: json.businessUnits || businessUnits,
               businessRecords: json.businessRecords || businessRecords,
+              landTenants: json.landTenants || landTenants,
             });
             bulkSaveTransactionsToFirestore(currentUser.uid, json.transactions);
           }
 
-          alert('Berhasil merestore data kas & usaha DKM dari file backup!');
+          alert('Berhasil merestore data kas, usaha & penyewa DKM dari file backup!');
         } else {
           alert('Format file JSON tidak valid.');
         }
@@ -836,7 +990,7 @@ export default function App() {
   const handleResetData = () => {
     if (
       confirm(
-        'Apakah Anda yakin ingin mengembalikan seluruh data transaksi, unit usaha & kategori ke data contoh awal DKM? Data yang diinput sendiri akan terhapus.'
+        'Apakah Anda yakin ingin mengembalikan seluruh data transaksi, unit usaha, penyewa & kategori ke data contoh awal DKM? Data yang diinput sendiri akan terhapus.'
       )
     ) {
       setTransactions(initialTransactions);
@@ -847,6 +1001,7 @@ export default function App() {
       setMetodePembayaranList(DEFAULT_METODE_PEMBAYARAN);
       setBusinessUnits(initialBusinessUnits);
       setBusinessRecords(initialBusinessRecords);
+      setLandTenants(initialLandTenants);
       localStorage.removeItem(STORAGE_KEY_TRANSACTIONS);
       localStorage.removeItem(STORAGE_KEY_PROFILE);
       localStorage.removeItem(STORAGE_KEY_CATEGORIES_PEMASUKAN);
@@ -855,6 +1010,7 @@ export default function App() {
       localStorage.removeItem(STORAGE_KEY_METODE_PEMBAYARAN);
       localStorage.removeItem(STORAGE_KEY_BUSINESS_UNITS);
       localStorage.removeItem(STORAGE_KEY_BUSINESS_RECORDS);
+      localStorage.removeItem(STORAGE_KEY_LAND_TENANTS);
 
       if (currentUser) {
         saveSettingsToFirestore(currentUser.uid, {
@@ -865,6 +1021,7 @@ export default function App() {
           metodePembayaranList: DEFAULT_METODE_PEMBAYARAN,
           businessUnits: initialBusinessUnits,
           businessRecords: initialBusinessRecords,
+          landTenants: initialLandTenants,
         });
         bulkSaveTransactionsToFirestore(currentUser.uid, initialTransactions);
       }
@@ -938,6 +1095,7 @@ export default function App() {
           <MosqueBusinessTab
             businessUnits={businessUnits}
             businessRecords={businessRecords}
+            landTenants={landTenants}
             mosqueProfile={mosqueProfile}
             posDanaList={posDanaList}
             metodePembayaranList={metodePembayaranList}
@@ -948,6 +1106,10 @@ export default function App() {
             onEditRecord={handleEditBusinessRecord}
             onDeleteRecord={handleDeleteBusinessRecord}
             onPushRecordToTransaction={handlePushRecordToTransaction}
+            onAddTenant={handleAddTenant}
+            onEditTenant={handleEditTenant}
+            onDeleteTenant={handleDeleteTenant}
+            onPayTenantRent={handlePayTenantRent}
             onNavigateToTransactions={(trxId) => {
               setActiveTab('transactions');
             }}

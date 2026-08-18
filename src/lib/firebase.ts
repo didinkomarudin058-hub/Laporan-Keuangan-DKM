@@ -20,7 +20,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
-import { MosqueProfile, Transaction, MosqueBusinessUnit, BusinessRecord } from '../types';
+import { MosqueProfile, Transaction, MosqueBusinessUnit, BusinessRecord, LandTenant } from '../types';
 
 // Initialize Firebase
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
@@ -342,6 +342,7 @@ export const subscribeFirestoreData = (
     metodePembayaranList?: string[];
     businessUnits?: MosqueBusinessUnit[];
     businessRecords?: BusinessRecord[];
+    landTenants?: LandTenant[];
   }) => void
 ) => {
   if (!userId) return () => {};
@@ -361,6 +362,7 @@ export const subscribeFirestoreData = (
           metodePembayaranList: data.metodePembayaranList,
           businessUnits: data.businessUnits,
           businessRecords: data.businessRecords,
+          landTenants: data.landTenants,
         });
       }
     },
@@ -440,7 +442,7 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   return errInfo;
 }
 
-// Save Profile, Categories & Business Data to Firestore (Only when authenticated)
+// Save Profile, Categories, Business Data & Land Tenants to Firestore (Only when authenticated)
 export const saveSettingsToFirestore = async (
   userId: string,
   settings: {
@@ -451,6 +453,7 @@ export const saveSettingsToFirestore = async (
     metodePembayaranList?: string[];
     businessUnits?: MosqueBusinessUnit[];
     businessRecords?: BusinessRecord[];
+    landTenants?: LandTenant[];
   }
 ) => {
   if (!userId || !auth.currentUser || auth.currentUser.uid !== userId) return;

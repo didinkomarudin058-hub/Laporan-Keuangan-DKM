@@ -91,3 +91,25 @@ export interface BusinessRecord {
   petugas: string;
 }
 
+export interface LandTenant {
+  id: string;
+  unitId?: string; // Reference to unit usaha e.g. Sewa Tanah / Lahan Wakaf
+  namaPenyewa: string;
+  nomorTelepon: string;
+  nomorKTP?: string;
+  alamatPenyewa?: string;
+  namaLahan: string; // e.g. 'Kavling Tanah Wakaf Barat Blok A-01', 'Lahan Usaha Stand Kuliner Depan'
+  lokasiLahan?: string; // e.g. 'Jl. Masjid Sisi Barat RT 02'
+  luasLahan?: string; // e.g. '50 m²', '120 m²', '1 Rante / 400 m²'
+  peruntukanUsaha: string; // e.g. 'Kios Kuliner / Warung Makan', 'Bengkel Motor', 'Toko Kelontong', 'Pertanian Tanaman Hias', 'Gudang Material'
+  tarifSewa: number; // Nilai sewa per siklus (Rp)
+  tipePeriode: 'bulanan' | 'tahunan' | 'musiman';
+  tanggalMulai: string; // YYYY-MM-DD
+  tanggalSelesai: string; // YYYY-MM-DD
+  statusKontrak: 'aktif' | 'hampir_habis' | 'menunggak' | 'selesai';
+  posDanaTujuan?: FundCategory;
+  terakhirBayar?: string;
+  totalTerbayar?: number;
+  catatan?: string;
+}
+

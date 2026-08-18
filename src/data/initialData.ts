@@ -1,4 +1,4 @@
-import { MosqueProfile, Transaction, MosqueBusinessUnit, BusinessRecord } from '../types';
+import { MosqueProfile, Transaction, MosqueBusinessUnit, BusinessRecord, LandTenant } from '../types';
 
 export const initialMosqueProfile: MosqueProfile = {
   namaMasjid: "Masjid Raya Al-Barokah",
@@ -336,6 +336,17 @@ export const CATEGORIES_PENGELUARAN = [
 
 export const initialBusinessUnits: MosqueBusinessUnit[] = [
   {
+    id: "UNIT-00",
+    nama: "Sewa Tanah & Lahan Wakaf Masjid",
+    kategori: "sewa_aset",
+    penanggungJawab: "Bpk. H. Rahmat Hidayat (Sie Aset & Wakaf)",
+    kontak: "0812-3344-5566",
+    persentaseBagiHasilKas: 100,
+    posDanaTujuan: "Kas Pembangunan",
+    keterangan: "Pengelolaan sewa kavling tanah wakaf, lahan kios dagang, dan petak tanah produktif sekitar masjid.",
+    status: "aktif",
+  },
+  {
     id: "UNIT-01",
     nama: "Sewa Aula Serbaguna & Sound",
     kategori: "sewa_aset",
@@ -378,6 +389,72 @@ export const initialBusinessUnits: MosqueBusinessUnit[] = [
     posDanaTujuan: "Kas Operasional",
     keterangan: "Pengelolaan parkir tertib & aman saat tabligh akbar, shalat Jumat, dan resepsi di aula.",
     status: "aktif",
+  },
+];
+
+export const initialLandTenants: LandTenant[] = [
+  {
+    id: "TENANT-01",
+    unitId: "UNIT-00",
+    namaPenyewa: "Bpk. H. Suparno",
+    nomorTelepon: "0812-3456-7890",
+    nomorKTP: "3275081203750001",
+    alamatPenyewa: "Jl. Melati No. 12, RT 01/03, Sumberjaya",
+    namaLahan: "Kavling Tanah Wakaf Barat Blok A-01",
+    lokasiLahan: "Sisi Barat Pagar Masjid Al-Barokah",
+    luasLahan: "60 m² (6 x 10 m)",
+    peruntukanUsaha: "Warung Makan & Minuman Soto Kudus",
+    tarifSewa: 1500000,
+    tipePeriode: "bulanan",
+    tanggalMulai: "2026-01-01",
+    tanggalSelesai: "2026-12-31",
+    statusKontrak: "aktif",
+    posDanaTujuan: "Kas Operasional",
+    totalTerbayar: 12000000,
+    terakhirBayar: "2026-08-01",
+    catatan: "Penyewa tertib, pembayaran setiap tanggal 1 awal bulan via transfer BSI.",
+  },
+  {
+    id: "TENANT-02",
+    unitId: "UNIT-00",
+    namaPenyewa: "Ibu Siti Mariyam",
+    nomorTelepon: "0856-7890-1234",
+    nomorKTP: "3275085509820002",
+    alamatPenyewa: "Kp. Setu RT 04/02 Tambun Selatan",
+    namaLahan: "Kavling Tanah Wakaf Barat Blok A-02",
+    lokasiLahan: "Sisi Barat Pagar Masjid Al-Barokah",
+    luasLahan: "40 m² (4 x 10 m)",
+    peruntukanUsaha: "Kios Buah Segar & Jus Sehat",
+    tarifSewa: 1200000,
+    tipePeriode: "bulanan",
+    tanggalMulai: "2026-03-01",
+    tanggalSelesai: "2027-02-28",
+    statusKontrak: "aktif",
+    posDanaTujuan: "Kas Operasional",
+    totalTerbayar: 7200000,
+    terakhirBayar: "2026-08-02",
+    catatan: "Listrik menggunakan sub-meter mandiri, sampah dibersihkan sendiri.",
+  },
+  {
+    id: "TENANT-03",
+    unitId: "UNIT-00",
+    namaPenyewa: "Bpk. Agus Salim (Bengkel Motor Barokah)",
+    nomorTelepon: "0877-2233-4455",
+    nomorKTP: "3275082104880003",
+    alamatPenyewa: "Jl. Raya Tambun No. 88",
+    namaLahan: "Petak Lahan Wakaf Timur Blok B-01",
+    lokasiLahan: "Sebelah Pos Keamanan Timur",
+    luasLahan: "80 m² (8 x 10 m)",
+    peruntukanUsaha: "Bengkel Sepeda Motor & Ganti Oli",
+    tarifSewa: 18000000,
+    tipePeriode: "tahunan",
+    tanggalMulai: "2025-09-01",
+    tanggalSelesai: "2026-08-31",
+    statusKontrak: "hampir_habis",
+    posDanaTujuan: "Kas Pembangunan",
+    totalTerbayar: 18000000,
+    terakhirBayar: "2025-09-01",
+    catatan: "Masa sewa 1 tahun berakhir 31 Agustus 2026. Siap perpanjang kontrak baru.",
   },
 ];
 
