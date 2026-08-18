@@ -33,6 +33,7 @@ export const TenantPaymentModal: React.FC<TenantPaymentModalProps> = ({
   metodePembayaranList,
   onConfirmPayment,
 }) => {
+  const [nominalAsli, setNominalAsli] = useState<number | string>('');
   const [nominal, setNominal] = useState<number | string>('');
   const [tanggal, setTanggal] = useState<string>(new Date().toISOString().split('T')[0]);
   const [periode, setPeriode] = useState<string>('');
@@ -44,29 +45,29 @@ export const TenantPaymentModal: React.FC<TenantPaymentModalProps> = ({
 
   useEffect(() => {
     if (tenant) {
-      const netTarif = tenant.tarifSetelahDiskon !== undefined 
-        ? tenant.tarifSetelahDiskon 
-        : (tenant.tarifSewa * (1 - (tenant.diskonPersen || 0) / 100));
-      
-      setNominal(netTarif || tenant.tarifSewa || '');
+      const rawTarif = tenant.tarifSewa || 0;
+      const diskonPersen = tenant.diskonPersen || 0;
+      const calculatedNet = Math.max(0, Math.round(rawTarif - (rawTarif * diskonPersen) / 100));
+      const netTarif = tenant.tarifSetelahDiskon !== undefined ? tenant.tarifSetelahDiskon : calculatedNet;
+
+      setNominalAsli(rawTarif || '');
+      setNominal(netTarif || rawTarif || '');
       setTanggal(new Date().toISOString().split('T')[0]);
-      
+
       const currMonthName = new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
-      setPeriode(
+      const currentPeriode =
         tenant.tipePeriode === 'bulanan'
           ? `Bulan ${currMonthName}`
           : tenant.tipePeriode === 'tahunan'
           ? `Tahun ${new Date().getFullYear()} - ${new Date().getFullYear() + 1}`
-          : `Periode Musiman ${currMonthName}`
-      );
-      
+          : `Periode Musiman ${currMonthName}`;
+
+      setPeriode(currentPeriode);
       setPosDanaTujuan(tenant.posDanaTujuan || 'Kas Operasional');
       setMetodePembayaran(metodePembayaranList[0] || 'Transfer Bank');
       
-      const diskonNote = (tenant.diskonPersen && tenant.diskonPersen > 0)
-        ? ` (Potongan ${tenant.diskonPersen}%${tenant.keteranganDiskon ? ` - ${tenant.keteranganDiskon}` : ''})`
-        : '';
-      setKeterangan(`Pembayaran Sewa ${tenant.namaLahan}${diskonNote}`);
+      // Clean keterangan without the word "potongan"
+      setKeterangan(`Penerimaan Sewa ${tenant.namaLahan} - ${tenant.namaPenyewa}`);
       setPetugas(mosqueProfile.bendaharaDKM || 'Pengurus Aset Wakaf DKM');
       setAutoPushToKas(true);
     }
@@ -75,9 +76,21 @@ export const TenantPaymentModal: React.FC<TenantPaymentModalProps> = ({
   if (!isOpen || !tenant) return null;
 
   const discountPercent = tenant.diskonPersen || 0;
-  const normalRate = tenant.tarifSewa || 0;
-  const discountAmount = (normalRate * discountPercent) / 100;
-  const netRate = tenant.tarifSetelahDiskon !== undefined ? tenant.tarifSetelahDiskon : normalRate - discountAmount;
+  const numAsli = Number(nominalAsli) || 0;
+  const calculatedDiscountAmount = (numAsli * discountPercent) / 100;
+  const calculatedNetRate = Math.max(0, Math.round(numAsli - calculatedDiscountAmount));
+
+  // Handler when admin edits nominal asli
+  const handleNominalAsliChange = (val: string) => {
+    setNominalAsli(val);
+    const n = Number(val) || 0;
+    if (discountPercent > 0) {
+      const net = Math.max(0, Math.round(n - (n * discountPercent) / 100));
+      setNominal(net);
+    } else {
+      setNominal(n);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -149,10 +162,10 @@ export const TenantPaymentModal: React.FC<TenantPaymentModalProps> = ({
               {discountPercent > 0 ? (
                 <>
                   <div className="text-xs line-through text-slate-400 font-mono">
-                    Rp {normalRate.toLocaleString('id-ID')}
+                    Rp {numAsli.toLocaleString('id-ID')}
                   </div>
                   <div className="text-sm font-mono font-extrabold text-emerald-800">
-                    Rp {netRate.toLocaleString('id-ID')}
+                    Rp {calculatedNetRate.toLocaleString('id-ID')}
                   </div>
                   <span className="inline-block text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-1.5 py-0.2 rounded-md">
                     Potongan Ops {discountPercent}%
@@ -162,7 +175,7 @@ export const TenantPaymentModal: React.FC<TenantPaymentModalProps> = ({
                 <>
                   <span className="text-[10px] text-slate-500 font-medium">Tarif Normal:</span>
                   <div className="text-sm font-mono font-extrabold text-emerald-800">
-                    Rp {normalRate.toLocaleString('id-ID')}
+                    Rp {numAsli.toLocaleString('id-ID')}
                   </div>
                 </>
               )}
@@ -176,7 +189,7 @@ export const TenantPaymentModal: React.FC<TenantPaymentModalProps> = ({
             <div className="mt-2.5 pt-2 border-t border-emerald-200/60 flex items-center gap-1.5 text-xs text-amber-900 bg-amber-50/80 px-2.5 py-1.5 rounded-lg border border-amber-200">
               <Tag className="w-3.5 h-3.5 text-amber-700 shrink-0" />
               <span className="text-[11px] font-medium">
-                <strong>Rincian Biaya Operasional:</strong> {tenant.keteranganDiskon} (Alokasi Rp {discountAmount.toLocaleString('id-ID')})
+                <strong>Rincian Biaya Operasional:</strong> {tenant.keteranganDiskon} (Alokasi Rp {calculatedDiscountAmount.toLocaleString('id-ID')})
               </span>
             </div>
           )}
@@ -184,33 +197,87 @@ export const TenantPaymentModal: React.FC<TenantPaymentModalProps> = ({
 
         {/* Payment Form */}
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          {/* Nominal & Tanggal */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                Nominal Diterima (Rp) <span className="text-rose-500">*</span>
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-500">
-                  Rp
-                </span>
-                <input
-                  type="number"
-                  min="0"
-                  step="5000"
-                  required
-                  value={nominal}
-                  onChange={(e) => setNominal(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-sm font-mono font-extrabold text-slate-900 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                />
+          {/* Nominal Asli Input (Sebelum Potongan) */}
+          <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Nominal Asli (Sebelum Potongan) <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-500">
+                    Rp
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="5000"
+                    required
+                    value={nominalAsli}
+                    onChange={(e) => handleNominalAsliChange(e.target.value)}
+                    placeholder="Masukkan nominal asli"
+                    className="w-full pl-9 pr-3 py-2 text-xs font-mono font-bold text-slate-900 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
+                </div>
               </div>
-              {discountPercent > 0 && (
-                <p className="text-[10px] text-emerald-700 mt-1 font-medium">
-                  ✓ Sudah otomatis disesuaikan potongan {discountPercent}%
-                </p>
-              )}
+
+              <div>
+                <label className="block text-xs font-bold text-emerald-900 mb-1">
+                  Nominal Setor ke Kas (Rp) <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-700">
+                    Rp
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="5000"
+                    required
+                    value={nominal}
+                    onChange={(e) => setNominal(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 text-sm font-mono font-extrabold text-emerald-950 bg-emerald-50/50 border border-emerald-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  />
+                </div>
+              </div>
             </div>
 
+            {/* Quick Option Buttons if Potongan Operasional > 0 */}
+            {discountPercent > 0 && (
+              <div className="pt-2 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2">
+                <span className="text-[11px] text-slate-600">
+                  Potongan Ops ({discountPercent}%): <strong>Rp {calculatedDiscountAmount.toLocaleString('id-ID')}</strong>
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setNominal(numAsli)}
+                    className={`px-2 py-1 text-[10px] font-bold rounded-lg border transition cursor-pointer ${
+                      Number(nominal) === numAsli
+                        ? 'bg-slate-800 text-white border-slate-800'
+                        : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
+                    }`}
+                  >
+                    Gunakan Tarif Asli: Rp {numAsli.toLocaleString('id-ID')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNominal(calculatedNetRate)}
+                    className={`px-2 py-1 text-[10px] font-bold rounded-lg border transition cursor-pointer ${
+                      Number(nominal) === calculatedNetRate
+                        ? 'bg-emerald-700 text-white border-emerald-700'
+                        : 'bg-white text-emerald-800 border-emerald-300 hover:bg-emerald-50'
+                    }`}
+                  >
+                    Gunakan Tarif Bersih: Rp {calculatedNetRate.toLocaleString('id-ID')}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Tanggal Pembayaran & Periode */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
                 Tanggal Pembayaran <span className="text-rose-500">*</span>
@@ -223,10 +290,7 @@ export const TenantPaymentModal: React.FC<TenantPaymentModalProps> = ({
                 className="w-full px-3 py-2 text-xs font-medium text-slate-800 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"
               />
             </div>
-          </div>
 
-          {/* Periode & Metode */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
                 Untuk Periode Sewa
@@ -240,26 +304,9 @@ export const TenantPaymentModal: React.FC<TenantPaymentModalProps> = ({
                 className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none font-medium"
               />
             </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                Metode Pembayaran
-              </label>
-              <select
-                value={metodePembayaran}
-                onChange={(e) => setMetodePembayaran(e.target.value)}
-                className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none font-semibold"
-              >
-                {metodePembayaranList.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </select>
-            </div>
           </div>
 
-          {/* Pos Dana & Petugas */}
+          {/* Pos Dana & Metode */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
@@ -280,6 +327,26 @@ export const TenantPaymentModal: React.FC<TenantPaymentModalProps> = ({
 
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
+                Metode Pembayaran
+              </label>
+              <select
+                value={metodePembayaran}
+                onChange={(e) => setMetodePembayaran(e.target.value)}
+                className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none font-semibold"
+              >
+                {metodePembayaranList.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Petugas & Keterangan */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
                 Nama Penerima / Petugas
               </label>
               <input
@@ -290,20 +357,19 @@ export const TenantPaymentModal: React.FC<TenantPaymentModalProps> = ({
                 className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none font-medium"
               />
             </div>
-          </div>
 
-          {/* Keterangan */}
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Catatan Pembayaran
-            </label>
-            <input
-              type="text"
-              placeholder="Contoh: Pembayaran sewa lunas via BSI"
-              value={keterangan}
-              onChange={(e) => setKeterangan(e.target.value)}
-              className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-            />
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Catatan Pembayaran
+              </label>
+              <input
+                type="text"
+                placeholder="Contoh: Pembayaran sewa lunas via BSI"
+                value={keterangan}
+                onChange={(e) => setKeterangan(e.target.value)}
+                className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              />
+            </div>
           </div>
 
           {/* Auto Push To Kas Checkbox */}

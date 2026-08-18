@@ -228,6 +228,80 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
     };
   });
 
+  // Helper to remove any word "potongan" from keterangan in reports
+  const cleanReportKeterangan = (text: string) => {
+    if (!text) return '';
+    return text
+      .replace(/\s*\(potongan[^)]*\)/gi, '')
+      .replace(/\s*-\s*potongan[^-\n]*/gi, '')
+      .replace(/potongan operasional/gi, '')
+      .replace(/potongan/gi, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+  };
+
+  const isTenantRentalTrx = (t: Transaction) => {
+    const kat = (t.kategori || '').toLowerCase();
+    const ket = (t.keterangan || '').toLowerCase();
+    const id = (t.id || '').toLowerCase();
+    return (
+      id.startsWith('trx-sewa') ||
+      kat.includes('pengelolaan aset') ||
+      kat.includes('sewa tanah') ||
+      ket.includes('sewa tanah') ||
+      ket.includes('sewa lahan')
+    );
+  };
+
+  // Consolidated Transactions for Report View (Sewa tanah grouped as total aggregate, no per-person items)
+  const reportDisplayTransactions = React.useMemo(() => {
+    const regularTrxs: Transaction[] = [];
+    const rentTrxs: Transaction[] = [];
+
+    for (const trx of filteredPeriodTransactions) {
+      if (isTenantRentalTrx(trx)) {
+        rentTrxs.push(trx);
+      } else {
+        regularTrxs.push({
+          ...trx,
+          keterangan: cleanReportKeterangan(trx.keterangan),
+        });
+      }
+    }
+
+    if (rentTrxs.length > 0) {
+      // Group rent transactions by Pos Dana Kas
+      const rentByFund = new Map<string, { total: number; latestDate: string; trxs: Transaction[] }>();
+      for (const rt of rentTrxs) {
+        const fund = rt.danaKat || 'Kas Pembangunan';
+        const existing = rentByFund.get(fund) || { total: 0, latestDate: rt.tanggal, trxs: [] };
+        existing.total += rt.jumlah;
+        if (rt.tanggal > existing.latestDate) {
+          existing.latestDate = rt.tanggal;
+        }
+        existing.trxs.push(rt);
+        rentByFund.set(fund, existing);
+      }
+
+      rentByFund.forEach((val, fund) => {
+        const consolidatedTrx: Transaction = {
+          id: `REKAP-SEWA-${fund.replace(/\s+/g, '-').toUpperCase()}`,
+          tanggal: val.latestDate || effectiveEndDate,
+          jenis: 'pemasukan',
+          jumlah: val.total,
+          kategori: 'Hasil Pengelolaan Aset & Sewa Lahan Wakaf',
+          danaKat: fund as any,
+          keterangan: 'Penerimaan Hasil Sewa Tanah & Lahan Wakaf Masjid (Total Keseluruhan)',
+          petugas: mosqueProfile.bendaharaDKM || 'Sie Aset & Wakaf DKM',
+          metodePembayaran: 'Transfer Bank',
+        };
+        regularTrxs.push(consolidatedTrx);
+      });
+    }
+
+    return regularTrxs.sort((a, b) => a.tanggal.localeCompare(b.tanggal));
+  }, [filteredPeriodTransactions, effectiveEndDate, mosqueProfile]);
+
   // Reset interactive filters
   const handleResetFilters = () => {
     setReportPeriodType('bulanan');
@@ -249,7 +323,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
 
   const handleExportExcel = async () => {
     await exportTransactionsToExcel({
-      transactions: filteredPeriodTransactions,
+      transactions: reportDisplayTransactions,
       mosqueName: mosqueProfile.namaMasjid || 'Masjid',
       periodText: `${formatDateIndo(effectiveStartDate)} - ${formatDateIndo(effectiveEndDate)}`,
       filename: `Laporan_Keuangan_${mosqueProfile.namaMasjid ? mosqueProfile.namaMasjid.replace(/\s+/g, '_') : 'Masjid'}`,
@@ -737,7 +811,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
                 III. RINCIAN TRANSAKSI
               </h3>
               <p className="text-[11px] text-slate-500 font-normal mt-0.5">
-                {filteredPeriodTransactions.length} transaksi · {formatDateIndo(effectiveStartDate)} – {formatDateIndo(effectiveEndDate)}
+                {reportDisplayTransactions.length} baris rekapitulasi · {formatDateIndo(effectiveStartDate)} – {formatDateIndo(effectiveEndDate)}
               </p>
             </div>
             <div className="text-xs text-slate-700 font-medium self-end sm:self-auto">
@@ -758,14 +832,14 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-300 text-slate-800 font-normal">
-                {filteredPeriodTransactions.length === 0 ? (
+                {reportDisplayTransactions.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="py-8 text-center text-slate-400 italic">
                       Tidak ada transaksi pada periode ini.
                     </td>
                   </tr>
                 ) : (
-                  filteredPeriodTransactions.map((trx, idx) => (
+                  reportDisplayTransactions.map((trx, idx) => (
                     <tr
                       key={trx.id}
                       className={`${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-slate-100 transition`}

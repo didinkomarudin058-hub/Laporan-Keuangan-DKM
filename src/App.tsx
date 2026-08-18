@@ -849,6 +849,13 @@ export default function App() {
       ).padStart(2, '0')}-${String(Math.floor(Math.random() * 900) + 100)}`;
       createdTrxId = newTrxId;
 
+      const cleanKeterangan = (payment.keterangan || '')
+        .replace(/\s*\(potongan[^)]*\)/gi, '')
+        .replace(/\s*-\s*potongan[^-\n]*/gi, '')
+        .replace(/potongan operasional/gi, '')
+        .replace(/potongan/gi, '')
+        .trim();
+
       const newTrx: Transaction = {
         id: newTrxId,
         tanggal: payment.tanggal,
@@ -856,7 +863,7 @@ export default function App() {
         jumlah: nominal,
         kategori: 'Hasil Usaha & Pengelolaan Aset Masjid',
         danaKat: (payment.posDanaTujuan as FundCategory) || 'Kas Pembangunan',
-        keterangan: `Penerimaan Sewa Tanah - ${tenant.namaPenyewa} (${tenant.namaLahan}) - Periode: ${payment.periode}${payment.keterangan ? ` - ${payment.keterangan}` : ''}`,
+        keterangan: cleanKeterangan || `Penerimaan Sewa Tanah - ${tenant.namaLahan} (${payment.periode})`,
         petugas: payment.petugas || mosqueProfile.bendaharaDKM || 'Sie Aset & Wakaf',
         metodePembayaran: (payment.metodePembayaran as any) || 'Transfer Bank',
       };

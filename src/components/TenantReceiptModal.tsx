@@ -86,9 +86,6 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
     if (cleanPhone.startsWith('0')) {
       cleanPhone = '62' + cleanPhone.slice(1);
     }
-    const diskonMsg = diskonPersen > 0 
-      ? `• Tarif Normal: Rp ${tarifNormal.toLocaleString('id-ID')}\n• Potongan Operasional: ${diskonPersen}% (-Rp ${nominalPotongan.toLocaleString('id-ID')}) ${tenant.keteranganDiskon ? `[${tenant.keteranganDiskon}]` : ''}\n` 
-      : '';
 
     const message = encodeURIComponent(
       `*BUKTI PEMBAYARAN SEWA LAHAN / TANAH WAKAF*\n` +
@@ -98,7 +95,6 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
       `• No. Kwitansi: ${receiptNumber}\n` +
       `• Objek: ${tenant.namaLahan} (${tenant.peruntukanUsaha})\n` +
       `• Luas: ${tenant.luasLahan || '-'}\n` +
-      diskonMsg +
       `• Jumlah Diterima: Rp ${nominal.toLocaleString('id-ID')} (${terbilangText})\n` +
       `• Status: LUNAS & Tercatat di Kas DKM\n\n` +
       `Semoga usaha yang dijalankan berkah dan lancar selalu. Aamiin.\n` +
@@ -193,16 +189,6 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
               </span>
             </div>
 
-            {diskonPersen > 0 && (
-              <div className="flex items-baseline gap-2">
-                <span className="w-36 shrink-0 text-amber-800 font-semibold">Potongan Operasional</span>
-                <span className="text-slate-400">:</span>
-                <span className="text-amber-900 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 font-medium flex-1">
-                  <strong>{diskonPersen}%</strong> (Alokasi Ops Rp {nominalPotongan.toLocaleString('id-ID')}) {tenant.keteranganDiskon ? `— ${tenant.keteranganDiskon}` : ''}
-                </span>
-              </div>
-            )}
-
             <div className="flex items-baseline gap-2">
               <span className="w-36 shrink-0 text-slate-600 font-semibold">Masa Kontrak</span>
               <span className="text-slate-400">:</span>
@@ -220,11 +206,6 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
               <div className="text-lg font-mono font-extrabold text-emerald-900">
                 Rp {nominal.toLocaleString('id-ID')}
               </div>
-              {diskonPersen > 0 && (
-                <span className="text-[10px] text-slate-500 font-mono">
-                  (Tarif Normal: Rp {tarifNormal.toLocaleString('id-ID')})
-                </span>
-              )}
             </div>
 
             <div className="text-center text-xs space-y-1">
