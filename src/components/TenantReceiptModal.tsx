@@ -68,13 +68,8 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
     new Date().getMonth() + 1
   ).padStart(2, '0')}-${tenant.id.slice(-4).toUpperCase()}`;
 
-  const diskonPersen = tenant.diskonPersen || 0;
-  const tarifNormal = tenant.tarifSewa || 0;
-  const nominalPotongan = (tarifNormal * diskonPersen) / 100;
-  const nominal = tenant.tarifSetelahDiskon !== undefined 
-    ? tenant.tarifSetelahDiskon 
-    : Math.max(0, tarifNormal - nominalPotongan);
-
+  // Sesuai instruksi: dalam kwitansi hanya ditulis nominal sebelum potongan (tarif normal)
+  const nominal = tenant.tarifSewa || 0;
   const terbilangText = nominal > 0 ? `${angkaKeTerbilang(nominal)} Rupiah` : 'Nol Rupiah';
 
   const handlePrint = () => {

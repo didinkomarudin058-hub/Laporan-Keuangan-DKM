@@ -158,15 +158,15 @@ export const TenantModal: React.FC<TenantModalProps> = ({
         {/* Modal Header */}
         <div className="bg-gradient-to-r from-emerald-800 to-teal-800 text-white p-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center text-amber-300 border border-white/20">
-              <UserCheck className="w-5 h-5 stroke-[2.5]" />
+            <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center text-white border border-white/20">
+              <UserCheck className="w-5 h-5 stroke-[2.5] text-white" />
             </div>
             <div>
               <h3 className="text-base sm:text-lg font-bold text-white">
-                {editingTenant ? 'Edit Data Penyewa Lahan/Tanah' : 'Tambah Penyewa Tanah & Aset Wakaf'}
+                {editingTenant ? 'Edit Data Sewa Lahan/Tanah' : 'Tambah Sewa Tanah & Aset Wakaf'}
               </h3>
               <p className="text-xs text-emerald-200">
-                Pencatatan penyewa tanah, tarif sewa, fitur potongan persentase, dan masa kontrak DKM
+                Pencatatan data sewa tanah, tarif sewa, fitur potongan persentase, dan masa kontrak DKM
               </p>
             </div>
           </div>
@@ -182,17 +182,17 @@ export const TenantModal: React.FC<TenantModalProps> = ({
 
         {/* Modal Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
-          {/* Section 1: Identitas Penyewa */}
+          {/* Section 1: Identitas Penyewa / Pihak Sewa */}
           <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
             <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
               <UserCheck className="w-4 h-4 text-emerald-700" />
-              <span>Identitas & Kontak Penyewa</span>
+              <span>Identitas & Kontak Pihak Sewa</span>
             </h4>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Nama Lengkap Penyewa <span className="text-rose-500">*</span>
+                  Nama Lengkap Pihak Sewa <span className="text-rose-500">*</span>
                 </label>
                 <input
                   type="text"

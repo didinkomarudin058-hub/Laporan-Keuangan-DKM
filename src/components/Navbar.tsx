@@ -32,7 +32,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 sm:py-3 flex items-center justify-between gap-3">
         {/* Brand & Mosque Name + Address */}
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-white shadow-inner border border-emerald-400/30 shrink-0 overflow-hidden">
+          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-white/15 flex items-center justify-center text-white shadow-inner border border-white/25 shrink-0 overflow-hidden">
             {mosqueProfile.logoUrl ? (
               <img
                 src={mosqueProfile.logoUrl}
@@ -40,7 +40,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 className="w-full h-full object-contain p-0.5 bg-white rounded-xl"
               />
             ) : (
-              <Building2 className="w-6 h-6" />
+              <Building2 className="w-6 h-6 text-white" />
             )}
           </div>
           <div>
@@ -66,7 +66,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 : 'text-emerald-200/90 hover:text-white hover:bg-emerald-800/50'
             }`}
           >
-            <Building2 className="w-4 h-4" />
+            <Building2 className="w-4 h-4 text-white" />
             <span>Ikhtisar Kas Utama</span>
           </button>
 
@@ -79,7 +79,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 : 'text-emerald-200/90 hover:text-white hover:bg-emerald-800/50'
             }`}
           >
-            <ListFilter className="w-4 h-4" />
+            <ListFilter className="w-4 h-4 text-white" />
             <span>Jurnal Transaksi</span>
           </button>
 
@@ -92,8 +92,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                 : 'text-emerald-200/90 hover:text-white hover:bg-emerald-800/50'
             }`}
           >
-            <Building2 className="w-4 h-4 text-amber-300" />
-            <span>Penyewa Tanah</span>
+            <Building2 className="w-4 h-4 text-white" />
+            <span>Sewa Tanah</span>
           </button>
 
           <button

@@ -120,8 +120,8 @@ export const TenantPaymentModal: React.FC<TenantPaymentModalProps> = ({
         {/* Modal Header */}
         <div className="bg-gradient-to-r from-emerald-800 to-teal-800 text-white p-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center text-amber-300 border border-white/20">
-              <DollarSign className="w-5 h-5 stroke-[2.5]" />
+            <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center text-white border border-white/20">
+              <DollarSign className="w-5 h-5 stroke-[2.5] text-white" />
             </div>
             <div>
               <h3 className="text-base sm:text-lg font-bold text-white">
