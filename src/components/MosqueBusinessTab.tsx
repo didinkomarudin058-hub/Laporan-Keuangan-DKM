@@ -63,18 +63,7 @@ interface MosqueBusinessTabProps {
   onEditRecord: (id: string, record: Partial<BusinessRecord>) => void;
   onDeleteRecord: (id: string) => void;
   onPushRecordToTransaction: (recordId: string) => void;
-  onAddTenant?: (
-    tenant: Omit<LandTenant, 'id'>,
-    initialPayment?: {
-      nominal: number;
-      tanggal: string;
-      periode: string;
-      metodePembayaran: string;
-      posDanaTujuan: string;
-      keterangan?: string;
-      autoPushToKas: boolean;
-    }
-  ) => void;
+  onAddTenant?: (tenant: Omit<LandTenant, 'id'>) => void;
   onEditTenant?: (id: string, tenant: Omit<LandTenant, 'id'>) => void;
   onDeleteTenant?: (id: string) => void;
   onPayTenantRent?: (
@@ -1829,11 +1818,11 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
       <TenantModal
         isOpen={isTenantModalOpen}
         onClose={() => setIsTenantModalOpen(false)}
-        onSave={(tenantData, initialPayment) => {
+        onSave={(tenantData) => {
           if (editingTenant && onEditTenant) {
             onEditTenant(editingTenant.id, tenantData);
           } else if (onAddTenant) {
-            onAddTenant(tenantData, initialPayment);
+            onAddTenant(tenantData);
           }
         }}
         editingTenant={editingTenant}
