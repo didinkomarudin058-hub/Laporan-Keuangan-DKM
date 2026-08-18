@@ -58,3 +58,36 @@ export interface FundSummary {
   warnaBadge: string;
   iconName: string;
 }
+
+export type BusinessUnitCategory = 'sewa_aset' | 'perdagangan' | 'jasa' | 'lainnya';
+
+export interface MosqueBusinessUnit {
+  id: string;
+  nama: string;
+  kategori: BusinessUnitCategory;
+  penanggungJawab: string;
+  kontak?: string;
+  persentaseBagiHasilKas: number; // e.g. 100 for 100%, 80 for 80%
+  posDanaTujuan: FundCategory; // e.g. 'Kas Operasional' or 'Kas Pembangunan'
+  keterangan: string;
+  status: 'aktif' | 'nonaktif';
+}
+
+export interface BusinessRecord {
+  id: string;
+  unitId: string;
+  unitNama: string;
+  tanggal: string; // YYYY-MM-DD
+  periode: string; // e.g. 'Agustus 2026', 'Pekan I Agustus 2026'
+  pendapatanKotor: number; // Gross Revenue / Omzet
+  biayaOperasional: number; // Operational Costs / Modal / Biaya
+  labaBersih: number; // pendapatanKotor - biayaOperasional
+  setoranKasMasjid: number; // Amount given to Kas Masjid
+  posDanaTujuan: FundCategory;
+  metodePembayaran: PaymentMethod;
+  statusSetor: 'sudah_masuk_kas' | 'belum_disetor';
+  transactionIdLinked?: string; // Linked Transaction ID in Jurnal Kas
+  keterangan: string;
+  petugas: string;
+}
+

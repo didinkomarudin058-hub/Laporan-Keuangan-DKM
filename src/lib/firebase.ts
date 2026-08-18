@@ -20,7 +20,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
-import { MosqueProfile, Transaction } from '../types';
+import { MosqueProfile, Transaction, MosqueBusinessUnit, BusinessRecord } from '../types';
 
 // Initialize Firebase
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
@@ -340,6 +340,8 @@ export const subscribeFirestoreData = (
     categoriesPengeluaran?: string[];
     posDanaList?: string[];
     metodePembayaranList?: string[];
+    businessUnits?: MosqueBusinessUnit[];
+    businessRecords?: BusinessRecord[];
   }) => void
 ) => {
   if (!userId) return () => {};
@@ -357,6 +359,8 @@ export const subscribeFirestoreData = (
           categoriesPengeluaran: data.categoriesPengeluaran,
           posDanaList: data.posDanaList,
           metodePembayaranList: data.metodePembayaranList,
+          businessUnits: data.businessUnits,
+          businessRecords: data.businessRecords,
         });
       }
     },
@@ -436,7 +440,7 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   return errInfo;
 }
 
-// Save Profile & Categories to Firestore (Only when authenticated)
+// Save Profile, Categories & Business Data to Firestore (Only when authenticated)
 export const saveSettingsToFirestore = async (
   userId: string,
   settings: {
@@ -445,6 +449,8 @@ export const saveSettingsToFirestore = async (
     categoriesPengeluaran?: string[];
     posDanaList?: string[];
     metodePembayaranList?: string[];
+    businessUnits?: MosqueBusinessUnit[];
+    businessRecords?: BusinessRecord[];
   }
 ) => {
   if (!userId || !auth.currentUser || auth.currentUser.uid !== userId) return;

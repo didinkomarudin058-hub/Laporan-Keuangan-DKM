@@ -1,6 +1,6 @@
 {
   "name": "Aplikasi Keuangan DKM Masjid",
-  "description": "Aplikasi pengelolaan kas masjid transparan, pencatatan transaksi infaq dan operasional, serta pembuatan laporan keuangan bulanan otomatis.",
+  "description": "Aplikasi pengelolaan kas masjid transparan, pencatatan transaksi infaq dan operasional, unit usaha produktif masjid, serta pembuatan laporan keuangan bulanan otomatis.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

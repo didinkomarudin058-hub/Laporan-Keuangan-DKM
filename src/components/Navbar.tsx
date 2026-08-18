@@ -6,14 +6,15 @@ import {
   BarChart3,
   ListFilter,
   Settings,
+  Store,
 } from 'lucide-react';
 import { User } from 'firebase/auth';
 import { MosqueProfile } from '../types';
 
 interface NavbarProps {
   mosqueProfile: MosqueProfile;
-  activeTab: 'dashboard' | 'transactions' | 'monthlyReport' | 'analytics' | 'tvMode';
-  setActiveTab: (tab: 'dashboard' | 'transactions' | 'monthlyReport' | 'analytics' | 'tvMode') => void;
+  activeTab: 'dashboard' | 'transactions' | 'business' | 'monthlyReport' | 'analytics' | 'tvMode';
+  setActiveTab: (tab: 'dashboard' | 'transactions' | 'business' | 'monthlyReport' | 'analytics' | 'tvMode') => void;
   onOpenSettingsModal: (tab?: 'profile' | 'account' | 'categories' | 'backup' | 'pwa') => void;
   onOpenPwaModal?: () => void;
   currentUser?: User | null;
@@ -80,6 +81,19 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <ListFilter className="w-4 h-4" />
             <span>Jurnal Transaksi</span>
+          </button>
+
+          <button
+            id="nav-tab-business"
+            onClick={() => setActiveTab('business')}
+            className={`px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+              activeTab === 'business'
+                ? 'bg-emerald-600 text-white shadow-sm font-semibold'
+                : 'text-emerald-200/90 hover:text-white hover:bg-emerald-800/50'
+            }`}
+          >
+            <Store className="w-4 h-4 text-amber-300" />
+            <span>Hasil Usaha DKM</span>
           </button>
 
           <button

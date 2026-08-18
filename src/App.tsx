@@ -9,12 +9,16 @@ import { AddTransactionModal } from './components/AddTransactionModal';
 import { MosqueSettingsModal } from './components/MosqueSettingsModal';
 import { PwaInstallModal } from './components/PwaInstallModal';
 import { MobileBottomNav } from './components/MobileBottomNav';
-import { FundCategory, MosqueProfile, Transaction, TransactionType } from './types';
+import { MosqueBusinessTab } from './components/MosqueBusinessTab';
+import { FloatingActionButton } from './components/FloatingActionButton';
+import { FundCategory, MosqueProfile, Transaction, TransactionType, MosqueBusinessUnit, BusinessRecord } from './types';
 import {
   initialMosqueProfile,
   initialTransactions,
   CATEGORIES_PEMASUKAN,
   CATEGORIES_PENGELUARAN,
+  initialBusinessUnits,
+  initialBusinessRecords,
 } from './data/initialData';
 import { User } from 'firebase/auth';
 import {
@@ -34,6 +38,8 @@ export default function App() {
   const STORAGE_KEY_CATEGORIES_PENGELUARAN = 'dkm_categories_pengeluaran_v1';
   const STORAGE_KEY_POS_DANA = 'dkm_pos_dana_v1';
   const STORAGE_KEY_METODE_PEMBAYARAN = 'dkm_metode_pembayaran_v1';
+  const STORAGE_KEY_BUSINESS_UNITS = 'dkm_business_units_v1';
+  const STORAGE_KEY_BUSINESS_RECORDS = 'dkm_business_records_v1';
 
   const DEFAULT_POS_DANA = [
     'Kas Operasional',
@@ -137,6 +143,34 @@ export default function App() {
     return DEFAULT_METODE_PEMBAYARAN;
   });
 
+  // State: Unit Usaha Masjid
+  const [businessUnits, setBusinessUnits] = useState<MosqueBusinessUnit[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY_BUSINESS_UNITS);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return initialBusinessUnits;
+  });
+
+  // State: Rekap Buku Kas & Setoran Unit Usaha
+  const [businessRecords, setBusinessRecords] = useState<BusinessRecord[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY_BUSINESS_RECORDS);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return initialBusinessRecords;
+  });
+
   // Save to LocalStorage
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_PROFILE, JSON.stringify(mosqueProfile));
@@ -161,6 +195,14 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_METODE_PEMBAYARAN, JSON.stringify(metodePembayaranList));
   }, [metodePembayaranList]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_BUSINESS_UNITS, JSON.stringify(businessUnits));
+  }, [businessUnits]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_BUSINESS_RECORDS, JSON.stringify(businessRecords));
+  }, [businessRecords]);
 
   // Subscribe to Firebase Auth
   useEffect(() => {
@@ -192,6 +234,12 @@ export default function App() {
         if (data.transactions && data.transactions.length > 0) {
           setTransactions(data.transactions);
         }
+        if (data.businessUnits && data.businessUnits.length > 0) {
+          setBusinessUnits(data.businessUnits);
+        }
+        if (data.businessRecords && data.businessRecords.length > 0) {
+          setBusinessRecords(data.businessRecords);
+        }
       });
 
       return () => unsubscribeData();
@@ -200,7 +248,7 @@ export default function App() {
 
   // Tab State
   const [activeTab, setActiveTab] = useState<
-    'dashboard' | 'transactions' | 'monthlyReport' | 'analytics' | 'tvMode'
+    'dashboard' | 'transactions' | 'monthlyReport' | 'analytics' | 'tvMode' | 'business'
   >(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
@@ -216,6 +264,9 @@ export default function App() {
       }
       if (tabParam === 'analytics') {
         return 'analytics';
+      }
+      if (tabParam === 'business' || tabParam === 'usaha') {
+        return 'business';
       }
     }
     return 'dashboard';
@@ -534,10 +585,186 @@ export default function App() {
     }
   };
 
+  // Business Unit Handlers
+  const handleAddBusinessUnit = (unitData: Omit<MosqueBusinessUnit, 'id'>) => {
+    const newUnit: MosqueBusinessUnit = {
+      ...unitData,
+      id: `unit_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+    };
+    const updated = [newUnit, ...businessUnits];
+    setBusinessUnits(updated);
+    if (currentUser) {
+      saveSettingsToFirestore(currentUser.uid, { businessUnits: updated });
+    }
+    setToastMessage(`Unit usaha "${newUnit.nama}" berhasil ditambahkan!`);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handleEditBusinessUnit = (id: string, unitData: Omit<MosqueBusinessUnit, 'id'>) => {
+    const updated = businessUnits.map((u) => (u.id === id ? { ...unitData, id } : u));
+    setBusinessUnits(updated);
+    if (currentUser) {
+      saveSettingsToFirestore(currentUser.uid, { businessUnits: updated });
+    }
+    setToastMessage('Data unit usaha berhasil diperbarui!');
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handleDeleteBusinessUnit = (id: string) => {
+    const updated = businessUnits.filter((u) => u.id !== id);
+    setBusinessUnits(updated);
+    if (currentUser) {
+      saveSettingsToFirestore(currentUser.uid, { businessUnits: updated });
+    }
+    setToastMessage('Unit usaha berhasil dihapus.');
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  // Business Record Handlers & Auto-push to Transactions
+  const handleAddBusinessRecord = (
+    recordData: Omit<BusinessRecord, 'id'>,
+    autoPushToTransactions: boolean
+  ) => {
+    const recordId = `brec_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const unit = businessUnits.find((u) => u.id === recordData.unitId);
+    const unitName = unit ? unit.nama : 'Unit Usaha DKM';
+
+    let createdTrxId: string | undefined = undefined;
+
+    // If autoPushToTransactions is true and setoranKasMasjid > 0, generate and insert Transaction into kas
+    if (autoPushToTransactions && Number(recordData.setoranKasMasjid) > 0) {
+      const newTrxId = `TRX-USH-${new Date().getFullYear()}${String(
+        new Date().getMonth() + 1
+      ).padStart(2, '0')}-${String(Math.floor(Math.random() * 900) + 100)}`;
+      createdTrxId = newTrxId;
+
+      const newTrx: Transaction = {
+        id: newTrxId,
+        tanggal: recordData.tanggal,
+        jenis: 'pemasukan',
+        jumlah: Number(recordData.setoranKasMasjid),
+        kategori: 'Hasil Usaha Masjid',
+        danaKat: (recordData.posDanaTujuan as FundCategory) || (unit?.posDanaTujuan as FundCategory) || 'Kas Operasional',
+        keterangan: `Setoran Bagi Hasil Usaha - ${unitName}${recordData.periode ? ` (${recordData.periode})` : ''}${recordData.keterangan ? `: ${recordData.keterangan}` : ''}`,
+        petugas: recordData.petugas || mosqueProfile.bendaharaDKM || 'Pengurus DKM',
+        metodePembayaran: (recordData.metodePembayaran as any) || 'Tunai',
+      };
+
+      setTransactions((prev) => [newTrx, ...prev]);
+      if (currentUser) {
+        saveTransactionToFirestore(currentUser.uid, newTrx);
+      }
+    }
+
+    const newRecord: BusinessRecord = {
+      ...recordData,
+      id: recordId,
+      unitNama: unitName,
+      statusSetor: createdTrxId ? 'sudah_masuk_kas' : 'belum_disetor',
+      transactionIdLinked: createdTrxId,
+    };
+
+    const updatedRecords = [newRecord, ...businessRecords];
+    setBusinessRecords(updatedRecords);
+    if (currentUser) {
+      saveSettingsToFirestore(currentUser.uid, { businessRecords: updatedRecords });
+    }
+
+    if (createdTrxId) {
+      setToastMessage(`Rekap tersimpan & otomatis disetorkan ke Kas Rp ${Number(recordData.setoranKasMasjid).toLocaleString('id-ID')}`);
+    } else {
+      setToastMessage('Rekap pembukuan usaha berhasil disimpan!');
+    }
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const handleEditBusinessRecord = (id: string, partial: Partial<BusinessRecord>) => {
+    const updated = businessRecords.map((r) => (r.id === id ? { ...r, ...partial } : r));
+    setBusinessRecords(updated);
+    if (currentUser) {
+      saveSettingsToFirestore(currentUser.uid, { businessRecords: updated });
+    }
+    setToastMessage('Data rekap usaha berhasil diperbarui.');
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handleDeleteBusinessRecord = (id: string) => {
+    const target = businessRecords.find((r) => r.id === id);
+    if (target?.transactionIdLinked) {
+      if (
+        confirm(
+          'Rekap usaha ini telah disetorkan ke buku kas masjid (ID: ' +
+            target.transactionIdLinked +
+            '). Apakah Anda juga ingin menghapus transaksi tersebut dari buku kas?'
+        )
+      ) {
+        handleDeleteTransaction(target.transactionIdLinked);
+      }
+    }
+    const updated = businessRecords.filter((r) => r.id !== id);
+    setBusinessRecords(updated);
+    if (currentUser) {
+      saveSettingsToFirestore(currentUser.uid, { businessRecords: updated });
+    }
+    setToastMessage('Rekap usaha berhasil dihapus.');
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  const handlePushRecordToTransaction = (recordId: string) => {
+    const record = businessRecords.find((r) => r.id === recordId);
+    if (!record) return;
+
+    if (record.statusSetor === 'sudah_masuk_kas' && record.transactionIdLinked) {
+      alert('Setoran usaha ini sudah tercatat sebelumnya di buku kas utama!');
+      return;
+    }
+
+    const unit = businessUnits.find((u) => u.id === record.unitId);
+    const unitName = unit ? unit.nama : 'Unit Usaha DKM';
+
+    const newTrxId = `TRX-USH-${new Date().getFullYear()}${String(
+      new Date().getMonth() + 1
+    ).padStart(2, '0')}-${String(Math.floor(Math.random() * 900) + 100)}`;
+
+    const newTrx: Transaction = {
+      id: newTrxId,
+      tanggal: record.tanggal,
+      jenis: 'pemasukan',
+      jumlah: Number(record.setoranKasMasjid),
+      kategori: 'Hasil Usaha Masjid',
+      danaKat: (record.posDanaTujuan as FundCategory) || (unit?.posDanaTujuan as FundCategory) || 'Kas Operasional',
+      keterangan: `Setoran Bagi Hasil Usaha - ${unitName}${record.periode ? ` (${record.periode})` : ''}${record.keterangan ? ` - ${record.keterangan}` : ''}`,
+      petugas: record.petugas || mosqueProfile.bendaharaDKM || 'Pengurus DKM',
+      metodePembayaran: (record.metodePembayaran as any) || 'Tunai',
+    };
+
+    setTransactions((prev) => [newTrx, ...prev]);
+    if (currentUser) {
+      saveTransactionToFirestore(currentUser.uid, newTrx);
+    }
+
+    const updatedRecords = businessRecords.map((r) =>
+      r.id === recordId
+        ? {
+            ...r,
+            statusSetor: 'sudah_masuk_kas' as const,
+            transactionIdLinked: newTrxId,
+          }
+        : r
+    );
+    setBusinessRecords(updatedRecords);
+    if (currentUser) {
+      saveSettingsToFirestore(currentUser.uid, { businessRecords: updatedRecords });
+    }
+
+    setToastMessage(`Berhasil menyetorkan Rp ${Number(record.setoranKasMasjid).toLocaleString('id-ID')} ke Kas Masjid!`);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
   // Backup & Restore
   const handleExportBackup = () => {
     const backupData = {
-      version: '1.0',
+      version: '1.1',
       exportedAt: new Date().toISOString(),
       mosqueProfile,
       transactions,
@@ -545,6 +772,8 @@ export default function App() {
       categoriesPengeluaran,
       posDanaList,
       metodePembayaranList,
+      businessUnits,
+      businessRecords,
     };
     const blob = new Blob([JSON.stringify(backupData, null, 2)], {
       type: 'application/json',
@@ -576,6 +805,8 @@ export default function App() {
             setCategoriesPengeluaran(json.categoriesPengeluaran);
           if (json.posDanaList) setPosDanaList(json.posDanaList);
           if (json.metodePembayaranList) setMetodePembayaranList(json.metodePembayaranList);
+          if (json.businessUnits && Array.isArray(json.businessUnits)) setBusinessUnits(json.businessUnits);
+          if (json.businessRecords && Array.isArray(json.businessRecords)) setBusinessRecords(json.businessRecords);
 
           if (currentUser) {
             saveSettingsToFirestore(currentUser.uid, {
@@ -584,11 +815,13 @@ export default function App() {
               categoriesPengeluaran: json.categoriesPengeluaran || categoriesPengeluaran,
               posDanaList: json.posDanaList || posDanaList,
               metodePembayaranList: json.metodePembayaranList || metodePembayaranList,
+              businessUnits: json.businessUnits || businessUnits,
+              businessRecords: json.businessRecords || businessRecords,
             });
             bulkSaveTransactionsToFirestore(currentUser.uid, json.transactions);
           }
 
-          alert('Berhasil merestore data kas DKM dari file backup!');
+          alert('Berhasil merestore data kas & usaha DKM dari file backup!');
         } else {
           alert('Format file JSON tidak valid.');
         }
@@ -603,7 +836,7 @@ export default function App() {
   const handleResetData = () => {
     if (
       confirm(
-        'Apakah Anda yakin ingin mengembalikan seluruh data transaksi & kategori ke data contoh awal DKM? Data yang diinput sendiri akan terhapus.'
+        'Apakah Anda yakin ingin mengembalikan seluruh data transaksi, unit usaha & kategori ke data contoh awal DKM? Data yang diinput sendiri akan terhapus.'
       )
     ) {
       setTransactions(initialTransactions);
@@ -612,12 +845,16 @@ export default function App() {
       setCategoriesPengeluaran(CATEGORIES_PENGELUARAN);
       setPosDanaList(DEFAULT_POS_DANA);
       setMetodePembayaranList(DEFAULT_METODE_PEMBAYARAN);
+      setBusinessUnits(initialBusinessUnits);
+      setBusinessRecords(initialBusinessRecords);
       localStorage.removeItem(STORAGE_KEY_TRANSACTIONS);
       localStorage.removeItem(STORAGE_KEY_PROFILE);
       localStorage.removeItem(STORAGE_KEY_CATEGORIES_PEMASUKAN);
       localStorage.removeItem(STORAGE_KEY_CATEGORIES_PENGELUARAN);
       localStorage.removeItem(STORAGE_KEY_POS_DANA);
       localStorage.removeItem(STORAGE_KEY_METODE_PEMBAYARAN);
+      localStorage.removeItem(STORAGE_KEY_BUSINESS_UNITS);
+      localStorage.removeItem(STORAGE_KEY_BUSINESS_RECORDS);
 
       if (currentUser) {
         saveSettingsToFirestore(currentUser.uid, {
@@ -626,6 +863,8 @@ export default function App() {
           categoriesPengeluaran: CATEGORIES_PENGELUARAN,
           posDanaList: DEFAULT_POS_DANA,
           metodePembayaranList: DEFAULT_METODE_PEMBAYARAN,
+          businessUnits: initialBusinessUnits,
+          businessRecords: initialBusinessRecords,
         });
         bulkSaveTransactionsToFirestore(currentUser.uid, initialTransactions);
       }
@@ -695,6 +934,26 @@ export default function App() {
           <AnalyticsCharts transactions={transactions} posDanaList={posDanaList} />
         )}
 
+        {activeTab === 'business' && (
+          <MosqueBusinessTab
+            businessUnits={businessUnits}
+            businessRecords={businessRecords}
+            mosqueProfile={mosqueProfile}
+            posDanaList={posDanaList}
+            metodePembayaranList={metodePembayaranList}
+            onAddUnit={handleAddBusinessUnit}
+            onEditUnit={handleEditBusinessUnit}
+            onDeleteUnit={handleDeleteBusinessUnit}
+            onAddRecord={handleAddBusinessRecord}
+            onEditRecord={handleEditBusinessRecord}
+            onDeleteRecord={handleDeleteBusinessRecord}
+            onPushRecordToTransaction={handlePushRecordToTransaction}
+            onNavigateToTransactions={(trxId) => {
+              setActiveTab('transactions');
+            }}
+          />
+        )}
+
         {activeTab === 'tvMode' && (
           <PublicDisplayBoard
             transactions={transactions}
@@ -702,6 +961,20 @@ export default function App() {
           />
         )}
       </main>
+
+      {/* Floating '+' Action Button */}
+      <FloatingActionButton
+        onOpenAddTransaction={(type) => {
+          if (type) {
+            // open add modal with selected type
+          }
+          handleOpenAddModal();
+        }}
+        onNavigateToBusiness={(openNewRecord) => {
+          setActiveTab('business');
+        }}
+        activeTab={activeTab}
+      />
 
       {/* Back Button Toast Notification */}
       {toastMessage && (
