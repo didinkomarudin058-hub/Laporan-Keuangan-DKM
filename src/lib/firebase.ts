@@ -338,6 +338,7 @@ export const subscribeFirestoreData = (
     transactions?: Transaction[];
     categoriesPemasukan?: string[];
     categoriesPengeluaran?: string[];
+    categoriesSewa?: string[];
     posDanaList?: string[];
     metodePembayaranList?: string[];
     businessUnits?: MosqueBusinessUnit[];
@@ -358,6 +359,7 @@ export const subscribeFirestoreData = (
           mosqueProfile: data.mosqueProfile,
           categoriesPemasukan: data.categoriesPemasukan,
           categoriesPengeluaran: data.categoriesPengeluaran,
+          categoriesSewa: data.categoriesSewa,
           posDanaList: data.posDanaList,
           metodePembayaranList: data.metodePembayaranList,
           businessUnits: data.businessUnits,
@@ -449,6 +451,7 @@ export const saveSettingsToFirestore = async (
     mosqueProfile?: MosqueProfile;
     categoriesPemasukan?: string[];
     categoriesPengeluaran?: string[];
+    categoriesSewa?: string[];
     posDanaList?: string[];
     metodePembayaranList?: string[];
     businessUnits?: MosqueBusinessUnit[];

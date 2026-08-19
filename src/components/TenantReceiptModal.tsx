@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { X, Printer, Share2, CheckCircle2, ShieldCheck, MapPin, Calendar, Building2, Phone } from 'lucide-react';
 import { LandTenant, MosqueProfile } from '../types';
 
@@ -64,11 +64,16 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
 }) => {
   if (!isOpen || !tenant) return null;
 
+  const [bulanTahun, setBulanTahun] = useState<string>(() => {
+    const now = new Date();
+    return now.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+  });
+
   const receiptNumber = `KW-SEWA-${new Date().getFullYear()}${String(
     new Date().getMonth() + 1
   ).padStart(2, '0')}-${tenant.id.slice(-4).toUpperCase()}`;
 
-  // Sesuai instruksi: dalam kwitansi hanya ditulis nominal sebelum potongan (tarif normal)
+  // Nominal tarif sewa normal
   const nominal = tenant.tarifSewa || 0;
   const terbilangText = nominal > 0 ? `${angkaKeTerbilang(nominal)} Rupiah` : 'Nol Rupiah';
 
@@ -86,9 +91,10 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
       `*BUKTI PEMBAYARAN SEWA LAHAN / TANAH WAKAF*\n` +
       `*${mosqueProfile.namaMasjid}*\n\n` +
       `Assalamu'alaikum Wr. Wb. Bpk/Ibu ${tenant.namaPenyewa},\n` +
-      `Terima kasih telah melakukan pembayaran sewa lahan wakaf:\n` +
+      `Terima kasih telah melakukan pembayaran sewa:\n` +
       `• No. Kwitansi: ${receiptNumber}\n` +
-      `• Objek: ${tenant.namaLahan} (${tenant.peruntukanUsaha})\n` +
+      `• Keterangan: Bayar sewa bulan ${bulanTahun}\n` +
+      `• Objek: ${tenant.namaLahan} (${tenant.kategori || tenant.peruntukanUsaha || 'Sewa Lahan'})\n` +
       `• Luas: ${tenant.luasLahan || '-'}\n` +
       `• Jumlah Diterima: Rp ${nominal.toLocaleString('id-ID')} (${terbilangText})\n` +
       `• Status: LUNAS & Tercatat di Kas DKM\n\n` +
@@ -102,19 +108,31 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-200">
       <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-8">
         {/* Modal Controls (Hidden in Print) */}
-        <div className="bg-slate-900 text-white px-5 py-3 flex items-center justify-between print:hidden">
+        <div className="bg-slate-900 text-white px-5 py-3 flex flex-wrap items-center justify-between gap-3 print:hidden">
           <span className="text-xs font-bold flex items-center gap-2">
             <Building2 className="w-4 h-4 text-emerald-400" />
             <span>Kwitansi Resmi Sewa Lahan DKM</span>
           </span>
+
           <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700">
+              <label className="text-[11px] text-slate-400">Bulan Sewa:</label>
+              <input
+                type="text"
+                value={bulanTahun}
+                onChange={(e) => setBulanTahun(e.target.value)}
+                placeholder="misal: Agustus 2026"
+                className="bg-transparent text-white text-xs font-semibold focus:outline-none w-32 border-b border-emerald-500/50 px-1"
+              />
+            </div>
+
             <button
               type="button"
               onClick={handleSendWhatsApp}
               className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
             >
               <Phone className="w-3.5 h-3.5" />
-              <span>Kirim ke WhatsApp</span>
+              <span>WhatsApp</span>
             </button>
             <button
               type="button"
@@ -159,12 +177,12 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
           </div>
 
           {/* Receipt Form Rows */}
-          <div className="space-y-3 text-xs font-sans leading-relaxed">
+          <div className="space-y-3.5 text-xs font-sans leading-relaxed">
             <div className="flex items-baseline gap-2">
               <span className="w-36 shrink-0 text-slate-600 font-semibold">Telah diterima dari</span>
               <span className="text-slate-400">:</span>
               <span className="font-bold text-slate-900 border-b border-dotted border-slate-400 flex-1 pb-0.5">
-                {tenant.namaPenyewa} {tenant.nomorTelepon ? `(${tenant.nomorTelepon})` : ''}
+                {tenant.namaPenyewa}
               </span>
             </div>
 
@@ -180,16 +198,15 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
               <span className="w-36 shrink-0 text-slate-600 font-semibold">Untuk Pembayaran</span>
               <span className="text-slate-400">:</span>
               <span className="text-slate-900 border-b border-dotted border-slate-400 flex-1 pb-0.5">
-                Sewa Objek: <strong>{tenant.namaLahan}</strong> ({tenant.peruntukanUsaha}), Luas: {tenant.luasLahan || '-'}
+                Bayar sewa bulan <strong>{bulanTahun}</strong> — Objek: <strong>{tenant.namaLahan}</strong> ({tenant.kategori || tenant.peruntukanUsaha || 'Sewa Lahan'}), Luas: {tenant.luasLahan || '-'}
               </span>
             </div>
 
             <div className="flex items-baseline gap-2">
-              <span className="w-36 shrink-0 text-slate-600 font-semibold">Masa Kontrak</span>
+              <span className="w-36 shrink-0 text-slate-600 font-semibold">Kategori Sewa</span>
               <span className="text-slate-400">:</span>
               <span className="text-slate-800 border-b border-dotted border-slate-400 flex-1 pb-0.5">
-                {new Date(tenant.tanggalMulai).toLocaleDateString('id-ID')} s.d.{' '}
-                {new Date(tenant.tanggalSelesai).toLocaleDateString('id-ID')} ({tenant.tipePeriode.toUpperCase()})
+                {tenant.kategori || 'Sewa Lahan Wakaf'} ({tenant.tipePeriode.toUpperCase()})
               </span>
             </div>
           </div>

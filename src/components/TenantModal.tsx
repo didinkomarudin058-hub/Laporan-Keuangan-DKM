@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, UserCheck, MapPin, Calendar, DollarSign, FileText, Phone, CreditCard, ShieldCheck, Percent, Sparkles, Tag } from 'lucide-react';
+import { X, UserCheck, MapPin, DollarSign, Phone, Percent, Tag, Building2, Wallet } from 'lucide-react';
 import { LandTenant, MosqueBusinessUnit, FundCategory } from '../types';
 
 interface TenantModalProps {
@@ -9,6 +9,7 @@ interface TenantModalProps {
   editingTenant: LandTenant | null;
   businessUnits?: MosqueBusinessUnit[];
   posDanaList: string[];
+  categoriesSewa?: string[];
 }
 
 export const TenantModal: React.FC<TenantModalProps> = ({
@@ -18,6 +19,15 @@ export const TenantModal: React.FC<TenantModalProps> = ({
   editingTenant,
   businessUnits = [],
   posDanaList,
+  categoriesSewa = [
+    'Kios Kuliner & Warung',
+    'Stand UMKM & Toko',
+    'Bengkel & Jasa Otomotif',
+    'Kavling Tanah Wakaf',
+    'Lahan Pertanian / Kebun',
+    'Aula & Tempat Usaha',
+    'Lainnya',
+  ],
 }) => {
   const [formData, setFormData] = useState<{
     unitId: string;
@@ -25,6 +35,7 @@ export const TenantModal: React.FC<TenantModalProps> = ({
     nomorTelepon: string;
     nomorKTP: string;
     alamatPenyewa: string;
+    kategori: string;
     namaLahan: string;
     lokasiLahan: string;
     luasLahan: string;
@@ -33,9 +44,6 @@ export const TenantModal: React.FC<TenantModalProps> = ({
     diskonPersen: number | string;
     keteranganDiskon: string;
     tipePeriode: 'bulanan' | 'tahunan' | 'musiman';
-    tanggalMulai: string;
-    tanggalSelesai: string;
-    statusKontrak: 'aktif' | 'hampir_habis' | 'menunggak' | 'selesai';
     posDanaTujuan: string;
     catatan: string;
   }>({
@@ -44,6 +52,7 @@ export const TenantModal: React.FC<TenantModalProps> = ({
     nomorTelepon: '',
     nomorKTP: '',
     alamatPenyewa: '',
+    kategori: categoriesSewa[0] || 'Kios Kuliner & Warung',
     namaLahan: '',
     lokasiLahan: '',
     luasLahan: '',
@@ -52,11 +61,6 @@ export const TenantModal: React.FC<TenantModalProps> = ({
     diskonPersen: 0,
     keteranganDiskon: '',
     tipePeriode: 'bulanan',
-    tanggalMulai: new Date().toISOString().split('T')[0],
-    tanggalSelesai: new Date(new Date().setFullYear(new Date().getFullYear() + 1))
-      .toISOString()
-      .split('T')[0],
-    statusKontrak: 'aktif',
     posDanaTujuan: 'Kas Operasional',
     catatan: '',
   });
@@ -69,6 +73,7 @@ export const TenantModal: React.FC<TenantModalProps> = ({
         nomorTelepon: editingTenant.nomorTelepon,
         nomorKTP: editingTenant.nomorKTP || '',
         alamatPenyewa: editingTenant.alamatPenyewa || '',
+        kategori: editingTenant.kategori || categoriesSewa[0] || 'Kios Kuliner & Warung',
         namaLahan: editingTenant.namaLahan,
         lokasiLahan: editingTenant.lokasiLahan || '',
         luasLahan: editingTenant.luasLahan || '',
@@ -77,9 +82,6 @@ export const TenantModal: React.FC<TenantModalProps> = ({
         diskonPersen: editingTenant.diskonPersen ?? 0,
         keteranganDiskon: editingTenant.keteranganDiskon || '',
         tipePeriode: editingTenant.tipePeriode,
-        tanggalMulai: editingTenant.tanggalMulai,
-        tanggalSelesai: editingTenant.tanggalSelesai,
-        statusKontrak: editingTenant.statusKontrak,
         posDanaTujuan: editingTenant.posDanaTujuan || 'Kas Operasional',
         catatan: editingTenant.catatan || '',
       });
@@ -90,6 +92,7 @@ export const TenantModal: React.FC<TenantModalProps> = ({
         nomorTelepon: '',
         nomorKTP: '',
         alamatPenyewa: '',
+        kategori: categoriesSewa[0] || 'Kios Kuliner & Warung',
         namaLahan: '',
         lokasiLahan: '',
         luasLahan: '',
@@ -98,16 +101,11 @@ export const TenantModal: React.FC<TenantModalProps> = ({
         diskonPersen: 0,
         keteranganDiskon: '',
         tipePeriode: 'bulanan',
-        tanggalMulai: new Date().toISOString().split('T')[0],
-        tanggalSelesai: new Date(new Date().setFullYear(new Date().getFullYear() + 1))
-          .toISOString()
-          .split('T')[0],
-        statusKontrak: 'aktif',
         posDanaTujuan: 'Kas Operasional',
         catatan: '',
       });
     }
-  }, [editingTenant, isOpen]);
+  }, [editingTenant, isOpen, categoriesSewa]);
 
   if (!isOpen) return null;
 
@@ -119,7 +117,7 @@ export const TenantModal: React.FC<TenantModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.namaPenyewa.trim() || !formData.namaLahan.trim()) {
-      alert('Mohon lengkapi Nama Penyewa dan Nama/Nomor Kavling Lahan.');
+      alert('Mohon lengkapi Nama Pihak Sewa dan Objek/Kavling Lahan.');
       return;
     }
 
@@ -129,6 +127,7 @@ export const TenantModal: React.FC<TenantModalProps> = ({
       nomorTelepon: formData.nomorTelepon.trim(),
       nomorKTP: formData.nomorKTP.trim(),
       alamatPenyewa: formData.alamatPenyewa.trim(),
+      kategori: formData.kategori.trim() || 'Kios Kuliner & Warung',
       namaLahan: formData.namaLahan.trim(),
       lokasiLahan: formData.lokasiLahan.trim(),
       luasLahan: formData.luasLahan.trim(),
@@ -138,9 +137,6 @@ export const TenantModal: React.FC<TenantModalProps> = ({
       keteranganDiskon: rawDiskonPersen > 0 ? formData.keteranganDiskon.trim() : '',
       tarifSetelahDiskon: tarifBersih,
       tipePeriode: formData.tipePeriode,
-      tanggalMulai: formData.tanggalMulai,
-      tanggalSelesai: formData.tanggalSelesai,
-      statusKontrak: formData.statusKontrak,
       posDanaTujuan: (formData.posDanaTujuan as FundCategory) || 'Kas Operasional',
       catatan: formData.catatan.trim(),
       totalTerbayar: editingTenant ? editingTenant.totalTerbayar : 0,
@@ -166,7 +162,7 @@ export const TenantModal: React.FC<TenantModalProps> = ({
                 {editingTenant ? 'Edit Data Sewa Lahan/Tanah' : 'Tambah Sewa Tanah & Aset Wakaf'}
               </h3>
               <p className="text-xs text-emerald-200">
-                Pencatatan data sewa tanah, tarif sewa, fitur potongan persentase, dan masa kontrak DKM
+                Pencatatan data sewa tanah, kategori sewa, tarif sewa, dan potongan operasional DKM
               </p>
             </div>
           </div>
@@ -182,7 +178,7 @@ export const TenantModal: React.FC<TenantModalProps> = ({
 
         {/* Modal Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
-          {/* Section 1: Identitas Penyewa / Pihak Sewa */}
+          {/* Section 1: Identitas Pihak Sewa */}
           <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
             <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
               <UserCheck className="w-4 h-4 text-emerald-700" />
@@ -248,14 +244,31 @@ export const TenantModal: React.FC<TenantModalProps> = ({
             </div>
           </div>
 
-          {/* Section 2: Objek & Lokasi Lahan */}
+          {/* Section 2: Objek & Kategori Sewa */}
           <div className="bg-emerald-50/50 p-4 rounded-xl border border-emerald-200/80 space-y-3">
             <h4 className="text-xs font-bold text-emerald-900 uppercase tracking-wider flex items-center gap-1.5">
               <MapPin className="w-4 h-4 text-emerald-700" />
-              <span>Objek Lahan & Peruntukan Usaha</span>
+              <span>Objek Lahan & Kategori Sewa</span>
             </h4>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Kategori Sewa <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  value={formData.kategori}
+                  onChange={(e) => setFormData({ ...formData, kategori: e.target.value })}
+                  className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none font-semibold text-emerald-900"
+                >
+                  {categoriesSewa.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
                   Nama / Nomor Kavling Lahan <span className="text-rose-500">*</span>
@@ -266,19 +279,6 @@ export const TenantModal: React.FC<TenantModalProps> = ({
                   placeholder="Contoh: Kavling Barat Blok A-01"
                   value={formData.namaLahan}
                   onChange={(e) => setFormData({ ...formData, namaLahan: e.target.value })}
-                  className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Luas Lahan / Objek Sewa
-                </label>
-                <input
-                  type="text"
-                  placeholder="Contoh: 60 m² (6 x 10 m)"
-                  value={formData.luasLahan}
-                  onChange={(e) => setFormData({ ...formData, luasLahan: e.target.value })}
                   className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                 />
               </div>
@@ -300,16 +300,29 @@ export const TenantModal: React.FC<TenantModalProps> = ({
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Patokan / Lokasi Detail
+                  Luas Lahan / Objek Sewa
                 </label>
                 <input
                   type="text"
-                  placeholder="Contoh: Sisi Barat Pagar Utama Masjid"
-                  value={formData.lokasiLahan}
-                  onChange={(e) => setFormData({ ...formData, lokasiLahan: e.target.value })}
+                  placeholder="Contoh: 60 m² (6 x 10 m)"
+                  value={formData.luasLahan}
+                  onChange={(e) => setFormData({ ...formData, luasLahan: e.target.value })}
                   className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                Patokan / Lokasi Detail Lahan
+              </label>
+              <input
+                type="text"
+                placeholder="Contoh: Sisi Barat Pagar Utama Masjid"
+                value={formData.lokasiLahan}
+                onChange={(e) => setFormData({ ...formData, lokasiLahan: e.target.value })}
+                className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+              />
             </div>
           </div>
 
@@ -450,85 +463,39 @@ export const TenantModal: React.FC<TenantModalProps> = ({
             </div>
           </div>
 
-          {/* Section 4: Masa Kontrak & Status */}
+          {/* Section 4: Pos Dana Kas Tujuan */}
           <div className="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-3">
             <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
-              <Calendar className="w-4 h-4 text-emerald-700" />
-              <span>Masa Kontrak & Pos Dana</span>
+              <Wallet className="w-4 h-4 text-emerald-700" />
+              <span>Pos Dana Kas Masjid Tujuan</span>
             </h4>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Tanggal Mulai Sewa
-                </label>
-                <input
-                  type="date"
-                  required
-                  value={formData.tanggalMulai}
-                  onChange={(e) => setFormData({ ...formData, tanggalMulai: e.target.value })}
-                  className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Tanggal Selesai Sewa
-                </label>
-                <input
-                  type="date"
-                  required
-                  value={formData.tanggalSelesai}
-                  onChange={(e) => setFormData({ ...formData, tanggalSelesai: e.target.value })}
-                  className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Status Kontrak Sewa
-                </label>
-                <select
-                  value={formData.statusKontrak}
-                  onChange={(e) => setFormData({ ...formData, statusKontrak: e.target.value as any })}
-                  className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none font-semibold"
-                >
-                  <option value="aktif">✓ Aktif (Berjalan Lancar)</option>
-                  <option value="hampir_habis">⚠️ Hampir Habis / Jatuh Tempo</option>
-                  <option value="menunggak">❌ Menunggak (Perlu Konfirmasi)</option>
-                  <option value="selesai">⚪ Selesai / Kontrak Berakhir</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Pos Dana Kas Masjid Tujuan
-                </label>
-                <select
-                  value={formData.posDanaTujuan}
-                  onChange={(e) => setFormData({ ...formData, posDanaTujuan: e.target.value })}
-                  className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none font-semibold"
-                >
-                  {posDanaList.map((pos) => (
-                    <option key={pos} value={pos}>
-                      {pos}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Alokasi Pos Kas
+              </label>
+              <select
+                value={formData.posDanaTujuan}
+                onChange={(e) => setFormData({ ...formData, posDanaTujuan: e.target.value })}
+                className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none font-semibold"
+              >
+                {posDanaList.map((pos) => (
+                  <option key={pos} value={pos}>
+                    {pos}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 
-          {/* Section 5: Catatan & Syarat */}
+          {/* Section 5: Catatan & Kesepakatan */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
               Catatan / Kesepakatan Khusus Sewa Lahan
             </label>
             <textarea
               rows={2}
-              placeholder="Contoh: Pembayaran setiap awal bulan tanggal 1. Listrik & kebersihan ditanggung penyewa."
+              placeholder="Contoh: Pembayaran setiap awal bulan tanggal 1. Listrik & kebersihan ditanggung mandiri."
               value={formData.catatan}
               onChange={(e) => setFormData({ ...formData, catatan: e.target.value })}
               className="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:bg-white focus:outline-none resize-none"
@@ -548,7 +515,7 @@ export const TenantModal: React.FC<TenantModalProps> = ({
               type="submit"
               className="px-5 py-2 text-xs font-bold text-white bg-emerald-700 hover:bg-emerald-800 rounded-xl transition shadow-md shadow-emerald-700/20 cursor-pointer"
             >
-              {editingTenant ? 'Simpan Perubahan' : 'Simpan Data Penyewa'}
+              {editingTenant ? 'Simpan Perubahan' : 'Simpan Data Sewa'}
             </button>
           </div>
         </form>

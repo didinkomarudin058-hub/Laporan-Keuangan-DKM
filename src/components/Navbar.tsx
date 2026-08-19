@@ -93,7 +93,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             }`}
           >
             <Building2 className="w-4 h-4 text-white" />
-            <span>Sewa Tanah</span>
+            <span>Sewa</span>
           </button>
 
           <button

@@ -98,18 +98,16 @@ export interface LandTenant {
   nomorTelepon: string;
   nomorKTP?: string;
   alamatPenyewa?: string;
+  kategori: string; // e.g. 'Kios Kuliner & Warung', 'Stand UMKM & Toko', 'Bengkel & Jasa Otomotif', 'Kavling Tanah Wakaf'
   namaLahan: string; // e.g. 'Kavling Tanah Wakaf Barat Blok A-01', 'Lahan Usaha Stand Kuliner Depan'
   lokasiLahan?: string; // e.g. 'Jl. Masjid Sisi Barat RT 02'
   luasLahan?: string; // e.g. '50 m²', '120 m²', '1 Rante / 400 m²'
-  peruntukanUsaha: string; // e.g. 'Kios Kuliner / Warung Makan', 'Bengkel Motor', 'Toko Kelontong', 'Pertanian Tanaman Hias', 'Gudang Material'
+  peruntukanUsaha: string; // e.g. 'Kios Kuliner / Warung Makan', 'Bengkel Motor', 'Toko Kelontong'
   tarifSewa: number; // Nilai sewa normal per siklus (Rp)
   diskonPersen?: number; // Persentase Potongan Sewa (0 - 100%)
-  keteranganDiskon?: string; // Alasan potongan, misal: "Keringanan Jamaah Dhuafa", "Diskon Sewa Tahunan Dimuka"
+  keteranganDiskon?: string; // Alasan potongan
   tarifSetelahDiskon?: number; // Tarif bersih setelah potongan persentase
   tipePeriode: 'bulanan' | 'tahunan' | 'musiman';
-  tanggalMulai: string; // YYYY-MM-DD
-  tanggalSelesai: string; // YYYY-MM-DD
-  statusKontrak: 'aktif' | 'hampir_habis' | 'menunggak' | 'selesai';
   posDanaTujuan?: FundCategory;
   terakhirBayar?: string;
   totalTerbayar?: number;

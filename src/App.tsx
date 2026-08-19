@@ -17,6 +17,7 @@ import {
   initialTransactions,
   CATEGORIES_PEMASUKAN,
   CATEGORIES_PENGELUARAN,
+  CATEGORIES_SEWA,
   initialBusinessUnits,
   initialBusinessRecords,
   initialLandTenants,
@@ -37,6 +38,7 @@ export default function App() {
   const STORAGE_KEY_PROFILE = 'dkm_profile_v1';
   const STORAGE_KEY_CATEGORIES_PEMASUKAN = 'dkm_categories_pemasukan_v1';
   const STORAGE_KEY_CATEGORIES_PENGELUARAN = 'dkm_categories_pengeluaran_v1';
+  const STORAGE_KEY_CATEGORIES_SEWA = 'dkm_categories_sewa_v1';
   const STORAGE_KEY_POS_DANA = 'dkm_pos_dana_v1';
   const STORAGE_KEY_METODE_PEMBAYARAN = 'dkm_metode_pembayaran_v1';
   const STORAGE_KEY_BUSINESS_UNITS = 'dkm_business_units_v1';
@@ -61,7 +63,7 @@ export default function App() {
   // State: Mosque Profile
   const [mosqueProfile, setMosqueProfile] = useState<MosqueProfile>(() => {
     const saved = localStorage.getItem(STORAGE_KEY_PROFILE);
-    if (saved) {
+    if (saved !== null) {
       try {
         return JSON.parse(saved);
       } catch (e) {
@@ -74,7 +76,7 @@ export default function App() {
   // State: Transactions List
   const [transactions, setTransactions] = useState<Transaction[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEY_TRANSACTIONS);
-    if (saved) {
+    if (saved !== null) {
       try {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
@@ -93,9 +95,10 @@ export default function App() {
   // State: Transaction Categories
   const [categoriesPemasukan, setCategoriesPemasukan] = useState<string[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEY_CATEGORIES_PEMASUKAN);
-    if (saved) {
+    if (saved !== null) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
       } catch (e) {
         console.error(e);
       }
@@ -105,9 +108,10 @@ export default function App() {
 
   const [categoriesPengeluaran, setCategoriesPengeluaran] = useState<string[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEY_CATEGORIES_PENGELUARAN);
-    if (saved) {
+    if (saved !== null) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
       } catch (e) {
         console.error(e);
       }
@@ -115,10 +119,24 @@ export default function App() {
     return CATEGORIES_PENGELUARAN;
   });
 
+  // State: Kategori Sewa
+  const [categoriesSewa, setCategoriesSewa] = useState<string[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY_CATEGORIES_SEWA);
+    if (saved !== null) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    return CATEGORIES_SEWA;
+  });
+
   // State: Pos Dana List
   const [posDanaList, setPosDanaList] = useState<string[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEY_POS_DANA);
-    if (saved) {
+    if (saved !== null) {
       try {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
@@ -135,9 +153,10 @@ export default function App() {
   // State: Metode Pembayaran List
   const [metodePembayaranList, setMetodePembayaranList] = useState<string[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEY_METODE_PEMBAYARAN);
-    if (saved) {
+    if (saved !== null) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
       } catch (e) {
         console.error(e);
       }
@@ -148,10 +167,10 @@ export default function App() {
   // State: Unit Usaha Masjid
   const [businessUnits, setBusinessUnits] = useState<MosqueBusinessUnit[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEY_BUSINESS_UNITS);
-    if (saved) {
+    if (saved !== null) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       } catch (e) {
         console.error(e);
       }
@@ -162,10 +181,10 @@ export default function App() {
   // State: Rekap Buku Kas & Setoran Unit Usaha
   const [businessRecords, setBusinessRecords] = useState<BusinessRecord[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEY_BUSINESS_RECORDS);
-    if (saved) {
+    if (saved !== null) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       } catch (e) {
         console.error(e);
       }
@@ -173,13 +192,13 @@ export default function App() {
     return initialBusinessRecords;
   });
 
-  // State: Penyewa Tanah & Lahan Wakaf Masjid
+  // State: Penyewa / Sewa Tanah & Lahan Wakaf Masjid
   const [landTenants, setLandTenants] = useState<LandTenant[]>(() => {
     const saved = localStorage.getItem(STORAGE_KEY_LAND_TENANTS);
-    if (saved) {
+    if (saved !== null) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed)) return parsed;
       } catch (e) {
         console.error(e);
       }
@@ -203,6 +222,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_CATEGORIES_PENGELUARAN, JSON.stringify(categoriesPengeluaran));
   }, [categoriesPengeluaran]);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_CATEGORIES_SEWA, JSON.stringify(categoriesSewa));
+  }, [categoriesSewa]);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_POS_DANA, JSON.stringify(posDanaList));
@@ -239,28 +262,31 @@ export default function App() {
         if (data.mosqueProfile) {
           setMosqueProfile(data.mosqueProfile);
         }
-        if (data.categoriesPemasukan && data.categoriesPemasukan.length > 0) {
+        if (data.categoriesPemasukan !== undefined && Array.isArray(data.categoriesPemasukan)) {
           setCategoriesPemasukan(data.categoriesPemasukan);
         }
-        if (data.categoriesPengeluaran && data.categoriesPengeluaran.length > 0) {
+        if (data.categoriesPengeluaran !== undefined && Array.isArray(data.categoriesPengeluaran)) {
           setCategoriesPengeluaran(data.categoriesPengeluaran);
         }
-        if (data.posDanaList && data.posDanaList.length > 0) {
+        if (data.categoriesSewa !== undefined && Array.isArray(data.categoriesSewa)) {
+          setCategoriesSewa(data.categoriesSewa);
+        }
+        if (data.posDanaList !== undefined && Array.isArray(data.posDanaList)) {
           setPosDanaList(data.posDanaList);
         }
-        if (data.metodePembayaranList && data.metodePembayaranList.length > 0) {
+        if (data.metodePembayaranList !== undefined && Array.isArray(data.metodePembayaranList)) {
           setMetodePembayaranList(data.metodePembayaranList);
         }
-        if (data.transactions && data.transactions.length > 0) {
+        if (data.transactions !== undefined && Array.isArray(data.transactions)) {
           setTransactions(data.transactions);
         }
-        if (data.businessUnits && data.businessUnits.length > 0) {
+        if (data.businessUnits !== undefined && Array.isArray(data.businessUnits)) {
           setBusinessUnits(data.businessUnits);
         }
-        if (data.businessRecords && data.businessRecords.length > 0) {
+        if (data.businessRecords !== undefined && Array.isArray(data.businessRecords)) {
           setBusinessRecords(data.businessRecords);
         }
-        if (data.landTenants && data.landTenants.length > 0) {
+        if (data.landTenants !== undefined && Array.isArray(data.landTenants)) {
           setLandTenants(data.landTenants);
         }
       });
@@ -539,12 +565,62 @@ export default function App() {
     ) {
       setCategoriesPemasukan(CATEGORIES_PEMASUKAN);
       setCategoriesPengeluaran(CATEGORIES_PENGELUARAN);
+      setCategoriesSewa(CATEGORIES_SEWA);
       if (currentUser) {
         saveSettingsToFirestore(currentUser.uid, {
           categoriesPemasukan: CATEGORIES_PEMASUKAN,
           categoriesPengeluaran: CATEGORIES_PENGELUARAN,
+          categoriesSewa: CATEGORIES_SEWA,
         });
       }
+    }
+  };
+
+  // Kategori Sewa Handlers
+  const handleAddCategorySewa = (name: string) => {
+    const trimmed = name.trim();
+    if (trimmed && !categoriesSewa.includes(trimmed)) {
+      const updated = [...categoriesSewa, trimmed];
+      setCategoriesSewa(updated);
+      localStorage.setItem(STORAGE_KEY_CATEGORIES_SEWA, JSON.stringify(updated));
+      if (currentUser?.uid) {
+        saveSettingsToFirestore(currentUser.uid, {
+          categoriesSewa: updated,
+        });
+      }
+    }
+  };
+
+  const handleEditCategorySewa = (oldName: string, newName: string) => {
+    const trimmed = newName.trim();
+    if (trimmed && trimmed !== oldName) {
+      const updated = categoriesSewa.map((c) => (c === oldName ? trimmed : c));
+      setCategoriesSewa(updated);
+      localStorage.setItem(STORAGE_KEY_CATEGORIES_SEWA, JSON.stringify(updated));
+      // Also update tenants with this category
+      const updatedTenants = landTenants.map((t) =>
+        t.kategori === oldName ? { ...t, kategori: trimmed } : t
+      );
+      setLandTenants(updatedTenants);
+      localStorage.setItem(STORAGE_KEY_LAND_TENANTS, JSON.stringify(updatedTenants));
+
+      if (currentUser?.uid) {
+        saveSettingsToFirestore(currentUser.uid, {
+          categoriesSewa: updated,
+          landTenants: updatedTenants,
+        });
+      }
+    }
+  };
+
+  const handleDeleteCategorySewa = (name: string) => {
+    const updated = categoriesSewa.filter((c) => c !== name);
+    setCategoriesSewa(updated);
+    localStorage.setItem(STORAGE_KEY_CATEGORIES_SEWA, JSON.stringify(updated));
+    if (currentUser?.uid) {
+      saveSettingsToFirestore(currentUser.uid, {
+        categoriesSewa: updated,
+      });
     }
   };
 
@@ -785,7 +861,7 @@ export default function App() {
   };
 
   // Land Tenant Handlers
-  const handleAddTenant = (tenantData: Omit<LandTenant, 'id'>) => {
+  const handleAddTenant = async (tenantData: Omit<LandTenant, 'id'>) => {
     const newTenantId = `tenant_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
     const newTenant: LandTenant = {
       ...tenantData,
@@ -793,34 +869,37 @@ export default function App() {
     };
     const updatedTenants = [newTenant, ...landTenants];
     setLandTenants(updatedTenants);
+    localStorage.setItem(STORAGE_KEY_LAND_TENANTS, JSON.stringify(updatedTenants));
 
-    if (currentUser) {
-      saveSettingsToFirestore(currentUser.uid, {
+    if (currentUser?.uid) {
+      await saveSettingsToFirestore(currentUser.uid, {
         landTenants: updatedTenants,
       });
     }
 
-    setToastMessage(`Penyewa "${newTenant.namaPenyewa}" berhasil ditambahkan!`);
+    setToastMessage(`Data sewa "${newTenant.namaPenyewa}" berhasil ditambahkan!`);
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const handleEditTenant = (id: string, tenantData: Omit<LandTenant, 'id'>) => {
+  const handleEditTenant = async (id: string, tenantData: Omit<LandTenant, 'id'>) => {
     const updated = landTenants.map((t) => (t.id === id ? { ...tenantData, id } : t));
     setLandTenants(updated);
-    if (currentUser) {
-      saveSettingsToFirestore(currentUser.uid, { landTenants: updated });
+    localStorage.setItem(STORAGE_KEY_LAND_TENANTS, JSON.stringify(updated));
+    if (currentUser?.uid) {
+      await saveSettingsToFirestore(currentUser.uid, { landTenants: updated });
     }
-    setToastMessage('Data penyewa tanah berhasil diperbarui!');
+    setToastMessage('Data sewa berhasil diperbarui!');
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const handleDeleteTenant = (id: string) => {
+  const handleDeleteTenant = async (id: string) => {
     const updated = landTenants.filter((t) => t.id !== id);
     setLandTenants(updated);
-    if (currentUser) {
-      saveSettingsToFirestore(currentUser.uid, { landTenants: updated });
+    localStorage.setItem(STORAGE_KEY_LAND_TENANTS, JSON.stringify(updated));
+    if (currentUser?.uid) {
+      await saveSettingsToFirestore(currentUser.uid, { landTenants: updated });
     }
-    setToastMessage('Data penyewa berhasil dihapus.');
+    setToastMessage('Data sewa berhasil dihapus.');
     setTimeout(() => setToastMessage(null), 3000);
   };
 
@@ -933,6 +1012,7 @@ export default function App() {
       transactions,
       categoriesPemasukan,
       categoriesPengeluaran,
+      categoriesSewa,
       posDanaList,
       metodePembayaranList,
       businessUnits,
@@ -967,6 +1047,7 @@ export default function App() {
           if (json.categoriesPemasukan) setCategoriesPemasukan(json.categoriesPemasukan);
           if (json.categoriesPengeluaran)
             setCategoriesPengeluaran(json.categoriesPengeluaran);
+          if (json.categoriesSewa) setCategoriesSewa(json.categoriesSewa);
           if (json.posDanaList) setPosDanaList(json.posDanaList);
           if (json.metodePembayaranList) setMetodePembayaranList(json.metodePembayaranList);
           if (json.businessUnits && Array.isArray(json.businessUnits)) setBusinessUnits(json.businessUnits);
@@ -978,6 +1059,7 @@ export default function App() {
               mosqueProfile: json.mosqueProfile || mosqueProfile,
               categoriesPemasukan: json.categoriesPemasukan || categoriesPemasukan,
               categoriesPengeluaran: json.categoriesPengeluaran || categoriesPengeluaran,
+              categoriesSewa: json.categoriesSewa || categoriesSewa,
               posDanaList: json.posDanaList || posDanaList,
               metodePembayaranList: json.metodePembayaranList || metodePembayaranList,
               businessUnits: json.businessUnits || businessUnits,
@@ -987,7 +1069,7 @@ export default function App() {
             bulkSaveTransactionsToFirestore(currentUser.uid, json.transactions);
           }
 
-          alert('Berhasil merestore data kas, usaha & penyewa DKM dari file backup!');
+          alert('Berhasil merestore data kas, usaha & sewa DKM dari file backup!');
         } else {
           alert('Format file JSON tidak valid.');
         }
@@ -1002,13 +1084,14 @@ export default function App() {
   const handleResetData = () => {
     if (
       confirm(
-        'Apakah Anda yakin ingin mengembalikan seluruh data transaksi, unit usaha, penyewa & kategori ke data contoh awal DKM? Data yang diinput sendiri akan terhapus.'
+        'Apakah Anda yakin ingin mengembalikan seluruh data transaksi, unit usaha, sewa & kategori ke data contoh awal DKM? Data yang diinput sendiri akan terhapus.'
       )
     ) {
       setTransactions(initialTransactions);
       setMosqueProfile(initialMosqueProfile);
       setCategoriesPemasukan(CATEGORIES_PEMASUKAN);
       setCategoriesPengeluaran(CATEGORIES_PENGELUARAN);
+      setCategoriesSewa(CATEGORIES_SEWA);
       setPosDanaList(DEFAULT_POS_DANA);
       setMetodePembayaranList(DEFAULT_METODE_PEMBAYARAN);
       setBusinessUnits(initialBusinessUnits);
@@ -1018,6 +1101,7 @@ export default function App() {
       localStorage.removeItem(STORAGE_KEY_PROFILE);
       localStorage.removeItem(STORAGE_KEY_CATEGORIES_PEMASUKAN);
       localStorage.removeItem(STORAGE_KEY_CATEGORIES_PENGELUARAN);
+      localStorage.removeItem(STORAGE_KEY_CATEGORIES_SEWA);
       localStorage.removeItem(STORAGE_KEY_POS_DANA);
       localStorage.removeItem(STORAGE_KEY_METODE_PEMBAYARAN);
       localStorage.removeItem(STORAGE_KEY_BUSINESS_UNITS);
@@ -1029,6 +1113,7 @@ export default function App() {
           mosqueProfile: initialMosqueProfile,
           categoriesPemasukan: CATEGORIES_PEMASUKAN,
           categoriesPengeluaran: CATEGORIES_PENGELUARAN,
+          categoriesSewa: CATEGORIES_SEWA,
           posDanaList: DEFAULT_POS_DANA,
           metodePembayaranList: DEFAULT_METODE_PEMBAYARAN,
           businessUnits: initialBusinessUnits,
@@ -1108,6 +1193,7 @@ export default function App() {
             businessUnits={businessUnits}
             businessRecords={businessRecords}
             landTenants={landTenants}
+            categoriesSewa={categoriesSewa}
             mosqueProfile={mosqueProfile}
             posDanaList={posDanaList}
             metodePembayaranList={metodePembayaranList}
@@ -1212,6 +1298,10 @@ export default function App() {
         onEditCategory={handleEditCategory}
         onDeleteCategory={handleDeleteCategory}
         onResetCategories={handleResetCategories}
+        categoriesSewa={categoriesSewa}
+        onAddCategorySewa={handleAddCategorySewa}
+        onEditCategorySewa={handleEditCategorySewa}
+        onDeleteCategorySewa={handleDeleteCategorySewa}
         posDanaList={posDanaList}
         onAddPosDana={handleAddPosDana}
         onEditPosDana={handleEditPosDana}

@@ -44,6 +44,7 @@ interface MosqueBusinessTabProps {
   businessUnits?: any[];
   businessRecords?: any[];
   landTenants?: LandTenant[];
+  categoriesSewa?: string[];
   mosqueProfile: MosqueProfile;
   posDanaList: string[];
   metodePembayaranList: string[];
@@ -75,6 +76,15 @@ interface MosqueBusinessTabProps {
 
 export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
   landTenants = [],
+  categoriesSewa = [
+    'Kios Kuliner & Warung',
+    'Stand UMKM & Toko',
+    'Bengkel & Jasa Otomotif',
+    'Kavling Tanah Wakaf',
+    'Lahan Pertanian / Kebun',
+    'Aula & Tempat Usaha',
+    'Lainnya',
+  ],
   mosqueProfile,
   posDanaList,
   metodePembayaranList,
@@ -84,7 +94,7 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
   onPayTenantRent,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'semua' | 'aktif' | 'hampir_habis' | 'menunggak' | 'selesai'>('semua');
+  const [categoryFilter, setCategoryFilter] = useState<string>('semua');
   const [discountFilter, setDiscountFilter] = useState<'semua' | 'dengan_diskon' | 'tanpa_diskon'>('semua');
 
   // Modals
@@ -113,18 +123,17 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
       return landTenants;
     }
     if (rekapPeriodMode === 'tahunan') {
-      const yearStart = `${rekapSelectedYear}-01-01`;
-      const yearEnd = `${rekapSelectedYear}-12-31`;
+      const yearStr = String(rekapSelectedYear);
       return landTenants.filter((t) => {
-        return (t.tanggalMulai || '') <= yearEnd && (t.tanggalSelesai || '') >= yearStart;
+        if (!t.terakhirBayar) return true;
+        return t.terakhirBayar.startsWith(yearStr);
       });
     }
     // Bulanan
-    const lastDayOfMonth = new Date(rekapSelectedYear, rekapSelectedMonth, 0).getDate();
-    const monthStart = `${rekapSelectedYear}-${String(rekapSelectedMonth).padStart(2, '0')}-01`;
-    const monthEnd = `${rekapSelectedYear}-${String(rekapSelectedMonth).padStart(2, '0')}-${String(lastDayOfMonth).padStart(2, '0')}`;
+    const monthPrefix = `${rekapSelectedYear}-${String(rekapSelectedMonth).padStart(2, '0')}`;
     return landTenants.filter((t) => {
-      return (t.tanggalMulai || '') <= monthEnd && (t.tanggalSelesai || '') >= monthStart;
+      if (!t.terakhirBayar) return true;
+      return t.terakhirBayar.startsWith(monthPrefix);
     });
   }, [landTenants, rekapPeriodMode, rekapSelectedMonth, rekapSelectedYear]);
 
@@ -150,10 +159,6 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
   // Statistics Calculations
   const stats = useMemo(() => {
     const totalPenyewa = landTenants.length;
-    const aktifPenyewa = landTenants.filter((t) => t.statusKontrak === 'aktif').length;
-    const menunggakPenyewa = landTenants.filter((t) => t.statusKontrak === 'menunggak').length;
-    const hampirHabisPenyewa = landTenants.filter((t) => t.statusKontrak === 'hampir_habis').length;
-
     const totalKasDiterima = landTenants.reduce((acc, t) => acc + (t.totalTerbayar || 0), 0);
 
     // Calculate monthly and annual potential
@@ -168,14 +173,12 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
 
       totalPotonganDiskonNominal += potongan;
 
-      if (t.statusKontrak === 'aktif' || t.statusKontrak === 'hampir_habis') {
-        if (t.tipePeriode === 'bulanan') {
-          estimasiKasBulanan += bersih;
-        } else if (t.tipePeriode === 'tahunan') {
-          estimasiKasBulanan += bersih / 12;
-        } else {
-          estimasiKasBulanan += bersih / 6;
-        }
+      if (t.tipePeriode === 'bulanan') {
+        estimasiKasBulanan += bersih;
+      } else if (t.tipePeriode === 'tahunan') {
+        estimasiKasBulanan += bersih / 12;
+      } else {
+        estimasiKasBulanan += bersih / 6;
       }
     });
 
@@ -183,9 +186,6 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
 
     return {
       totalPenyewa,
-      aktifPenyewa,
-      menunggakPenyewa,
-      hampirHabisPenyewa,
       totalKasDiterima,
       estimasiKasBulanan,
       penyewaDenganDiskon,
@@ -202,10 +202,11 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
         t.namaPenyewa.toLowerCase().includes(searchQuery.toLowerCase()) ||
         t.namaLahan.toLowerCase().includes(searchQuery.toLowerCase()) ||
         t.peruntukanUsaha.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (t.kategori && t.kategori.toLowerCase().includes(searchQuery.toLowerCase())) ||
         t.nomorTelepon.includes(searchQuery);
 
-      // Status
-      const matchStatus = statusFilter === 'semua' || t.statusKontrak === statusFilter;
+      // Category
+      const matchCategory = categoryFilter === 'semua' || t.kategori === categoryFilter;
 
       // Discount Filter
       const hasDiscount = (t.diskonPersen || 0) > 0;
@@ -214,9 +215,9 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
         (discountFilter === 'dengan_diskon' && hasDiscount) ||
         (discountFilter === 'tanpa_diskon' && !hasDiscount);
 
-      return matchSearch && matchStatus && matchDiscount;
+      return matchSearch && matchCategory && matchDiscount;
     });
-  }, [landTenants, searchQuery, statusFilter, discountFilter]);
+  }, [landTenants, searchQuery, categoryFilter, discountFilter]);
 
   // Handlers
   const handleOpenAddTenant = () => {
@@ -242,46 +243,12 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
   const handleDeleteTenant = (tenant: LandTenant) => {
     if (
       window.confirm(
-        `Apakah Anda yakin ingin menghapus data penyewa "${tenant.namaPenyewa}" (${tenant.namaLahan})? Data pembayaran masa lalu yang sudah masuk ke kas tetap tersimpan.`
+        `Apakah Anda yakin ingin menghapus data sewa "${tenant.namaPenyewa}" (${tenant.namaLahan})? Data pembayaran masa lalu yang sudah masuk ke kas tetap tersimpan.`
       )
     ) {
       if (onDeleteTenant) {
         onDeleteTenant(tenant.id);
       }
-    }
-  };
-
-  const getStatusBadge = (status: LandTenant['statusKontrak']) => {
-    switch (status) {
-      case 'aktif':
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-            <CheckCircle2 className="w-3 h-3 text-emerald-700" />
-            <span>Aktif</span>
-          </span>
-        );
-      case 'hampir_habis':
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
-            <AlertTriangle className="w-3 h-3 text-amber-700" />
-            <span>Jatuh Tempo</span>
-          </span>
-        );
-      case 'menunggak':
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
-            <AlertCircle className="w-3 h-3 text-rose-700" />
-            <span>Menunggak</span>
-          </span>
-        );
-      case 'selesai':
-        return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-300">
-            <span>Selesai Kontrak</span>
-          </span>
-        );
-      default:
-        return null;
     }
   };
 
@@ -300,7 +267,7 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
               <span>Sewa Tanah Masjid</span>
             </h1>
             <p className="text-sm text-emerald-100/90 max-w-2xl leading-relaxed">
-              Kelola data sewa tanah wakaf/kavling usaha masjid, tarif sewa, skema potongan biaya operasional, dan pencatatan kas otomatis.
+              Kelola data sewa tanah wakaf/kavling usaha masjid, kategori sewa, tarif sewa, skema potongan biaya operasional, dan pencatatan kas otomatis.
             </p>
           </div>
 
@@ -328,27 +295,19 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
         {/* Card 1: Total Sewa */}
         <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider">Sewa Tanah</span>
+            <span className="text-xs font-bold uppercase tracking-wider">Total Sewa Tanah</span>
             <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
-              <UserCheck className="w-4 h-4 stroke-[2.5]" />
+              <Building2 className="w-4 h-4 stroke-[2.5]" />
             </div>
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-2xl font-black text-slate-900 font-mono">
               {stats.totalPenyewa}
             </span>
-            <span className="text-xs font-semibold text-slate-500">Kavling</span>
+            <span className="text-xs font-semibold text-slate-500">Objek Sewa</span>
           </div>
           <div className="mt-2 flex items-center gap-2 text-[11px] font-medium text-slate-600">
-            <span className="text-emerald-700 font-bold">{stats.aktifPenyewa} Aktif</span>
-            <span>•</span>
-            <span className="text-amber-700 font-bold">{stats.hampirHabisPenyewa} Jatuh Tempo</span>
-            {stats.menunggakPenyewa > 0 && (
-              <>
-                <span>•</span>
-                <span className="text-rose-600 font-bold">{stats.menunggakPenyewa} Nunggak</span>
-              </>
-            )}
+            <span className="text-emerald-700 font-bold">{categoriesSewa.length} Kategori Tersedia</span>
           </div>
         </div>
 
@@ -413,7 +372,7 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
-            placeholder="Cari nama penyewa, kavling lahan, peruntukan usaha..."
+            placeholder="Cari nama pihak sewa, kavling lahan, peruntukan usaha, kategori..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:bg-white focus:outline-none transition"
@@ -430,17 +389,18 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
 
         {/* Filter Controls */}
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Status Filter */}
+          {/* Category Filter */}
           <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as any)}
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
             className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
           >
-            <option value="semua">Semua Status Kontrak</option>
-            <option value="aktif">✓ Status Aktif</option>
-            <option value="hampir_habis">⚠️ Jatuh Tempo / Hampir Habis</option>
-            <option value="menunggak">❌ Menunggak</option>
-            <option value="selesai">⚪ Selesai</option>
+            <option value="semua">Semua Kategori Sewa</option>
+            {categoriesSewa.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
+            ))}
           </select>
 
           {/* Discount Filter */}
@@ -460,24 +420,24 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
       {filteredTenants.length === 0 ? (
         <div className="bg-white rounded-2xl p-12 text-center border border-dashed border-slate-300">
           <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-3 text-slate-400">
-            <UserCheck className="w-8 h-8 stroke-1" />
+            <Building2 className="w-8 h-8 stroke-1" />
           </div>
           <h3 className="text-base font-bold text-slate-800">
-            {searchQuery || statusFilter !== 'semua' || discountFilter !== 'semua'
-              ? 'Tidak ada penyewa yang cocok dengan filter'
-              : 'Belum Ada Data Penyewa Tanah'}
+            {searchQuery || categoryFilter !== 'semua' || discountFilter !== 'semua'
+              ? 'Tidak ada data sewa yang cocok dengan filter'
+              : 'Belum Ada Data Sewa Tanah'}
           </h3>
           <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
-            {searchQuery || statusFilter !== 'semua' || discountFilter !== 'semua'
+            {searchQuery || categoryFilter !== 'semua' || discountFilter !== 'semua'
               ? 'Silakan coba ubah kata kunci pencarian atau reset filter di atas.'
-              : 'Tambahkan data penyewa kavling tanah wakaf atau stand usaha masjid untuk mulai mencatat penerimaan sewa.'}
+              : 'Tambahkan data sewa tanah wakaf atau stand usaha masjid untuk mulai mencatat penerimaan sewa.'}
           </p>
           <button
             onClick={handleOpenAddTenant}
             className="mt-4 px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition inline-flex items-center gap-1.5 cursor-pointer shadow-md shadow-emerald-700/20"
           >
             <Plus className="w-4 h-4 stroke-[3]" />
-            <span>+ Tambah Penyewa Pertama</span>
+            <span>+ Tambah Data Sewa Pertama</span>
           </button>
         </div>
       ) : (
@@ -496,7 +456,7 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
                 key={tenant.id}
                 className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-md transition-all p-5 flex flex-col justify-between space-y-4 relative group"
               >
-                {/* Top Section: Nama Penyewa & Status */}
+                {/* Top Section: Nama Pihak Sewa & Kategori Badge */}
                 <div>
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <div>
@@ -504,7 +464,10 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
                         <h3 className="text-base font-bold text-slate-900 group-hover:text-emerald-800 transition">
                           {tenant.namaPenyewa}
                         </h3>
-                        {getStatusBadge(tenant.statusKontrak)}
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-teal-50 text-teal-900 border border-teal-200">
+                          <Building2 className="w-3 h-3 text-teal-700" />
+                          <span>{tenant.kategori || 'Sewa Lahan'}</span>
+                        </span>
                       </div>
                       <div className="flex items-center gap-1.5 text-xs text-slate-600 mt-1 font-medium">
                         <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
@@ -523,14 +486,14 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
                     <div className="flex items-center gap-1 shrink-0">
                       <button
                         onClick={() => handleOpenEditTenant(tenant)}
-                        title="Edit Data Penyewa"
+                        title="Edit Data Sewa"
                         className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 transition cursor-pointer"
                       >
                         <Edit2 className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleDeleteTenant(tenant)}
-                        title="Hapus Penyewa"
+                        title="Hapus Data Sewa"
                         className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -597,13 +560,14 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
                     </div>
                   )}
 
-                  {/* Contract Period & Payment Status */}
+                  {/* Payment Status Info */}
                   <div className="pt-2 border-t border-emerald-100 flex items-center justify-between text-[11px] text-slate-600">
                     <span className="flex items-center gap-1">
                       <Calendar className="w-3.5 h-3.5 text-emerald-700" />
                       <span>
-                        Kontrak: {new Date(tenant.tanggalMulai).toLocaleDateString('id-ID')} s.d.{' '}
-                        {new Date(tenant.tanggalSelesai).toLocaleDateString('id-ID')}
+                        {tenant.terakhirBayar
+                          ? `Terakhir Bayar: ${new Date(tenant.terakhirBayar).toLocaleDateString('id-ID')}`
+                          : 'Belum ada pembayaran sewa'}
                       </span>
                     </span>
                     <span className="font-mono font-bold text-emerald-800">
@@ -649,6 +613,7 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
         }}
         editingTenant={editingTenant}
         posDanaList={posDanaList}
+        categoriesSewa={categoriesSewa}
       />
 
       <TenantPaymentModal
@@ -786,7 +751,7 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
                     ? `Periode: Bulan ${MONTH_NAMES[rekapSelectedMonth - 1]} ${rekapSelectedYear}`
                     : rekapPeriodMode === 'tahunan'
                     ? `Periode: Tahun ${rekapSelectedYear}`
-                    : 'Periode: Semua Data Kontrak Sewa Aktif'}
+                    : 'Periode: Semua Data Sewa'}
                 </p>
               </div>
 
@@ -796,12 +761,12 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
                   <thead>
                     <tr className="bg-slate-100 border-y border-slate-300 text-slate-800 font-bold">
                       <th className="py-2.5 px-3">No</th>
-                      <th className="py-2.5 px-3">Nama Sewa & Kontak</th>
+                      <th className="py-2.5 px-3">Nama Pihak Sewa & Kontak</th>
                       <th className="py-2.5 px-3">Objek Lahan / Usaha</th>
+                      <th className="py-2.5 px-3">Kategori Sewa</th>
                       <th className="py-2.5 px-3 text-right">Tarif Normal</th>
-                      <th className="py-2.5 px-3 text-center">Potongan Ops (%)</th>
+                      <th className="py-2.5 px-3 text-center">Potongan (%)</th>
                       <th className="py-2.5 px-3 text-right">Tarif Bersih</th>
-                      <th className="py-2.5 px-3 text-center">Status</th>
                       <th className="py-2.5 px-3 text-right">Total Terbayar</th>
                     </tr>
                   </thead>
@@ -809,7 +774,7 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
                     {rekapFilteredTenants.length === 0 ? (
                       <tr>
                         <td colSpan={8} className="py-6 text-center text-slate-500 italic">
-                          Tidak ada data sewa lahan yang aktif pada periode ini.
+                          Tidak ada data sewa lahan pada periode ini.
                         </td>
                       </tr>
                     ) : (
@@ -833,6 +798,11 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
                               <span className="font-semibold text-slate-800 block">{t.namaLahan}</span>
                               <span className="text-[11px] text-slate-500">{t.peruntukanUsaha}</span>
                             </td>
+                            <td className="py-2 px-3">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-teal-50 text-teal-900 border border-teal-200">
+                                {t.kategori || 'Sewa Lahan'}
+                              </span>
+                            </td>
                             <td className="py-2 px-3 text-right font-mono">
                               Rp {normal.toLocaleString('id-ID')}
                             </td>
@@ -847,11 +817,6 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
                             </td>
                             <td className="py-2 px-3 text-right font-mono font-bold text-emerald-900">
                               Rp {bersih.toLocaleString('id-ID')}
-                            </td>
-                            <td className="py-2 px-3 text-center">
-                              <span className="text-[11px] font-bold uppercase text-slate-700">
-                                {t.statusKontrak}
-                              </span>
                             </td>
                             <td className="py-2 px-3 text-right font-mono font-extrabold text-emerald-800">
                               Rp {(t.totalTerbayar || 0).toLocaleString('id-ID')}

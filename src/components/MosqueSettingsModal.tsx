@@ -40,6 +40,12 @@ interface MosqueSettingsModalProps {
   onDeleteCategory: (type: TransactionType, name: string) => void;
   onResetCategories: () => void;
 
+  // Kategori Sewa
+  categoriesSewa?: string[];
+  onAddCategorySewa?: (name: string) => void;
+  onEditCategorySewa?: (oldName: string, newName: string) => void;
+  onDeleteCategorySewa?: (name: string) => void;
+
   // Pos Dana Kas
   posDanaList?: string[];
   onAddPosDana?: (name: string) => void;
@@ -74,6 +80,10 @@ export const MosqueSettingsModal: React.FC<MosqueSettingsModalProps> = ({
   onEditCategory,
   onDeleteCategory,
   onResetCategories,
+  categoriesSewa = [],
+  onAddCategorySewa,
+  onEditCategorySewa,
+  onDeleteCategorySewa,
   posDanaList = ['Kas Operasional', 'Kas Pembangunan'],
   onAddPosDana,
   onEditPosDana,
@@ -95,9 +105,9 @@ export const MosqueSettingsModal: React.FC<MosqueSettingsModalProps> = ({
   // Profile Form State
   const [profile, setProfile] = useState<MosqueProfile>({ ...mosqueProfile });
 
-  // Master Data Sub-Tab State: 'pemasukan' | 'pengeluaran' | 'posDana' | 'metodePembayaran'
+  // Master Data Sub-Tab State: 'pemasukan' | 'pengeluaran' | 'posDana' | 'metodePembayaran' | 'kategoriSewa'
   const [activeCatType, setActiveCatType] = useState<
-    'pemasukan' | 'pengeluaran' | 'posDana' | 'metodePembayaran'
+    'pemasukan' | 'pengeluaran' | 'posDana' | 'metodePembayaran' | 'kategoriSewa'
   >('pemasukan');
   const [newItemName, setNewItemName] = useState('');
   const [editingItemName, setEditingItemName] = useState<string | null>(null);
@@ -148,6 +158,8 @@ export const MosqueSettingsModal: React.FC<MosqueSettingsModalProps> = ({
 
     if (activeCatType === 'pemasukan' || activeCatType === 'pengeluaran') {
       onAddCategory(activeCatType, trimmed);
+    } else if (activeCatType === 'kategoriSewa' && onAddCategorySewa) {
+      onAddCategorySewa(trimmed);
     } else if (activeCatType === 'posDana' && onAddPosDana) {
       onAddPosDana(trimmed);
     } else if (activeCatType === 'metodePembayaran' && onAddMetodePembayaran) {
@@ -166,6 +178,8 @@ export const MosqueSettingsModal: React.FC<MosqueSettingsModalProps> = ({
 
     if (activeCatType === 'pemasukan' || activeCatType === 'pengeluaran') {
       onEditCategory(activeCatType, oldName, trimmed);
+    } else if (activeCatType === 'kategoriSewa' && onEditCategorySewa) {
+      onEditCategorySewa(oldName, trimmed);
     } else if (activeCatType === 'posDana' && onEditPosDana) {
       onEditPosDana(oldName, trimmed);
     } else if (activeCatType === 'metodePembayaran' && onEditMetodePembayaran) {
@@ -180,6 +194,8 @@ export const MosqueSettingsModal: React.FC<MosqueSettingsModalProps> = ({
 
     if (activeCatType === 'pemasukan' || activeCatType === 'pengeluaran') {
       onDeleteCategory(activeCatType, item);
+    } else if (activeCatType === 'kategoriSewa' && onDeleteCategorySewa) {
+      onDeleteCategorySewa(item);
     } else if (activeCatType === 'posDana' && onDeletePosDana) {
       onDeletePosDana(item);
     } else if (activeCatType === 'metodePembayaran' && onDeleteMetodePembayaran) {
@@ -192,6 +208,8 @@ export const MosqueSettingsModal: React.FC<MosqueSettingsModalProps> = ({
       ? categoriesPemasukan
       : activeCatType === 'pengeluaran'
       ? categoriesPengeluaran
+      : activeCatType === 'kategoriSewa'
+      ? categoriesSewa
       : activeCatType === 'posDana'
       ? posDanaList
       : metodePembayaranList;
@@ -202,6 +220,8 @@ export const MosqueSettingsModal: React.FC<MosqueSettingsModalProps> = ({
         return 'Kategori Pemasukan';
       case 'pengeluaran':
         return 'Kategori Pengeluaran';
+      case 'kategoriSewa':
+        return 'Kategori Sewa';
       case 'posDana':
         return 'Pos Dana Kas';
       case 'metodePembayaran':
@@ -215,6 +235,8 @@ export const MosqueSettingsModal: React.FC<MosqueSettingsModalProps> = ({
         return 'Tambah nama kategori pemasukan baru...';
       case 'pengeluaran':
         return 'Tambah nama kategori pengeluaran baru...';
+      case 'kategoriSewa':
+        return 'Tambah nama kategori sewa baru (misal: Sewa Booth UMKM)...';
       case 'posDana':
         return 'Tambah nama Pos Dana Kas baru (misal: Kas Ambulance)...';
       case 'metodePembayaran':
@@ -581,7 +603,7 @@ export const MosqueSettingsModal: React.FC<MosqueSettingsModalProps> = ({
           {activeTab === 'categories' && (
             <div className="space-y-4">
               {/* Sub-Tabs Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 bg-slate-100 p-1.5 rounded-xl border border-slate-200">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 bg-slate-100 p-1.5 rounded-xl border border-slate-200">
                 <button
                   type="button"
                   onClick={() => {
@@ -617,6 +639,22 @@ export const MosqueSettingsModal: React.FC<MosqueSettingsModalProps> = ({
                 <button
                   type="button"
                   onClick={() => {
+                    setActiveCatType('kategoriSewa');
+                    setEditingItemName(null);
+                  }}
+                  className={`py-2 px-2 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1 cursor-pointer ${
+                    activeCatType === 'kategoriSewa'
+                      ? 'bg-teal-700 text-white shadow-xs'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Building2 className="w-3.5 h-3.5" />
+                  <span>Sewa ({categoriesSewa.length})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
                     setActiveCatType('posDana');
                     setEditingItemName(null);
                   }}
@@ -627,7 +665,7 @@ export const MosqueSettingsModal: React.FC<MosqueSettingsModalProps> = ({
                   }`}
                 >
                   <Wallet className="w-3.5 h-3.5" />
-                  <span>Pos Dana Kas ({posDanaList.length})</span>
+                  <span>Pos Dana ({posDanaList.length})</span>
                 </button>
 
                 <button
@@ -636,14 +674,14 @@ export const MosqueSettingsModal: React.FC<MosqueSettingsModalProps> = ({
                     setActiveCatType('metodePembayaran');
                     setEditingItemName(null);
                   }}
-                  className={`py-2 px-2 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1 cursor-pointer ${
+                  className={`py-2 px-2 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1 cursor-pointer col-span-2 sm:col-span-1 ${
                     activeCatType === 'metodePembayaran'
                       ? 'bg-blue-700 text-white shadow-xs'
                       : 'text-slate-600 hover:text-slate-900'
                   }`}
                 >
                   <CreditCard className="w-3.5 h-3.5" />
-                  <span>Metode Bayar ({metodePembayaranList.length})</span>
+                  <span>Metode ({metodePembayaranList.length})</span>
                 </button>
               </div>
 
@@ -663,6 +701,8 @@ export const MosqueSettingsModal: React.FC<MosqueSettingsModalProps> = ({
                       ? 'bg-emerald-700 hover:bg-emerald-800'
                       : activeCatType === 'pengeluaran'
                       ? 'bg-rose-700 hover:bg-rose-800'
+                      : activeCatType === 'kategoriSewa'
+                      ? 'bg-teal-700 hover:bg-teal-800'
                       : activeCatType === 'posDana'
                       ? 'bg-amber-600 hover:bg-amber-700'
                       : 'bg-blue-700 hover:bg-blue-800'

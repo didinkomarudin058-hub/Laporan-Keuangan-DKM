@@ -334,6 +334,16 @@ export const CATEGORIES_PENGELUARAN = [
   "Lain-lain / Biaya Tak Terduga",
 ];
 
+export const CATEGORIES_SEWA = [
+  "Kios Kuliner & Warung",
+  "Stand UMKM & Toko",
+  "Bengkel & Jasa Otomotif",
+  "Kavling Tanah Wakaf",
+  "Lahan Pertanian / Kebun",
+  "Aula & Tempat Usaha",
+  "Lainnya",
+];
+
 export const initialBusinessUnits: MosqueBusinessUnit[] = [
   {
     id: "UNIT-00",
@@ -400,6 +410,7 @@ export const initialLandTenants: LandTenant[] = [
     nomorTelepon: "0812-3456-7890",
     nomorKTP: "3275081203750001",
     alamatPenyewa: "Jl. Melati No. 12, RT 01/03, Sumberjaya",
+    kategori: "Kios Kuliner & Warung",
     namaLahan: "Kavling Tanah Wakaf Barat Blok A-01",
     lokasiLahan: "Sisi Barat Pagar Masjid Al-Barokah",
     luasLahan: "60 m² (6 x 10 m)",
@@ -409,9 +420,6 @@ export const initialLandTenants: LandTenant[] = [
     keteranganDiskon: "Alokasi Biaya Operasional, Kebersihan & Keamanan Lahan",
     tarifSetelahDiskon: 1350000,
     tipePeriode: "bulanan",
-    tanggalMulai: "2026-01-01",
-    tanggalSelesai: "2026-12-31",
-    statusKontrak: "aktif",
     posDanaTujuan: "Kas Operasional",
     totalTerbayar: 12000000,
     terakhirBayar: "2026-08-01",
@@ -424,6 +432,7 @@ export const initialLandTenants: LandTenant[] = [
     nomorTelepon: "0856-7890-1234",
     nomorKTP: "3275085509820002",
     alamatPenyewa: "Kp. Setu RT 04/02 Tambun Selatan",
+    kategori: "Stand UMKM & Toko",
     namaLahan: "Kavling Tanah Wakaf Barat Blok A-02",
     lokasiLahan: "Sisi Barat Pagar Masjid Al-Barokah",
     luasLahan: "40 m² (4 x 10 m)",
@@ -433,9 +442,6 @@ export const initialLandTenants: LandTenant[] = [
     keteranganDiskon: "Program Pemberdayaan UMKM Muslimah",
     tarifSetelahDiskon: 1020000,
     tipePeriode: "bulanan",
-    tanggalMulai: "2026-03-01",
-    tanggalSelesai: "2027-02-28",
-    statusKontrak: "aktif",
     posDanaTujuan: "Kas Operasional",
     totalTerbayar: 7200000,
     terakhirBayar: "2026-08-02",
@@ -448,6 +454,7 @@ export const initialLandTenants: LandTenant[] = [
     nomorTelepon: "0877-2233-4455",
     nomorKTP: "3275082104880003",
     alamatPenyewa: "Jl. Raya Tambun No. 88",
+    kategori: "Bengkel & Jasa Otomotif",
     namaLahan: "Petak Lahan Wakaf Timur Blok B-01",
     lokasiLahan: "Sebelah Pos Keamanan Timur",
     luasLahan: "80 m² (8 x 10 m)",
@@ -457,13 +464,10 @@ export const initialLandTenants: LandTenant[] = [
     keteranganDiskon: "",
     tarifSetelahDiskon: 18000000,
     tipePeriode: "tahunan",
-    tanggalMulai: "2025-09-01",
-    tanggalSelesai: "2026-08-31",
-    statusKontrak: "hampir_habis",
     posDanaTujuan: "Kas Pembangunan",
     totalTerbayar: 18000000,
     terakhirBayar: "2025-09-01",
-    catatan: "Masa sewa 1 tahun berakhir 31 Agustus 2026. Siap perpanjang kontrak baru.",
+    catatan: "Sewa lancar dan tempat terawat.",
   },
 ];
 
