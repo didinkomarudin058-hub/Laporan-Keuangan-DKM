@@ -2,7 +2,7 @@
 
 @media print {
   @page {
-    margin: 8mm;
+    margin: 10mm;
     size: auto;
   }
 
@@ -16,37 +16,29 @@
     print-color-adjust: exact !important;
   }
 
-  /* Universal hide for web controls when printing */
+  /* Universal hide for non-printable UI */
   #dkm-app-navbar,
   footer,
   nav,
   header,
   .print\:hidden,
   [class*="print:hidden"],
+  .no-print,
   .sticky {
     display: none !important;
   }
 
-  /* Standard Report Printing (when NOT printing single kwitansi) */
-  body:not(.print-kwitansi-active) .fixed:not(#report-modal-overlay) {
-    display: none !important;
-  }
-
-  body:not(.print-kwitansi-active) main {
-    max-width: 100% !important;
-    width: 100% !important;
-    padding: 0 !important;
-    margin: 0 !important;
-  }
-
-  /* KWITANSI PRINT MODE - Only Kwitansi is visible, everything else is hidden */
+  /* ==================================================== */
+  /* MODE 1: PRINT KWITANSI SEWA (ISOLATED)               */
+  /* ==================================================== */
   body.print-kwitansi-active main,
   body.print-kwitansi-active #dkm-app-navbar,
   body.print-kwitansi-active footer,
   body.print-kwitansi-active nav,
   body.print-kwitansi-active header,
   body.print-kwitansi-active #kwitansi-modal-header,
-  body.print-kwitansi-active .fixed:not(#kwitansi-modal-overlay) {
+  body.print-kwitansi-active .fixed:not(#kwitansi-modal-overlay),
+  body.print-kwitansi-active #report-modal-overlay {
     display: none !important;
   }
 
@@ -79,22 +71,102 @@
     padding: 0 !important;
   }
 
+  body.print-kwitansi-active #kwitansi-modal-dialog > div {
+    overflow: visible !important;
+    padding: 0 !important;
+    max-height: none !important;
+  }
+
   body.print-kwitansi-active #kwitansi-print-card {
     position: static !important;
     display: block !important;
     width: 100% !important;
-    max-width: 100% !important;
+    max-width: 680px !important;
     box-shadow: none !important;
     border: 2px solid #064e3b !important;
     background: #ffffff !important;
     color: #000000 !important;
     margin: 0 auto !important;
-    padding: 20px !important;
+    padding: 24px !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
   }
 
-  /* Ensure printable elements don't get awkwardly split across pages or clipped */
+  /* ==================================================== */
+  /* MODE 2: PRINT REKAP SEWA LAHAN (ISOLATED)            */
+  /* ==================================================== */
+  body.print-rekap-sewa-active main,
+  body.print-rekap-sewa-active #dkm-app-navbar,
+  body.print-rekap-sewa-active footer,
+  body.print-rekap-sewa-active nav,
+  body.print-rekap-sewa-active header,
+  body.print-rekap-sewa-active #rekap-sewa-control-bar,
+  body.print-rekap-sewa-active .fixed:not(#report-modal-overlay),
+  body.print-rekap-sewa-active #kwitansi-modal-overlay {
+    display: none !important;
+  }
+
+  body.print-rekap-sewa-active #report-modal-overlay {
+    position: static !important;
+    inset: auto !important;
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+  }
+
+  body.print-rekap-sewa-active #report-modal-dialog {
+    position: static !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: #ffffff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  body.print-rekap-sewa-active #report-modal-dialog > div {
+    overflow: visible !important;
+    padding: 0 !important;
+    max-height: none !important;
+  }
+
+  body.print-rekap-sewa-active #report-modal-sheet {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  /* ==================================================== */
+  /* MODE 3: STANDARD REPORT (MONTHLY / JURNAL KAS)       */
+  /* ==================================================== */
+  body:not(.print-kwitansi-active):not(.print-rekap-sewa-active) .fixed {
+    display: none !important;
+  }
+
+  body:not(.print-kwitansi-active):not(.print-rekap-sewa-active) main {
+    max-width: 100% !important;
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Universal Table and Print Layout Helpers */
   .overflow-x-auto {
     overflow: visible !important;
   }
@@ -117,5 +189,6 @@
 
   tr {
     page-break-inside: avoid;
+    break-inside: avoid;
   }
 }

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   UserCheck,
   Plus,
@@ -155,6 +155,43 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
     });
     return { totalNormal, totalBersih, totalTerbayar };
   }, [rekapFilteredTenants]);
+
+  // Clean up any lingering print classes on modal toggle
+  useEffect(() => {
+    return () => {
+      document.body.classList.remove('print-rekap-sewa-active');
+    };
+  }, [isReportModalOpen]);
+
+  const handlePrintRekapSewa = () => {
+    document.body.classList.add('print-rekap-sewa-active');
+
+    const handleAfterPrint = () => {
+      document.body.classList.remove('print-rekap-sewa-active');
+      window.removeEventListener('afterprint', handleAfterPrint);
+    };
+
+    window.addEventListener('afterprint', handleAfterPrint);
+
+    setTimeout(() => {
+      window.print();
+      setTimeout(() => {
+        document.body.classList.remove('print-rekap-sewa-active');
+      }, 2000);
+    }, 100);
+  };
+
+  // Titimangsa desa / kota
+  const titimangsaKota = (() => {
+    if (mosqueProfile.desa) {
+      const d = mosqueProfile.desa.replace(/^desa\s+/gi, '').replace(/^kelurahan\s+/gi, '').trim();
+      return d;
+    }
+    if (mosqueProfile.kota) {
+      return mosqueProfile.kota.split(',')[0].trim();
+    }
+    return 'Bekasi';
+  })();
 
   // Statistics Calculations
   const stats = useMemo(() => {
@@ -639,13 +676,22 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
 
       {/* Master Printable Report Modal for Land Rent (Monthly, Yearly, All) */}
       {isReportModalOpen && (
-        <div id="report-modal-overlay" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-8">
+        <div
+          id="report-modal-overlay"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-150"
+        >
+          <div
+            id="report-modal-dialog"
+            className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-auto max-h-[94vh] flex flex-col"
+          >
             {/* Control Bar (Hidden in Print) */}
-            <div className="bg-slate-900 text-white px-5 py-3.5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 print:hidden">
+            <div
+              id="rekap-sewa-control-bar"
+              className="bg-slate-900 text-white px-4 py-3 sm:px-5 sm:py-3.5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 print:hidden shrink-0 border-b border-slate-800"
+            >
               <div className="flex items-center gap-2">
-                <Building2 className="w-4 h-4 text-white" />
-                <span className="text-xs font-bold">Laporan Rekapitulasi Sewa Lahan Wakaf</span>
+                <Building2 className="w-4 h-4 text-emerald-400" />
+                <span className="text-xs font-bold text-white">Laporan Rekapitulasi Sewa Lahan Wakaf</span>
               </div>
 
               {/* Period Mode Selector */}
@@ -654,9 +700,9 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
                   <button
                     type="button"
                     onClick={() => setRekapPeriodMode('bulanan')}
-                    className={`px-2.5 py-1 text-xs font-bold rounded-md transition ${
+                    className={`px-2.5 py-1 text-xs font-bold rounded-md transition cursor-pointer ${
                       rekapPeriodMode === 'bulanan'
-                        ? 'bg-emerald-600 text-white'
+                        ? 'bg-emerald-600 text-white shadow-xs'
                         : 'text-slate-300 hover:text-white'
                     }`}
                   >
@@ -665,9 +711,9 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
                   <button
                     type="button"
                     onClick={() => setRekapPeriodMode('tahunan')}
-                    className={`px-2.5 py-1 text-xs font-bold rounded-md transition ${
+                    className={`px-2.5 py-1 text-xs font-bold rounded-md transition cursor-pointer ${
                       rekapPeriodMode === 'tahunan'
-                        ? 'bg-emerald-600 text-white'
+                        ? 'bg-emerald-600 text-white shadow-xs'
                         : 'text-slate-300 hover:text-white'
                     }`}
                   >
@@ -676,9 +722,9 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
                   <button
                     type="button"
                     onClick={() => setRekapPeriodMode('semua')}
-                    className={`px-2.5 py-1 text-xs font-bold rounded-md transition ${
+                    className={`px-2.5 py-1 text-xs font-bold rounded-md transition cursor-pointer ${
                       rekapPeriodMode === 'semua'
-                        ? 'bg-emerald-600 text-white'
+                        ? 'bg-emerald-600 text-white shadow-xs'
                         : 'text-slate-300 hover:text-white'
                     }`}
                   >
@@ -691,7 +737,7 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
                   <select
                     value={rekapSelectedMonth}
                     onChange={(e) => setRekapSelectedMonth(Number(e.target.value))}
-                    className="bg-slate-800 text-white border border-slate-700 text-xs font-semibold px-2 py-1 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    className="bg-slate-800 text-white border border-slate-700 text-xs font-semibold px-2 py-1 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
                   >
                     {MONTH_NAMES.map((name, idx) => (
                       <option key={name} value={idx + 1}>
@@ -706,7 +752,7 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
                   <select
                     value={rekapSelectedYear}
                     onChange={(e) => setRekapSelectedYear(Number(e.target.value))}
-                    className="bg-slate-800 text-white border border-slate-700 text-xs font-semibold px-2 py-1 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                    className="bg-slate-800 text-white border border-slate-700 text-xs font-semibold px-2 py-1 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
                   >
                     {[2024, 2025, 2026, 2027, 2028].map((yr) => (
                       <option key={yr} value={yr}>
@@ -718,146 +764,190 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
 
                 <button
                   type="button"
-                  onClick={() => window.print()}
-                  className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ml-auto sm:ml-0"
+                  onClick={handlePrintRekapSewa}
+                  className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ml-auto sm:ml-0 shadow-xs"
+                  title="Cetak atau Simpan PDF Laporan Rekap"
                 >
                   <Printer className="w-3.5 h-3.5" />
-                  <span>Cetak Dokumen</span>
+                  <span>Cetak / PDF</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => setIsReportModalOpen(false)}
+                  onClick={() => {
+                    document.body.classList.remove('print-rekap-sewa-active');
+                    setIsReportModalOpen(false);
+                  }}
                   className="p-1 text-slate-400 hover:text-white rounded-lg transition cursor-pointer"
+                  aria-label="Tutup"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
             </div>
 
-            <div className="p-8 bg-white text-slate-900 font-sans space-y-6">
-              {/* Kop Surat */}
-              <div className="text-center border-b-2 border-slate-900 pb-3">
-                <h2 className="text-xl font-bold uppercase text-emerald-950 font-sans">
-                  {mosqueProfile.namaMasjid}
-                </h2>
-                <p className="text-xs text-slate-600">
-                  {mosqueProfile.alamat}, {mosqueProfile.kota} • Telp: {mosqueProfile.telepon}
-                </p>
-                <h3 className="text-sm font-extrabold uppercase mt-2 tracking-wider underline text-slate-900">
-                  REKAPITULASI SEWA LAHAN WAKAF & ASET MASJID
-                </h3>
-                <p className="text-xs font-bold text-emerald-800 uppercase mt-0.5">
-                  {rekapPeriodMode === 'bulanan'
-                    ? `Periode: Bulan ${MONTH_NAMES[rekapSelectedMonth - 1]} ${rekapSelectedYear}`
-                    : rekapPeriodMode === 'tahunan'
-                    ? `Periode: Tahun ${rekapSelectedYear}`
-                    : 'Periode: Semua Data Sewa'}
-                </p>
-              </div>
+            {/* Printable Sheet */}
+            <div className="overflow-y-auto flex-1 p-4 sm:p-6 bg-slate-50/50">
+              <div
+                id="report-modal-sheet"
+                className="p-6 sm:p-8 bg-white text-slate-900 font-sans space-y-5 rounded-xl border border-slate-200 shadow-sm"
+              >
+                {/* Kop Surat Masjid */}
+                <div className="text-center border-b-2 border-slate-900 pb-3 space-y-1">
+                  <div className="flex items-center justify-center gap-3 mb-1">
+                    {mosqueProfile.logoUrl ? (
+                      <img
+                        src={mosqueProfile.logoUrl}
+                        alt="Logo Masjid"
+                        className="w-12 h-12 object-contain rounded-full border border-emerald-700 p-0.5 bg-white shrink-0"
+                      />
+                    ) : (
+                      <div className="w-11 h-11 bg-emerald-800 text-white rounded-full flex items-center justify-center font-bold border border-emerald-600 shrink-0">
+                        <Building2 className="w-6 h-6 text-white" />
+                      </div>
+                    )}
+                    <div className="text-left sm:text-center">
+                      <h1 className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-slate-700">
+                        DEWAN KEMAKMURAN MASJID (DKM)
+                      </h1>
+                      <h2 className="text-lg sm:text-xl font-black uppercase text-emerald-950 tracking-tight leading-tight">
+                        {mosqueProfile.namaMasjid}
+                      </h2>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-600 font-medium">
+                    {[
+                      mosqueProfile.alamat ? mosqueProfile.alamat.replace(/,\s*$/, '') : '',
+                      mosqueProfile.desa ? `Desa ${mosqueProfile.desa.replace(/^desa\s+/gi, '')}` : '',
+                      mosqueProfile.kecamatan ? `Kec. ${mosqueProfile.kecamatan.replace(/^kec\.?\s+/gi, '')}` : '',
+                      mosqueProfile.kota || ''
+                    ].filter(Boolean).join(' ')}
+                    {mosqueProfile.telepon ? ` • Telp: ${mosqueProfile.telepon}` : ''}
+                  </p>
+                  {mosqueProfile.nomorRekening && (
+                    <p className="text-[11px] text-slate-500 italic">
+                      Rek. Infaq/Kas: {mosqueProfile.namaBank || 'Bank'} {mosqueProfile.nomorRekening} a.n {mosqueProfile.anRekening || mosqueProfile.namaMasjid}
+                    </p>
+                  )}
+                  <div className="pt-2">
+                    <h3 className="text-sm sm:text-base font-black uppercase tracking-wider underline text-slate-900">
+                      REKAPITULASI SEWA LAHAN WAKAF & ASET MASJID
+                    </h3>
+                    <p className="text-xs font-bold text-emerald-800 uppercase mt-0.5">
+                      {rekapPeriodMode === 'bulanan'
+                        ? `Periode: Bulan ${MONTH_NAMES[rekapSelectedMonth - 1]} ${rekapSelectedYear}`
+                        : rekapPeriodMode === 'tahunan'
+                        ? `Periode: Tahun ${rekapSelectedYear}`
+                        : 'Periode: Semua Data Sewa Lahan'}
+                    </p>
+                  </div>
+                </div>
 
-              {/* Table */}
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-slate-100 border-y border-slate-300 text-slate-800 font-bold">
-                      <th className="py-2.5 px-3">No</th>
-                      <th className="py-2.5 px-3">Nama Pihak Sewa & Kontak</th>
-                      <th className="py-2.5 px-3">Objek Lahan / Usaha</th>
-                      <th className="py-2.5 px-3">Kategori Sewa</th>
-                      <th className="py-2.5 px-3 text-right">Tarif Normal</th>
-                      <th className="py-2.5 px-3 text-center">Potongan (%)</th>
-                      <th className="py-2.5 px-3 text-right">Tarif Bersih</th>
-                      <th className="py-2.5 px-3 text-right">Total Terbayar</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200">
-                    {rekapFilteredTenants.length === 0 ? (
-                      <tr>
-                        <td colSpan={8} className="py-6 text-center text-slate-500 italic">
-                          Tidak ada data sewa lahan pada periode ini.
+                {/* Table */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs border border-slate-300">
+                    <thead>
+                      <tr className="bg-slate-100 border-b-2 border-slate-300 text-slate-800 font-bold">
+                        <th className="py-2.5 px-2.5 border-r border-slate-300 text-center w-10">No</th>
+                        <th className="py-2.5 px-3 border-r border-slate-300">Nama Pihak Sewa & Kontak</th>
+                        <th className="py-2.5 px-3 border-r border-slate-300">Objek Lahan / Usaha</th>
+                        <th className="py-2.5 px-3 border-r border-slate-300">Kategori Sewa</th>
+                        <th className="py-2.5 px-3 text-right border-r border-slate-300">Tarif Normal</th>
+                        <th className="py-2.5 px-2.5 text-center border-r border-slate-300">Potongan (%)</th>
+                        <th className="py-2.5 px-3 text-right border-r border-slate-300">Tarif Bersih</th>
+                        <th className="py-2.5 px-3 text-right">Total Terbayar</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200">
+                      {rekapFilteredTenants.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} className="py-8 text-center text-slate-500 italic">
+                            Tidak ada data sewa lahan pada periode ini.
+                          </td>
+                        </tr>
+                      ) : (
+                        rekapFilteredTenants.map((t, idx) => {
+                          const diskon = t.diskonPersen || 0;
+                          const normal = t.tarifSewa || 0;
+                          const potongan = (normal * diskon) / 100;
+                          const bersih =
+                            t.tarifSetelahDiskon !== undefined
+                              ? t.tarifSetelahDiskon
+                              : Math.max(0, normal - potongan);
+
+                          return (
+                            <tr key={t.id} className="hover:bg-slate-50">
+                              <td className="py-2 px-2.5 text-center font-medium text-slate-500 border-r border-slate-200">
+                                {idx + 1}
+                              </td>
+                              <td className="py-2 px-3 border-r border-slate-200">
+                                <strong className="text-slate-900 block font-semibold">{t.namaPenyewa}</strong>
+                                <span className="text-[11px] text-slate-500">{t.nomorTelepon || '-'}</span>
+                              </td>
+                              <td className="py-2 px-3 border-r border-slate-200">
+                                <span className="font-semibold text-slate-800 block">{t.namaLahan}</span>
+                                <span className="text-[11px] text-slate-500">{t.peruntukanUsaha || '-'}</span>
+                              </td>
+                              <td className="py-2 px-3 border-r border-slate-200">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-teal-50 text-teal-900 border border-teal-200">
+                                  {t.kategori || 'Sewa Lahan'}
+                                </span>
+                              </td>
+                              <td className="py-2 px-3 text-right font-mono border-r border-slate-200">
+                                Rp {normal.toLocaleString('id-ID')}
+                              </td>
+                              <td className="py-2 px-2.5 text-center border-r border-slate-200">
+                                {diskon > 0 ? (
+                                  <span className="font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 text-[11px]">
+                                    {diskon}%
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-400">-</span>
+                                )}
+                              </td>
+                              <td className="py-2 px-3 text-right font-mono font-bold text-emerald-900 border-r border-slate-200">
+                                Rp {bersih.toLocaleString('id-ID')}
+                              </td>
+                              <td className="py-2 px-3 text-right font-mono font-extrabold text-emerald-800">
+                                Rp {(t.totalTerbayar || 0).toLocaleString('id-ID')}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                    <tfoot>
+                      <tr className="bg-slate-100 border-t-2 border-slate-300 font-bold text-slate-900">
+                        <td colSpan={7} className="py-2.5 px-3 text-right border-r border-slate-300">
+                          TOTAL AKUMULASI KAS SEWA DITERIMA:
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-mono font-black text-emerald-900 text-sm">
+                          Rp {rekapStats.totalTerbayar.toLocaleString('id-ID')}
                         </td>
                       </tr>
-                    ) : (
-                      rekapFilteredTenants.map((t, idx) => {
-                        const diskon = t.diskonPersen || 0;
-                        const normal = t.tarifSewa || 0;
-                        const potongan = (normal * diskon) / 100;
-                        const bersih =
-                          t.tarifSetelahDiskon !== undefined
-                            ? t.tarifSetelahDiskon
-                            : Math.max(0, normal - potongan);
-
-                        return (
-                          <tr key={t.id} className="hover:bg-slate-50">
-                            <td className="py-2 px-3 font-medium text-slate-500">{idx + 1}</td>
-                            <td className="py-2 px-3">
-                              <strong className="text-slate-900 block">{t.namaPenyewa}</strong>
-                              <span className="text-[11px] text-slate-500">{t.nomorTelepon}</span>
-                            </td>
-                            <td className="py-2 px-3">
-                              <span className="font-semibold text-slate-800 block">{t.namaLahan}</span>
-                              <span className="text-[11px] text-slate-500">{t.peruntukanUsaha}</span>
-                            </td>
-                            <td className="py-2 px-3">
-                              <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-teal-50 text-teal-900 border border-teal-200">
-                                {t.kategori || 'Sewa Lahan'}
-                              </span>
-                            </td>
-                            <td className="py-2 px-3 text-right font-mono">
-                              Rp {normal.toLocaleString('id-ID')}
-                            </td>
-                            <td className="py-2 px-3 text-center">
-                              {diskon > 0 ? (
-                                <span className="font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 text-[11px]">
-                                  {diskon}%
-                                </span>
-                              ) : (
-                                <span className="text-slate-400">-</span>
-                              )}
-                            </td>
-                            <td className="py-2 px-3 text-right font-mono font-bold text-emerald-900">
-                              Rp {bersih.toLocaleString('id-ID')}
-                            </td>
-                            <td className="py-2 px-3 text-right font-mono font-extrabold text-emerald-800">
-                              Rp {(t.totalTerbayar || 0).toLocaleString('id-ID')}
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                  <tfoot>
-                    <tr className="bg-slate-50 border-t-2 border-slate-300 font-bold text-slate-900">
-                      <td colSpan={7} className="py-2.5 px-3 text-right">
-                        TOTAL AKUMULASI KAS SEWA DITERIMA:
-                      </td>
-                      <td className="py-2.5 px-3 text-right font-mono font-black text-emerald-900 text-sm">
-                        Rp {rekapStats.totalTerbayar.toLocaleString('id-ID')}
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-
-              {/* Signatures */}
-              <div className="pt-8 grid grid-cols-2 text-center text-xs">
-                <div>
-                  <p className="text-slate-600">Mengetahui,</p>
-                  <p className="font-bold text-slate-800 mt-1">Ketua DKM</p>
-                  <div className="h-16" />
-                  <p className="font-bold text-slate-900 underline underline-offset-2">
-                    {mosqueProfile.ketuaDKM || 'H. Ahmad Syarifuddin, Lc'}
-                  </p>
+                    </tfoot>
+                  </table>
                 </div>
-                <div>
-                  <p className="text-slate-600">
-                    {mosqueProfile.kota.split(',')[0] || 'Bekasi'}, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
-                  </p>
-                  <p className="font-bold text-slate-800 mt-1">Bendahara / Sie Aset Wakaf</p>
-                  <div className="h-16" />
-                  <p className="font-bold text-slate-900 underline underline-offset-2">
-                    {mosqueProfile.bendaharaDKM || 'H. Mohammad Ridwan, SE'}
-                  </p>
+
+                {/* Signatures */}
+                <div className="pt-6 grid grid-cols-2 text-center text-xs">
+                  <div>
+                    <p className="text-slate-600">Mengetahui,</p>
+                    <p className="font-bold text-slate-800 mt-1">Ketua DKM</p>
+                    <div className="h-16" />
+                    <p className="font-bold text-slate-900 underline underline-offset-2">
+                      ( {mosqueProfile.ketuaDKM || 'H. Ahmad Syarifuddin, Lc'} )
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-slate-600">
+                      {titimangsaKota}, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </p>
+                    <p className="font-bold text-slate-800 mt-1">Bendahara / Sie Aset Wakaf</p>
+                    <div className="h-16" />
+                    <p className="font-bold text-slate-900 underline underline-offset-2">
+                      ( {mosqueProfile.bendaharaDKM || 'H. Mohammad Ridwan, SE'} )
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
