@@ -639,7 +639,7 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
 
       {/* Master Printable Report Modal for Land Rent (Monthly, Yearly, All) */}
       {isReportModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-200">
+        <div id="report-modal-overlay" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-200">
           <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-8">
             {/* Control Bar (Hidden in Print) */}
             <div className="bg-slate-900 text-white px-5 py-3.5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 print:hidden">
