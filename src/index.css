@@ -2,7 +2,7 @@
 
 @media print {
   @page {
-    margin: 10mm;
+    margin: 8mm;
     size: auto;
   }
 
@@ -16,7 +16,7 @@
     print-color-adjust: exact !important;
   }
 
-  /* Hide all non-essential web controls, navbars, footers, buttons, fixed bars */
+  /* Universal hide for web controls when printing */
   #dkm-app-navbar,
   footer,
   nav,
@@ -27,12 +27,11 @@
     display: none !important;
   }
 
-  /* When NOT printing isolated kwitansi, hide fixed elements except if modal is designated */
-  body:not(.print-kwitansi-active) .fixed:not(#kwitansi-modal-overlay):not(#report-modal-overlay) {
+  /* Standard Report Printing (when NOT printing single kwitansi) */
+  body:not(.print-kwitansi-active) .fixed:not(#report-modal-overlay) {
     display: none !important;
   }
 
-  /* Expand main container to full paper width for standard reports */
   body:not(.print-kwitansi-active) main {
     max-width: 100% !important;
     width: 100% !important;
@@ -40,53 +39,57 @@
     margin: 0 !important;
   }
 
-  /* ISOLATED KWITANSI PRINT MODE: Hide whole page except kwitansi */
-  body.print-kwitansi-active * {
-    visibility: hidden;
-  }
-
-  body.print-kwitansi-active #kwitansi-print-card,
-  body.print-kwitansi-active #kwitansi-print-card * {
-    visibility: visible;
-  }
-
-  body.print-kwitansi-active #dkm-app-navbar,
+  /* KWITANSI PRINT MODE - Only Kwitansi is visible, everything else is hidden */
   body.print-kwitansi-active main,
+  body.print-kwitansi-active #dkm-app-navbar,
   body.print-kwitansi-active footer,
+  body.print-kwitansi-active nav,
+  body.print-kwitansi-active header,
   body.print-kwitansi-active #kwitansi-modal-header,
-  body.print-kwitansi-active .print\:hidden {
+  body.print-kwitansi-active .fixed:not(#kwitansi-modal-overlay) {
     display: none !important;
   }
 
   body.print-kwitansi-active #kwitansi-modal-overlay {
     position: static !important;
     inset: auto !important;
-    background: transparent !important;
-    padding: 0 !important;
-    margin: 0 !important;
     display: block !important;
     width: 100% !important;
     height: auto !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
     overflow: visible !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
   }
 
   body.print-kwitansi-active #kwitansi-modal-dialog {
-    max-width: 100% !important;
+    position: static !important;
+    display: block !important;
     width: 100% !important;
+    max-width: 100% !important;
+    max-height: none !important;
+    height: auto !important;
+    overflow: visible !important;
     box-shadow: none !important;
     border: none !important;
+    background: #ffffff !important;
     margin: 0 !important;
     padding: 0 !important;
-    background: transparent !important;
   }
 
   body.print-kwitansi-active #kwitansi-print-card {
     position: static !important;
-    margin: 0 auto !important;
+    display: block !important;
     width: 100% !important;
     max-width: 100% !important;
     box-shadow: none !important;
     border: 2px solid #064e3b !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 auto !important;
+    padding: 20px !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
   }
@@ -116,4 +119,3 @@
     page-break-inside: avoid;
   }
 }
-

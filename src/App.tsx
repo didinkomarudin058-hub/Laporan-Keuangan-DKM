@@ -24,6 +24,7 @@ import {
 } from './data/initialData';
 import { User } from 'firebase/auth';
 import {
+  auth,
   subscribeAuth,
   subscribeFirestoreData,
   saveSettingsToFirestore,
@@ -257,43 +258,68 @@ export default function App() {
 
   // Subscribe to Firestore Real-Time Data for Authenticated User
   useEffect(() => {
-    if (currentUser?.uid) {
+    if (currentUser?.uid && !currentUser?.isLocal && auth.currentUser) {
       const unsubscribeData = subscribeFirestoreData(currentUser.uid, (data) => {
         if (data.mosqueProfile) {
           setMosqueProfile(data.mosqueProfile);
+          localStorage.setItem(STORAGE_KEY_PROFILE, JSON.stringify(data.mosqueProfile));
         }
-        if (data.categoriesPemasukan !== undefined && Array.isArray(data.categoriesPemasukan)) {
+        if (data.categoriesPemasukan !== undefined && Array.isArray(data.categoriesPemasukan) && data.categoriesPemasukan.length > 0) {
           setCategoriesPemasukan(data.categoriesPemasukan);
+          localStorage.setItem(STORAGE_KEY_CATEGORIES_PEMASUKAN, JSON.stringify(data.categoriesPemasukan));
         }
-        if (data.categoriesPengeluaran !== undefined && Array.isArray(data.categoriesPengeluaran)) {
+        if (data.categoriesPengeluaran !== undefined && Array.isArray(data.categoriesPengeluaran) && data.categoriesPengeluaran.length > 0) {
           setCategoriesPengeluaran(data.categoriesPengeluaran);
+          localStorage.setItem(STORAGE_KEY_CATEGORIES_PENGELUARAN, JSON.stringify(data.categoriesPengeluaran));
         }
-        if (data.categoriesSewa !== undefined && Array.isArray(data.categoriesSewa)) {
+        if (data.categoriesSewa !== undefined && Array.isArray(data.categoriesSewa) && data.categoriesSewa.length > 0) {
           setCategoriesSewa(data.categoriesSewa);
+          localStorage.setItem(STORAGE_KEY_CATEGORIES_SEWA, JSON.stringify(data.categoriesSewa));
         }
-        if (data.posDanaList !== undefined && Array.isArray(data.posDanaList)) {
+        if (data.posDanaList !== undefined && Array.isArray(data.posDanaList) && data.posDanaList.length > 0) {
           setPosDanaList(data.posDanaList);
+          localStorage.setItem(STORAGE_KEY_POS_DANA, JSON.stringify(data.posDanaList));
         }
-        if (data.metodePembayaranList !== undefined && Array.isArray(data.metodePembayaranList)) {
+        if (data.metodePembayaranList !== undefined && Array.isArray(data.metodePembayaranList) && data.metodePembayaranList.length > 0) {
           setMetodePembayaranList(data.metodePembayaranList);
+          localStorage.setItem(STORAGE_KEY_METODE_PEMBAYARAN, JSON.stringify(data.metodePembayaranList));
         }
         if (data.transactions !== undefined && Array.isArray(data.transactions)) {
-          setTransactions(data.transactions);
+          if (data.transactions.length > 0) {
+            setTransactions(data.transactions);
+            localStorage.setItem(STORAGE_KEY_TRANSACTIONS, JSON.stringify(data.transactions));
+          } else {
+            // Firestore transactions is empty, but local might have items: back them up to Firestore!
+            const saved = localStorage.getItem(STORAGE_KEY_TRANSACTIONS);
+            if (saved) {
+              try {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  bulkSaveTransactionsToFirestore(currentUser.uid, parsed);
+                }
+              } catch (e) {
+                console.error(e);
+              }
+            }
+          }
         }
-        if (data.businessUnits !== undefined && Array.isArray(data.businessUnits)) {
+        if (data.businessUnits !== undefined && Array.isArray(data.businessUnits) && data.businessUnits.length > 0) {
           setBusinessUnits(data.businessUnits);
+          localStorage.setItem(STORAGE_KEY_BUSINESS_UNITS, JSON.stringify(data.businessUnits));
         }
         if (data.businessRecords !== undefined && Array.isArray(data.businessRecords)) {
           setBusinessRecords(data.businessRecords);
+          localStorage.setItem(STORAGE_KEY_BUSINESS_RECORDS, JSON.stringify(data.businessRecords));
         }
-        if (data.landTenants !== undefined && Array.isArray(data.landTenants)) {
+        if (data.landTenants !== undefined && Array.isArray(data.landTenants) && data.landTenants.length > 0) {
           setLandTenants(data.landTenants);
+          localStorage.setItem(STORAGE_KEY_LAND_TENANTS, JSON.stringify(data.landTenants));
         }
       });
 
       return () => unsubscribeData();
     }
-  }, [currentUser?.uid]);
+  }, [currentUser?.uid, currentUser?.isLocal]);
 
   // Tab State
   const [activeTab, setActiveTab] = useState<
@@ -441,10 +467,16 @@ export default function App() {
   };
 
   const handleDeleteTransaction = (id: string) => {
-    setTransactions((prev) => prev.filter((t) => t.id !== id));
-    if (currentUser) {
+    setTransactions((prev) => {
+      const next = prev.filter((t) => t.id !== id);
+      localStorage.setItem(STORAGE_KEY_TRANSACTIONS, JSON.stringify(next));
+      return next;
+    });
+    if (currentUser?.uid && !currentUser.isLocal && auth.currentUser) {
       deleteTransactionFromFirestore(currentUser.uid, id);
     }
+    setToastMessage('Transaksi berhasil dihapus.');
+    setTimeout(() => setToastMessage(null), 2500);
   };
 
   const handleSaveTransaction = (
@@ -453,12 +485,16 @@ export default function App() {
   ) => {
     if (editId) {
       const updatedTrx: Transaction = { ...trxData, id: editId };
-      setTransactions((prev) =>
-        prev.map((t) => (t.id === editId ? updatedTrx : t))
-      );
-      if (currentUser) {
+      setTransactions((prev) => {
+        const next = prev.map((t) => (t.id === editId ? updatedTrx : t));
+        localStorage.setItem(STORAGE_KEY_TRANSACTIONS, JSON.stringify(next));
+        return next;
+      });
+      if (currentUser?.uid && !currentUser.isLocal && auth.currentUser) {
         saveTransactionToFirestore(currentUser.uid, updatedTrx);
       }
+      setToastMessage('Transaksi berhasil diperbarui!');
+      setTimeout(() => setToastMessage(null), 2500);
     } else {
       const newId = `TRX-${new Date().getFullYear()}${String(
         new Date().getMonth() + 1
@@ -467,10 +503,16 @@ export default function App() {
         ...trxData,
         id: newId,
       };
-      setTransactions((prev) => [newTrx, ...prev]);
-      if (currentUser) {
+      setTransactions((prev) => {
+        const next = [newTrx, ...prev];
+        localStorage.setItem(STORAGE_KEY_TRANSACTIONS, JSON.stringify(next));
+        return next;
+      });
+      if (currentUser?.uid && !currentUser.isLocal && auth.currentUser) {
         saveTransactionToFirestore(currentUser.uid, newTrx);
       }
+      setToastMessage('Transaksi baru berhasil dicatat & disimpan!');
+      setTimeout(() => setToastMessage(null), 2500);
     }
   };
 
@@ -749,8 +791,12 @@ export default function App() {
         metodePembayaran: (recordData.metodePembayaran as any) || 'Tunai',
       };
 
-      setTransactions((prev) => [newTrx, ...prev]);
-      if (currentUser) {
+      setTransactions((prev) => {
+        const next = [newTrx, ...prev];
+        localStorage.setItem(STORAGE_KEY_TRANSACTIONS, JSON.stringify(next));
+        return next;
+      });
+      if (currentUser?.uid && !currentUser.isLocal && auth.currentUser) {
         saveTransactionToFirestore(currentUser.uid, newTrx);
       }
     }
@@ -837,8 +883,12 @@ export default function App() {
       metodePembayaran: (record.metodePembayaran as any) || 'Tunai',
     };
 
-    setTransactions((prev) => [newTrx, ...prev]);
-    if (currentUser) {
+    setTransactions((prev) => {
+      const next = [newTrx, ...prev];
+      localStorage.setItem(STORAGE_KEY_TRANSACTIONS, JSON.stringify(next));
+      return next;
+    });
+    if (currentUser?.uid && !currentUser.isLocal && auth.currentUser) {
       saveTransactionToFirestore(currentUser.uid, newTrx);
     }
 
@@ -947,8 +997,12 @@ export default function App() {
         metodePembayaran: (payment.metodePembayaran as any) || 'Transfer Bank',
       };
 
-      setTransactions((prev) => [newTrx, ...prev]);
-      if (currentUser) {
+      setTransactions((prev) => {
+        const next = [newTrx, ...prev];
+        localStorage.setItem(STORAGE_KEY_TRANSACTIONS, JSON.stringify(next));
+        return next;
+      });
+      if (currentUser?.uid && !currentUser.isLocal && auth.currentUser) {
         saveTransactionToFirestore(currentUser.uid, newTrx);
       }
     }

@@ -72,6 +72,9 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
       const now = new Date();
       setBulanTahun(now.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }));
     }
+    return () => {
+      document.body.classList.remove('print-kwitansi-active');
+    };
   }, [isOpen]);
 
   if (!isOpen || !tenant) return null;
@@ -80,19 +83,28 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
     new Date().getMonth() + 1
   ).padStart(2, '0')}-${tenant.id.slice(-4).toUpperCase()}`;
 
-  // Nominal tarif sewa normal / setelah diskon
-  const rawTarif = tenant.tarifSewa || 0;
-  const diskonPersen = tenant.diskonPersen || 0;
-  const calculatedNet = Math.max(0, Math.round(rawTarif - (rawTarif * diskonPersen) / 100));
-  const nominal = tenant.tarifSetelahDiskon !== undefined ? tenant.tarifSetelahDiskon : (diskonPersen > 0 ? calculatedNet : rawTarif);
+  // Nominal kwitansi adalah nominal ASLI / SEBELUM POTONGAN sesuai permintaan
+  const nominal = tenant.tarifSewa || 0;
   const terbilangText = nominal > 0 ? `${angkaKeTerbilang(nominal)} Rupiah` : 'Nol Rupiah';
 
   const handlePrint = () => {
     document.body.classList.add('print-kwitansi-active');
-    window.print();
-    setTimeout(() => {
+
+    const handleAfterPrint = () => {
       document.body.classList.remove('print-kwitansi-active');
-    }, 1500);
+      window.removeEventListener('afterprint', handleAfterPrint);
+    };
+
+    window.addEventListener('afterprint', handleAfterPrint);
+
+    // Give browser brief tick to compute layout before opening print window
+    setTimeout(() => {
+      window.print();
+      // Fallback cleanup if afterprint doesn't fire
+      setTimeout(() => {
+        document.body.classList.remove('print-kwitansi-active');
+      }, 2000);
+    }, 100);
   };
 
   const handleSendWhatsApp = () => {
@@ -173,7 +185,10 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
 
             <button
               type="button"
-              onClick={onClose}
+              onClick={() => {
+                document.body.classList.remove('print-kwitansi-active');
+                onClose();
+              }}
               className="p-1 text-slate-400 hover:text-white rounded-md transition cursor-pointer"
               aria-label="Tutup"
             >
