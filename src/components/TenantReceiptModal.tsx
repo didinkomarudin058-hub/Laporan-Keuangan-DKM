@@ -75,26 +75,21 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
 
   useEffect(() => {
     if (isOpen && tenant) {
-      const rawTarif = tenant.tarifSewa || 0;
-      const diskon = tenant.diskonPersen || 0;
-      const potongan = (rawTarif * diskon) / 100;
-      const bersih =
-        tenant.tarifSetelahDiskon !== undefined
-          ? tenant.tarifSetelahDiskon
-          : Math.max(0, rawTarif - potongan);
+      const tarifSebelumPotongan = tenant.tarifSewa || 0;
 
       if (paymentRecord) {
         if (paymentRecord.periode) {
           setBulanTahun(paymentRecord.periode.replace(/^Bulan\s+/i, ''));
         }
-        const dibayar = paymentRecord.nominal || 0;
+        // Gunakan nominal asli sebelum potongan jika ada, atau nominal pembayaran
+        const dibayar = paymentRecord.nominalAsli || paymentRecord.nominal || 0;
         setCustomNominal(dibayar);
 
         const sisa =
           paymentRecord.sisaKurangBayar !== undefined
             ? paymentRecord.sisaKurangBayar
             : paymentRecord.statusBayar === 'cicilan'
-            ? Math.max(0, bersih - dibayar)
+            ? Math.max(0, tarifSebelumPotongan - dibayar)
             : 0;
         setCustomSisa(sisa);
 
@@ -107,12 +102,12 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
         const now = new Date();
         setBulanTahun(now.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }));
 
-        const dibayar = tenant.totalTerbayar !== undefined ? tenant.totalTerbayar : bersih;
-        const sisa = Math.max(0, bersih - dibayar);
-        setCustomNominal(dibayar > 0 ? dibayar : bersih);
+        const dibayar = tenant.totalTerbayar !== undefined ? tenant.totalTerbayar : tarifSebelumPotongan;
+        const sisa = Math.max(0, tarifSebelumPotongan - dibayar);
+        setCustomNominal(dibayar > 0 ? dibayar : tarifSebelumPotongan);
         setCustomSisa(sisa);
 
-        if (sisa > 0 && dibayar < bersih) {
+        if (sisa > 0 && dibayar < tarifSebelumPotongan) {
           setStatusBayar('belum_lunas');
         } else {
           setStatusBayar('lunas');
@@ -123,21 +118,16 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
 
   if (!isOpen || !tenant) return null;
 
-  const rawTarif = tenant.tarifSewa || 0;
-  const diskon = tenant.diskonPersen || 0;
-  const potongan = (rawTarif * diskon) / 100;
-  const tarifBersih =
-    tenant.tarifSetelahDiskon !== undefined
-      ? tenant.tarifSetelahDiskon
-      : Math.max(0, rawTarif - potongan);
+  // Nominal murni sebelum potongan
+  const tarifSewaSebelumPotongan = tenant.tarifSewa || 0;
 
   const receiptNumber =
     paymentRecord?.noKwitansi ||
     `KW-SEWA-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${tenant.id.slice(-4).toUpperCase()}`;
 
   const isLunas = statusBayar === 'lunas';
-  const nominal = customNominal || (isLunas ? tarifBersih : 0);
-  const sisaKurangBayar = isLunas ? 0 : (customSisa !== undefined ? customSisa : Math.max(0, tarifBersih - nominal));
+  const nominal = customNominal || (isLunas ? tarifSewaSebelumPotongan : 0);
+  const sisaKurangBayar = isLunas ? 0 : (customSisa !== undefined ? customSisa : Math.max(0, tarifSewaSebelumPotongan - nominal));
   const terbilangText = nominal > 0 ? `${angkaKeTerbilang(nominal)} Rupiah` : 'Nol Rupiah';
 
   // Titimangsa: ambil desa atau kota
@@ -173,7 +163,7 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
       `• Keterangan: Bayar sewa bulan ${bulanTahun}\n` +
       `• Objek: ${tenant.namaLahan} (${tenant.kategori || tenant.peruntukanUsaha || 'Sewa Lahan'})\n` +
       `• Luas: ${tenant.luasLahan || '-'}\n` +
-      `• Tarif Sewa: Rp ${tarifBersih.toLocaleString('id-ID')}\n` +
+      `• Tarif Sewa: Rp ${tarifSewaSebelumPotongan.toLocaleString('id-ID')}\n` +
       `• Jumlah Diterima: Rp ${nominal.toLocaleString('id-ID')} (${terbilangText})\n` +
       (!isLunas ? `• Sisa Belum Bayar: Rp ${sisaKurangBayar.toLocaleString('id-ID')}\n` : '') +
       `• Status: ${isLunas ? 'LUNAS (Tercatat di Kas DKM)' : 'BELUM LUNAS (Kurang Bayar)'}\n\n` +
@@ -361,11 +351,10 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
               </div>
 
               <div className="flex items-baseline gap-2">
-                <span className="w-32 shrink-0 text-slate-600 font-semibold text-[11px]">Total Tagihan Bersih</span>
+                <span className="w-32 shrink-0 text-slate-600 font-semibold text-[11px]">Tarif Sewa</span>
                 <span className="text-slate-400">:</span>
                 <span className="text-slate-800 border-b border-dotted border-slate-400 flex-1 pb-0.5 text-[11px] font-mono font-semibold">
-                  Rp {tarifBersih.toLocaleString('id-ID')}
-                  {diskon > 0 && <span className="text-[10px] text-amber-700 font-sans ml-2">(Diskon {diskon}%)</span>}
+                  Rp {tarifSewaSebelumPotongan.toLocaleString('id-ID')}
                 </span>
               </div>
 
