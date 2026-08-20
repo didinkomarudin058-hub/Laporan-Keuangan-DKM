@@ -13,10 +13,15 @@ interface TenantPaymentModalProps {
     tenantId: string,
     payment: {
       nominal: number;
+      nominalAsli?: number;
+      diskonPersen?: number;
       tanggal: string;
       periode: string;
+      bulanTahunKey?: string;
       metodePembayaran: string;
       posDanaTujuan: string;
+      statusBayar?: 'lunas' | 'cicilan';
+      sisaKurangBayar?: number;
       keterangan?: string;
       petugas?: string;
       autoPushToKas: boolean;
@@ -37,6 +42,7 @@ export const TenantPaymentModal: React.FC<TenantPaymentModalProps> = ({
   const [nominal, setNominal] = useState<number | string>('');
   const [tanggal, setTanggal] = useState<string>(new Date().toISOString().split('T')[0]);
   const [periode, setPeriode] = useState<string>('');
+  const [statusBayar, setStatusBayar] = useState<'lunas' | 'cicilan'>('lunas');
   const [metodePembayaran, setMetodePembayaran] = useState<string>('Transfer Bank');
   const [posDanaTujuan, setPosDanaTujuan] = useState<string>('Kas Operasional');
   const [keterangan, setKeterangan] = useState<string>('');
@@ -52,6 +58,7 @@ export const TenantPaymentModal: React.FC<TenantPaymentModalProps> = ({
 
       setNominalAsli(rawTarif || '');
       setNominal(netTarif || rawTarif || '');
+      setStatusBayar('lunas');
       setTanggal(new Date().toISOString().split('T')[0]);
 
       const currMonthName = new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
@@ -79,6 +86,8 @@ export const TenantPaymentModal: React.FC<TenantPaymentModalProps> = ({
   const numAsli = Number(nominalAsli) || 0;
   const calculatedDiscountAmount = (numAsli * discountPercent) / 100;
   const calculatedNetRate = Math.max(0, Math.round(numAsli - calculatedDiscountAmount));
+  const numBayar = Number(nominal) || 0;
+  const sisaKurang = Math.max(0, calculatedNetRate - numBayar);
 
   // Handler when admin edits nominal asli
   const handleNominalAsliChange = (val: string) => {
@@ -100,12 +109,24 @@ export const TenantPaymentModal: React.FC<TenantPaymentModalProps> = ({
       return;
     }
 
+    const d = new Date(tanggal);
+    const bulanTahunKey = !isNaN(d.getTime())
+      ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      : undefined;
+
+    const actualStatus = num >= calculatedNetRate && calculatedNetRate > 0 ? 'lunas' : statusBayar;
+
     onConfirmPayment(tenant.id, {
       nominal: num,
+      nominalAsli: numAsli,
+      diskonPersen: discountPercent,
       tanggal,
       periode,
+      bulanTahunKey,
       metodePembayaran,
       posDanaTujuan,
+      statusBayar: actualStatus,
+      sisaKurangBayar: sisaKurang,
       keterangan,
       petugas,
       autoPushToKas,

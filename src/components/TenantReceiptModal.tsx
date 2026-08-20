@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { X, Printer, Phone, Building2, CheckCircle2 } from 'lucide-react';
-import { LandTenant, MosqueProfile } from '../types';
+import { X, Printer, Phone, Building2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { LandTenant, MosqueProfile, TenantPaymentRecord } from '../types';
 
 interface TenantReceiptModalProps {
   isOpen: boolean;
   onClose: () => void;
   tenant: LandTenant | null;
+  paymentRecord?: TenantPaymentRecord | null;
   mosqueProfile: MosqueProfile;
 }
 
@@ -60,6 +61,7 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
   isOpen,
   onClose,
   tenant,
+  paymentRecord,
   mosqueProfile,
 }) => {
   const [bulanTahun, setBulanTahun] = useState<string>(() => {
@@ -67,24 +69,75 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
     return now.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
   });
 
+  const [statusBayar, setStatusBayar] = useState<'lunas' | 'belum_lunas'>('lunas');
+  const [customNominal, setCustomNominal] = useState<number>(0);
+  const [customSisa, setCustomSisa] = useState<number>(0);
+
   useEffect(() => {
-    if (isOpen) {
-      const now = new Date();
-      setBulanTahun(now.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }));
+    if (isOpen && tenant) {
+      const rawTarif = tenant.tarifSewa || 0;
+      const diskon = tenant.diskonPersen || 0;
+      const potongan = (rawTarif * diskon) / 100;
+      const bersih =
+        tenant.tarifSetelahDiskon !== undefined
+          ? tenant.tarifSetelahDiskon
+          : Math.max(0, rawTarif - potongan);
+
+      if (paymentRecord) {
+        if (paymentRecord.periode) {
+          setBulanTahun(paymentRecord.periode.replace(/^Bulan\s+/i, ''));
+        }
+        const dibayar = paymentRecord.nominal || 0;
+        setCustomNominal(dibayar);
+
+        const sisa =
+          paymentRecord.sisaKurangBayar !== undefined
+            ? paymentRecord.sisaKurangBayar
+            : paymentRecord.statusBayar === 'cicilan'
+            ? Math.max(0, bersih - dibayar)
+            : 0;
+        setCustomSisa(sisa);
+
+        if (paymentRecord.statusBayar === 'cicilan' || sisa > 0) {
+          setStatusBayar('belum_lunas');
+        } else {
+          setStatusBayar('lunas');
+        }
+      } else {
+        const now = new Date();
+        setBulanTahun(now.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }));
+
+        const dibayar = tenant.totalTerbayar !== undefined ? tenant.totalTerbayar : bersih;
+        const sisa = Math.max(0, bersih - dibayar);
+        setCustomNominal(dibayar > 0 ? dibayar : bersih);
+        setCustomSisa(sisa);
+
+        if (sisa > 0 && dibayar < bersih) {
+          setStatusBayar('belum_lunas');
+        } else {
+          setStatusBayar('lunas');
+        }
+      }
     }
-    return () => {
-      document.body.classList.remove('print-kwitansi-active');
-    };
-  }, [isOpen]);
+  }, [isOpen, tenant, paymentRecord]);
 
   if (!isOpen || !tenant) return null;
 
-  const receiptNumber = `KW-SEWA-${new Date().getFullYear()}${String(
-    new Date().getMonth() + 1
-  ).padStart(2, '0')}-${tenant.id.slice(-4).toUpperCase()}`;
+  const rawTarif = tenant.tarifSewa || 0;
+  const diskon = tenant.diskonPersen || 0;
+  const potongan = (rawTarif * diskon) / 100;
+  const tarifBersih =
+    tenant.tarifSetelahDiskon !== undefined
+      ? tenant.tarifSetelahDiskon
+      : Math.max(0, rawTarif - potongan);
 
-  // Nominal kwitansi adalah nominal ASLI / SEBELUM POTONGAN sesuai permintaan
-  const nominal = tenant.tarifSewa || 0;
+  const receiptNumber =
+    paymentRecord?.noKwitansi ||
+    `KW-SEWA-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${tenant.id.slice(-4).toUpperCase()}`;
+
+  const isLunas = statusBayar === 'lunas';
+  const nominal = customNominal || (isLunas ? tarifBersih : 0);
+  const sisaKurangBayar = isLunas ? 0 : (customSisa !== undefined ? customSisa : Math.max(0, tarifBersih - nominal));
   const terbilangText = nominal > 0 ? `${angkaKeTerbilang(nominal)} Rupiah` : 'Nol Rupiah';
 
   // Titimangsa: ambil desa atau kota
@@ -100,23 +153,7 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
   })();
 
   const handlePrint = () => {
-    document.body.classList.add('print-kwitansi-active');
-
-    const handleAfterPrint = () => {
-      document.body.classList.remove('print-kwitansi-active');
-      window.removeEventListener('afterprint', handleAfterPrint);
-    };
-
-    window.addEventListener('afterprint', handleAfterPrint);
-
-    // Give browser brief tick to compute layout before opening print window
-    setTimeout(() => {
-      window.print();
-      // Fallback cleanup if afterprint doesn't fire
-      setTimeout(() => {
-        document.body.classList.remove('print-kwitansi-active');
-      }, 2000);
-    }, 100);
+    window.print();
   };
 
   const handleSendWhatsApp = () => {
@@ -129,14 +166,18 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
       `*BUKTI PEMBAYARAN SEWA*\n` +
       `*${mosqueProfile.namaMasjid}*\n\n` +
       `Assalamu'alaikum Wr. Wb. Bpk/Ibu ${tenant.namaPenyewa},\n` +
-      `Terima kasih telah melakukan pembayaran sewa:\n` +
+      (isLunas
+        ? `Terima kasih telah melakukan pembayaran sewa:\n`
+        : `Terima kasih telah melakukan pembayaran sewa (Cicilan / Sebagian):\n`) +
       `• No. Kwitansi: ${receiptNumber}\n` +
       `• Keterangan: Bayar sewa bulan ${bulanTahun}\n` +
       `• Objek: ${tenant.namaLahan} (${tenant.kategori || tenant.peruntukanUsaha || 'Sewa Lahan'})\n` +
       `• Luas: ${tenant.luasLahan || '-'}\n` +
+      `• Tarif Sewa: Rp ${tarifBersih.toLocaleString('id-ID')}\n` +
       `• Jumlah Diterima: Rp ${nominal.toLocaleString('id-ID')} (${terbilangText})\n` +
-      `• Status: LUNAS & Tercatat di Kas DKM\n\n` +
-      `Semoga usaha yang dijalankan berkah dan lancar selalu. Aamiin.\n` +
+      (!isLunas ? `• Sisa Belum Bayar: Rp ${sisaKurangBayar.toLocaleString('id-ID')}\n` : '') +
+      `• Status: ${isLunas ? 'LUNAS (Tercatat di Kas DKM)' : 'BELUM LUNAS (Kurang Bayar)'}\n\n` +
+      (!isLunas ? `Mohon dapat melunasi sisa tagihan sebelum jatuh tempo. Jazakumullah khairan katsiran.\n\n` : `Semoga usaha yang dijalankan berkah dan lancar selalu. Aamiin.\n`) +
       `_Pengurus DKM / Sie Aset & Wakaf ${mosqueProfile.namaMasjid}_`
     );
     window.open(`https://wa.me/${cleanPhone}?text=${message}`, '_blank');
@@ -162,6 +203,20 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
           </span>
 
           <div className="flex items-center gap-1.5 flex-wrap">
+            {/* Status Selector */}
+            <select
+              value={statusBayar}
+              onChange={(e) => setStatusBayar(e.target.value as 'lunas' | 'belum_lunas')}
+              className={`text-xs font-bold px-2 py-1 rounded-md border focus:outline-none cursor-pointer ${
+                statusBayar === 'lunas'
+                  ? 'bg-emerald-800 text-emerald-100 border-emerald-600'
+                  : 'bg-amber-900 text-amber-100 border-amber-600'
+              }`}
+            >
+              <option value="lunas">LUNAS</option>
+              <option value="belum_lunas">BELUM LUNAS (CICILAN)</option>
+            </select>
+
             <div className="flex items-center gap-1 bg-slate-800 px-2 py-0.5 rounded-md border border-slate-700">
               <label className="text-[10px] text-slate-400">Bulan:</label>
               <input
@@ -197,10 +252,7 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
 
             <button
               type="button"
-              onClick={() => {
-                document.body.classList.remove('print-kwitansi-active');
-                onClose();
-              }}
+              onClick={onClose}
               className="p-1 text-slate-400 hover:text-white rounded-md transition cursor-pointer"
               aria-label="Tutup"
             >
@@ -213,7 +265,9 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
         <div className="overflow-y-auto p-3 sm:p-4 bg-slate-50/50 flex-1">
           <div
             id="kwitansi-print-card"
-            className="p-5 sm:p-6 bg-white text-slate-900 font-sans border-2 border-emerald-900/40 rounded-xl relative shadow-sm"
+            className={`p-5 sm:p-6 bg-white text-slate-900 font-sans border-2 rounded-xl relative shadow-sm ${
+              isLunas ? 'border-emerald-900/40' : 'border-amber-700/60'
+            }`}
           >
             {/* Header Kop Masjid */}
             <div className="text-center border-b-2 border-slate-900 pb-3 mb-3.5">
@@ -258,17 +312,24 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
 
             {/* Receipt Title & Number */}
             <div className="flex items-center justify-between text-[11px] mb-3.5 pb-1 border-b border-slate-200">
-              <span className="font-bold uppercase tracking-wider text-emerald-950 bg-emerald-100/80 border border-emerald-700/30 px-2.5 py-0.5 rounded text-[10px] flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3 text-emerald-700" />
-                <span>KWITANSI BUKTI PEMBAYARAN SEWA</span>
-              </span>
+              {isLunas ? (
+                <span className="font-bold uppercase tracking-wider text-emerald-950 bg-emerald-100/80 border border-emerald-700/30 px-2.5 py-0.5 rounded text-[10px] flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-700" />
+                  <span>KWITANSI PEMBAYARAN SEWA - LUNAS</span>
+                </span>
+              ) : (
+                <span className="font-bold uppercase tracking-wider text-amber-950 bg-amber-100/90 border border-amber-600/40 px-2.5 py-0.5 rounded text-[10px] flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3 text-amber-700" />
+                  <span>KWITANSI SEWA - BELUM LUNAS (CICILAN)</span>
+                </span>
+              )}
               <span className="font-mono text-[11px] text-slate-600">
                 No: <strong className="text-slate-900">{receiptNumber}</strong>
               </span>
             </div>
 
             {/* Receipt Form Rows */}
-            <div className="space-y-2.5 text-xs leading-relaxed">
+            <div className="space-y-2 text-xs leading-relaxed">
               <div className="flex items-baseline gap-2">
                 <span className="w-32 shrink-0 text-slate-600 font-semibold text-[11px]">Telah Diterima Dari</span>
                 <span className="text-slate-400">:</span>
@@ -278,9 +339,15 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
               </div>
 
               <div className="flex items-baseline gap-2">
-                <span className="w-32 shrink-0 text-slate-600 font-semibold text-[11px]">Uang Sejumlah</span>
+                <span className="w-32 shrink-0 text-slate-600 font-semibold text-[11px]">
+                  {isLunas ? 'Uang Sejumlah' : 'Uang Diterima (Cicilan)'}
+                </span>
                 <span className="text-slate-400">:</span>
-                <span className="font-bold text-emerald-950 bg-emerald-50/80 px-2.5 py-1 rounded border border-emerald-300 flex-1 italic text-[11px]">
+                <span className={`font-bold px-2.5 py-0.5 rounded border flex-1 italic text-[11px] ${
+                  isLunas 
+                    ? 'text-emerald-950 bg-emerald-50/80 border-emerald-300' 
+                    : 'text-amber-950 bg-amber-50/80 border-amber-300'
+                }`}>
                   # {terbilangText} #
                 </span>
               </div>
@@ -289,26 +356,60 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
                 <span className="w-32 shrink-0 text-slate-600 font-semibold text-[11px]">Untuk Pembayaran</span>
                 <span className="text-slate-400">:</span>
                 <span className="text-slate-900 border-b border-dotted border-slate-400 flex-1 pb-0.5 text-[11px]">
-                  Bayar sewa bulan <strong>{bulanTahun}</strong> — Objek: <strong>{tenant.namaLahan}</strong> ({tenant.kategori || tenant.peruntukanUsaha || 'Sewa Lahan'}), Luas: {tenant.luasLahan || '-'}
+                  Sewa bulan <strong>{bulanTahun}</strong> ({isLunas ? 'Pelunasan Penuh' : 'Pembayaran Cicilan / Sebagian'}) — Objek: <strong>{tenant.namaLahan}</strong> ({tenant.kategori || tenant.peruntukanUsaha || 'Sewa Lahan'}), Luas: {tenant.luasLahan || '-'}
                 </span>
               </div>
 
               <div className="flex items-baseline gap-2">
-                <span className="w-32 shrink-0 text-slate-600 font-semibold text-[11px]">Kategori Sewa</span>
+                <span className="w-32 shrink-0 text-slate-600 font-semibold text-[11px]">Total Tagihan Bersih</span>
                 <span className="text-slate-400">:</span>
-                <span className="text-slate-800 border-b border-dotted border-slate-400 flex-1 pb-0.5 text-[11px]">
-                  {tenant.kategori || 'Sewa Lahan Wakaf'} ({tenant.tipePeriode ? tenant.tipePeriode.toUpperCase() : 'BULANAN'})
+                <span className="text-slate-800 border-b border-dotted border-slate-400 flex-1 pb-0.5 text-[11px] font-mono font-semibold">
+                  Rp {tarifBersih.toLocaleString('id-ID')}
+                  {diskon > 0 && <span className="text-[10px] text-amber-700 font-sans ml-2">(Diskon {diskon}%)</span>}
+                </span>
+              </div>
+
+              <div className="flex items-baseline gap-2">
+                <span className="w-32 shrink-0 text-slate-600 font-semibold text-[11px]">Status Pelunasan</span>
+                <span className="text-slate-400">:</span>
+                <span className="flex-1 pb-0.5 text-[11px] font-bold">
+                  {isLunas ? (
+                    <span className="inline-flex items-center gap-1 text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                      LUNAS (Tercatat di Kas DKM)
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-300">
+                      <AlertCircle className="w-3 h-3 text-amber-600" />
+                      BELUM LUNAS — Sisa Kurang Bayar: Rp {sisaKurangBayar.toLocaleString('id-ID')}
+                    </span>
+                  )}
                 </span>
               </div>
             </div>
 
             {/* Nominal Box & Signature */}
-            <div className="mt-5 pt-3.5 border-t border-slate-200 flex items-end justify-between gap-4">
-              <div className="bg-emerald-50/60 border-2 border-emerald-800/30 px-3.5 py-2.5 rounded-lg shadow-2xs">
-                <span className="text-[9px] uppercase font-bold text-emerald-900 block">Jumlah Terbayar (Rp):</span>
-                <div className="text-base sm:text-lg font-mono font-extrabold text-emerald-950">
-                  Rp {nominal.toLocaleString('id-ID')}
+            <div className="mt-4 pt-3 border-t border-slate-200 flex items-end justify-between gap-4">
+              <div className="space-y-1.5">
+                <div className={`border-2 px-3 py-2 rounded-lg shadow-2xs ${
+                  isLunas 
+                    ? 'bg-emerald-50/70 border-emerald-800/30 text-emerald-950' 
+                    : 'bg-amber-50/80 border-amber-700/40 text-amber-950'
+                }`}>
+                  <span className="text-[9px] uppercase font-bold block opacity-80">
+                    {isLunas ? 'Jumlah Terbayar (Lunas):' : 'Jumlah Diterima Saat Ini:'}
+                  </span>
+                  <div className="text-base sm:text-lg font-mono font-extrabold">
+                    Rp {nominal.toLocaleString('id-ID')}
+                  </div>
                 </div>
+
+                {!isLunas && (
+                  <div className="bg-rose-50 border border-rose-200 px-2.5 py-1 rounded text-[10px] text-rose-800 font-semibold flex items-center justify-between gap-2">
+                    <span>Sisa Belum Bayar:</span>
+                    <span className="font-mono font-bold">Rp {sisaKurangBayar.toLocaleString('id-ID')}</span>
+                  </div>
+                )}
               </div>
 
               <div className="text-center text-[11px] space-y-0.5 min-w-[140px]">
@@ -316,10 +417,16 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
                   {titimangsaKota}, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
                 </p>
                 <p className="text-[10px] font-bold text-slate-700">Pengurus DKM / Bendahara</p>
-                <div className="h-10 flex items-center justify-center my-0.5">
-                  <span className="text-[9px] text-emerald-800 font-bold uppercase tracking-widest border border-emerald-600/50 px-2 py-0.5 rounded bg-emerald-50/80">
-                    LUNAS / DKM
-                  </span>
+                <div className="h-9 flex items-center justify-center my-0.5">
+                  {isLunas ? (
+                    <span className="text-[9px] text-emerald-800 font-black uppercase tracking-widest border-2 border-emerald-600 px-2 py-0.5 rounded bg-emerald-50 rotate-[-3deg] shadow-2xs">
+                      LUNAS / DKM
+                    </span>
+                  ) : (
+                    <span className="text-[9px] text-amber-900 font-black uppercase tracking-widest border-2 border-amber-600 px-2 py-0.5 rounded bg-amber-50 rotate-[-3deg] shadow-2xs">
+                      BELUM LUNAS
+                    </span>
+                  )}
                 </div>
                 <p className="font-bold text-slate-900 underline underline-offset-2 text-[11px]">
                   {mosqueProfile.bendaharaDKM || 'Pengurus DKM'}
@@ -332,3 +439,4 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
     </div>
   );
 };
+

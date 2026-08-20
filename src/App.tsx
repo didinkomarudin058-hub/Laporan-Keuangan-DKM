@@ -11,7 +11,7 @@ import { PwaInstallModal } from './components/PwaInstallModal';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { MosqueBusinessTab } from './components/MosqueBusinessTab';
 import { FloatingActionButton } from './components/FloatingActionButton';
-import { FundCategory, MosqueProfile, Transaction, TransactionType, MosqueBusinessUnit, BusinessRecord, LandTenant } from './types';
+import { FundCategory, MosqueProfile, Transaction, TransactionType, MosqueBusinessUnit, BusinessRecord, LandTenant, TenantPaymentRecord } from './types';
 import {
   initialMosqueProfile,
   initialTransactions,
@@ -957,10 +957,15 @@ export default function App() {
     tenantId: string,
     payment: {
       nominal: number;
+      nominalAsli?: number;
+      diskonPersen?: number;
       tanggal: string;
       periode: string;
+      bulanTahunKey?: string;
       metodePembayaran: string;
       posDanaTujuan: string;
+      statusBayar?: 'lunas' | 'cicilan';
+      sisaKurangBayar?: number;
       keterangan?: string;
       petugas?: string;
       autoPushToKas: boolean;
@@ -1030,14 +1035,40 @@ export default function App() {
     const updatedRecords = [newRecord, ...businessRecords];
     setBusinessRecords(updatedRecords);
 
-    // Update Tenant payment stats
+    // Create a detailed Tenant Payment Record
+    const newPaymentRecordId = `PAY-${Date.now()}`;
+    const newPaymentRecord: TenantPaymentRecord = {
+      id: newPaymentRecordId,
+      tenantId: tenant.id,
+      tenantNama: tenant.namaPenyewa,
+      namaLahan: tenant.namaLahan,
+      tanggal: payment.tanggal,
+      periode: payment.periode,
+      bulanTahunKey: payment.bulanTahunKey || payment.tanggal.slice(0, 7),
+      tahunKey: Number(payment.tanggal.slice(0, 4)) || new Date().getFullYear(),
+      nominal: nominal,
+      nominalAsli: payment.nominalAsli,
+      diskonPersen: payment.diskonPersen,
+      metodePembayaran: payment.metodePembayaran,
+      posDanaTujuan: payment.posDanaTujuan,
+      keterangan: payment.keterangan,
+      petugas: payment.petugas || mosqueProfile.bendaharaDKM || 'Sie Aset DKM',
+      noKwitansi: `KW-SEWA-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 900) + 100)}`,
+      transactionIdLinked: createdTrxId,
+      statusBayar: payment.statusBayar || 'lunas',
+      sisaKurangBayar: payment.sisaKurangBayar || 0,
+      createdAt: new Date().toISOString(),
+    };
+
+    // Update Tenant payment stats and history
     const updatedTenants = landTenants.map((t) => {
       if (t.id === tenantId) {
+        const existingHistory = t.riwayatPembayaran || [];
         return {
           ...t,
           terakhirBayar: payment.tanggal,
           totalTerbayar: (t.totalTerbayar || 0) + nominal,
-          statusKontrak: 'aktif' as const,
+          riwayatPembayaran: [newPaymentRecord, ...existingHistory],
         };
       }
       return t;
@@ -1055,6 +1086,39 @@ export default function App() {
       `Pembayaran sewa Rp ${nominal.toLocaleString('id-ID')} dari ${tenant.namaPenyewa} berhasil dicatat & disetor ke kas!`
     );
     setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const handleDeleteTenantPayment = (tenantId: string, paymentId: string) => {
+    const tenant = landTenants.find((t) => t.id === tenantId);
+    if (!tenant) return;
+
+    const targetPayment = (tenant.riwayatPembayaran || []).find((p) => p.id === paymentId);
+    const payNominal = targetPayment ? targetPayment.nominal : 0;
+
+    const updatedTenants = landTenants.map((t) => {
+      if (t.id === tenantId) {
+        const nextHistory = (t.riwayatPembayaran || []).filter((p) => p.id !== paymentId);
+        const nextTotal = Math.max(0, (t.totalTerbayar || 0) - payNominal);
+        const nextTerakhir = nextHistory.length > 0 ? nextHistory[0].tanggal : undefined;
+        return {
+          ...t,
+          riwayatPembayaran: nextHistory,
+          totalTerbayar: nextTotal,
+          terakhirBayar: nextTerakhir,
+        };
+      }
+      return t;
+    });
+
+    setLandTenants(updatedTenants);
+    if (currentUser) {
+      saveSettingsToFirestore(currentUser.uid, {
+        landTenants: updatedTenants,
+      });
+    }
+
+    setToastMessage('Catatan pembayaran sewa berhasil dihapus.');
+    setTimeout(() => setToastMessage(null), 3000);
   };
 
   // Backup & Restore
@@ -1262,6 +1326,7 @@ export default function App() {
             onEditTenant={handleEditTenant}
             onDeleteTenant={handleDeleteTenant}
             onPayTenantRent={handlePayTenantRent}
+            onDeleteTenantPayment={handleDeleteTenantPayment}
             onNavigateToTransactions={(trxId) => {
               setActiveTab('transactions');
             }}

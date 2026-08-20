@@ -91,6 +91,29 @@ export interface BusinessRecord {
   petugas: string;
 }
 
+export interface TenantPaymentRecord {
+  id: string;
+  tenantId: string;
+  tenantNama: string;
+  namaLahan: string;
+  tanggal: string; // YYYY-MM-DD
+  periode: string; // e.g. "Bulan Agustus 2026", "Tahun 2026"
+  bulanTahunKey?: string; // "YYYY-MM"
+  tahunKey?: number; // YYYY
+  nominal: number; // Jumlah dibayar
+  nominalAsli?: number; // Nilai sebelum potongan jika ada
+  diskonPersen?: number;
+  metodePembayaran: PaymentMethod | string;
+  posDanaTujuan: FundCategory | string;
+  keterangan?: string;
+  petugas?: string;
+  noKwitansi?: string;
+  transactionIdLinked?: string;
+  statusBayar?: 'lunas' | 'cicilan';
+  sisaKurangBayar?: number;
+  createdAt?: string;
+}
+
 export interface LandTenant {
   id: string;
   unitId?: string; // Reference to unit usaha or 'UNIT-SEWA'
@@ -108,9 +131,13 @@ export interface LandTenant {
   keteranganDiskon?: string; // Alasan potongan
   tarifSetelahDiskon?: number; // Tarif bersih setelah potongan persentase
   tipePeriode: 'bulanan' | 'tahunan' | 'musiman';
+  jatuhTempoTanggal?: number; // Tanggal jatuh tempo (e.g. 5, 10, 20)
+  tanggalMulaiSewa?: string; // YYYY-MM-DD
+  tanggalAkhirSewa?: string; // YYYY-MM-DD
   posDanaTujuan?: FundCategory;
   terakhirBayar?: string;
   totalTerbayar?: number;
+  riwayatPembayaran?: TenantPaymentRecord[];
   catatan?: string;
 }
 

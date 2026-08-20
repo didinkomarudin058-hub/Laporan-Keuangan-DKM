@@ -2,8 +2,6 @@ import React, { useState, useMemo, useEffect } from 'react';
 import {
   UserCheck,
   Plus,
-  ArrowUpRight,
-  ArrowDownRight,
   Coins,
   ShieldCheck,
   Building2,
@@ -29,15 +27,22 @@ import {
   Layers,
   X,
   CreditCard,
+  Clock,
+  MessageSquare,
+  History,
+  Check,
+  HelpCircle,
 } from 'lucide-react';
 import {
   LandTenant,
   MosqueProfile,
   FundCategory,
   PaymentMethod,
+  TenantPaymentRecord,
 } from '../types';
 import { TenantModal } from './TenantModal';
 import { TenantPaymentModal } from './TenantPaymentModal';
+import { TenantPaymentHistoryModal } from './TenantPaymentHistoryModal';
 import { TenantReceiptModal } from './TenantReceiptModal';
 
 interface MosqueBusinessTabProps {
@@ -62,15 +67,21 @@ interface MosqueBusinessTabProps {
     tenantId: string,
     payment: {
       nominal: number;
+      nominalAsli?: number;
+      diskonPersen?: number;
       tanggal: string;
       periode: string;
+      bulanTahunKey?: string;
       metodePembayaran: string;
       posDanaTujuan: string;
+      statusBayar?: 'lunas' | 'cicilan';
+      sisaKurangBayar?: number;
       keterangan?: string;
       petugas?: string;
       autoPushToKas: boolean;
     }
   ) => void;
+  onDeleteTenantPayment?: (tenantId: string, paymentId: string) => void;
   onNavigateToTransactions?: (trxId?: string) => void;
 }
 
@@ -92,10 +103,22 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
   onEditTenant,
   onDeleteTenant,
   onPayTenantRent,
+  onDeleteTenantPayment,
 }) => {
+  // Main Sub-Tab View Switcher
+  const [activeView, setActiveView] = useState<'paymentStatus' | 'tenantList'>('paymentStatus');
+
+  // Search & Filter State
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('semua');
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState<
+    'semua' | 'lunas' | 'cicilan' | 'belum_bayar'
+  >('semua');
   const [discountFilter, setDiscountFilter] = useState<'semua' | 'dengan_diskon' | 'tanpa_diskon'>('semua');
+
+  // Monitoring Period for Payment Status
+  const [monitorMonth, setMonitorMonth] = useState<number>(new Date().getMonth() + 1);
+  const [monitorYear, setMonitorYear] = useState<number>(new Date().getFullYear());
 
   // Modals
   const [isTenantModalOpen, setIsTenantModalOpen] = useState(false);
@@ -104,9 +127,15 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [selectedTenantForPayment, setSelectedTenantForPayment] = useState<LandTenant | null>(null);
 
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [selectedTenantForHistory, setSelectedTenantForHistory] = useState<LandTenant | null>(null);
+
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [selectedTenantForReceipt, setSelectedTenantForReceipt] = useState<LandTenant | null>(null);
+  const [selectedPaymentRecordForReceipt, setSelectedPaymentRecordForReceipt] =
+    useState<TenantPaymentRecord | null>(null);
 
+  // Rekap Print Modal
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [rekapPeriodMode, setRekapPeriodMode] = useState<'bulanan' | 'tahunan' | 'semua'>('bulanan');
   const [rekapSelectedMonth, setRekapSelectedMonth] = useState<number>(new Date().getMonth() + 1);
@@ -114,121 +143,173 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
 
   const MONTH_NAMES = [
     'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
   ];
 
-  // Filtered tenants for rekap report based on selected period
-  const rekapFilteredTenants = useMemo(() => {
-    if (rekapPeriodMode === 'semua') {
-      return landTenants;
-    }
-    if (rekapPeriodMode === 'tahunan') {
-      const yearStr = String(rekapSelectedYear);
-      return landTenants.filter((t) => {
-        if (!t.terakhirBayar) return true;
-        return t.terakhirBayar.startsWith(yearStr);
-      });
-    }
-    // Bulanan
-    const monthPrefix = `${rekapSelectedYear}-${String(rekapSelectedMonth).padStart(2, '0')}`;
-    return landTenants.filter((t) => {
-      if (!t.terakhirBayar) return true;
-      return t.terakhirBayar.startsWith(monthPrefix);
-    });
-  }, [landTenants, rekapPeriodMode, rekapSelectedMonth, rekapSelectedYear]);
+  const monitorMonthName = MONTH_NAMES[monitorMonth - 1] || 'Bulan Berjalan';
+  const monitorMonthYearKey = `${monitorYear}-${String(monitorMonth).padStart(2, '0')}`;
+  const monitorPeriodLabel = `Bulan ${monitorMonthName} ${monitorYear}`;
 
-  const rekapStats = useMemo(() => {
-    let totalNormal = 0;
-    let totalBersih = 0;
-    let totalTerbayar = 0;
-    rekapFilteredTenants.forEach((t) => {
-      const diskon = t.diskonPersen || 0;
-      const normal = t.tarifSewa || 0;
-      const potongan = (normal * diskon) / 100;
-      const bersih =
-        t.tarifSetelahDiskon !== undefined
-          ? t.tarifSetelahDiskon
-          : Math.max(0, normal - potongan);
-      totalNormal += normal;
-      totalBersih += bersih;
-      totalTerbayar += t.totalTerbayar || 0;
-    });
-    return { totalNormal, totalBersih, totalTerbayar };
-  }, [rekapFilteredTenants]);
+  // Helper to calculate tenant status for the monitored period
+  const getTenantPaymentStatus = (tenant: LandTenant) => {
+    const rawTarif = tenant.tarifSewa || 0;
+    const diskonPersen = tenant.diskonPersen || 0;
+    const nominalPotongan = (rawTarif * diskonPersen) / 100;
+    const tarifBersih =
+      tenant.tarifSetelahDiskon !== undefined
+        ? tenant.tarifSetelahDiskon
+        : Math.max(0, rawTarif - nominalPotongan);
 
-  // Clean up any lingering print classes on modal toggle
-  useEffect(() => {
-    return () => {
-      document.body.classList.remove('print-rekap-sewa-active');
-    };
-  }, [isReportModalOpen]);
+    const payments = tenant.riwayatPembayaran || [];
 
-  const handlePrintRekapSewa = () => {
-    document.body.classList.add('print-rekap-sewa-active');
-
-    const handleAfterPrint = () => {
-      document.body.classList.remove('print-rekap-sewa-active');
-      window.removeEventListener('afterprint', handleAfterPrint);
-    };
-
-    window.addEventListener('afterprint', handleAfterPrint);
-
-    setTimeout(() => {
-      window.print();
-      setTimeout(() => {
-        document.body.classList.remove('print-rekap-sewa-active');
-      }, 2000);
-    }, 100);
-  };
-
-  // Titimangsa desa / kota
-  const titimangsaKota = (() => {
-    if (mosqueProfile.desa) {
-      const d = mosqueProfile.desa.replace(/^desa\s+/gi, '').replace(/^kelurahan\s+/gi, '').trim();
-      return d;
-    }
-    if (mosqueProfile.kota) {
-      return mosqueProfile.kota.split(',')[0].trim();
-    }
-    return 'Bekasi';
-  })();
-
-  // Statistics Calculations
-  const stats = useMemo(() => {
-    const totalPenyewa = landTenants.length;
-    const totalKasDiterima = landTenants.reduce((acc, t) => acc + (t.totalTerbayar || 0), 0);
-
-    // Calculate monthly and annual potential
-    let estimasiKasBulanan = 0;
-    let totalPotonganDiskonNominal = 0;
-
-    landTenants.forEach((t) => {
-      const diskon = t.diskonPersen || 0;
-      const normal = t.tarifSewa || 0;
-      const potongan = (normal * diskon) / 100;
-      const bersih = t.tarifSetelahDiskon !== undefined ? t.tarifSetelahDiskon : normal - potongan;
-
-      totalPotonganDiskonNominal += potongan;
-
-      if (t.tipePeriode === 'bulanan') {
-        estimasiKasBulanan += bersih;
-      } else if (t.tipePeriode === 'tahunan') {
-        estimasiKasBulanan += bersih / 12;
-      } else {
-        estimasiKasBulanan += bersih / 6;
+    // Filter payments relevant for the monitored period
+    const periodPayments = payments.filter((p) => {
+      if (tenant.tipePeriode === 'tahunan') {
+        return (
+          p.tahunKey === monitorYear ||
+          p.periode.includes(String(monitorYear)) ||
+          p.tanggal.startsWith(String(monitorYear))
+        );
       }
+      return p.bulanTahunKey === monitorMonthYearKey || p.tanggal.startsWith(monitorMonthYearKey);
     });
 
-    const penyewaDenganDiskon = landTenants.filter((t) => (t.diskonPersen || 0) > 0).length;
+    const totalTerbayarPeriode = periodPayments.reduce((sum, p) => sum + (p.nominal || 0), 0);
+    const sisaKurangBayar = Math.max(0, tarifBersih - totalTerbayarPeriode);
+
+    let status: 'lunas' | 'cicilan' | 'belum_bayar' = 'belum_bayar';
+    if (totalTerbayarPeriode >= tarifBersih && tarifBersih > 0) {
+      status = 'lunas';
+    } else if (totalTerbayarPeriode > 0) {
+      status = 'cicilan';
+    }
+
+    const persentaseBayar = tarifBersih > 0 ? Math.min(100, Math.round((totalTerbayarPeriode / tarifBersih) * 100)) : 100;
+
+    // Cek apakah menunggak (jika tanggal sekarang lewat dari jatuh tempo)
+    const today = new Date();
+    const isCurrentOrPastMonth =
+      today.getFullYear() > monitorYear ||
+      (today.getFullYear() === monitorYear && today.getMonth() + 1 >= monitorMonth);
+    const jatuhTempo = tenant.jatuhTempoTanggal || 5;
+    const isPastDue = isCurrentOrPastMonth && today.getDate() > jatuhTempo && status !== 'lunas';
 
     return {
-      totalPenyewa,
-      totalKasDiterima,
-      estimasiKasBulanan,
-      penyewaDenganDiskon,
-      totalPotonganDiskonNominal,
+      tarifBersih,
+      rawTarif,
+      diskonPersen,
+      totalTerbayarPeriode,
+      sisaKurangBayar,
+      status,
+      persentaseBayar,
+      periodPaymentsCount: periodPayments.length,
+      jatuhTempo,
+      isPastDue,
     };
-  }, [landTenants]);
+  };
+
+  // Helper to calculate tenant data specifically for Rekapitulasi Report
+  const getTenantRekapData = (
+    tenant: LandTenant,
+    mode: 'bulanan' | 'tahunan' | 'semua',
+    month: number,
+    year: number
+  ) => {
+    const rawTarif = tenant.tarifSewa || 0;
+    const diskonPersen = tenant.diskonPersen || 0;
+    const potongan = (rawTarif * diskonPersen) / 100;
+    const tarifBersih =
+      tenant.tarifSetelahDiskon !== undefined
+        ? tenant.tarifSetelahDiskon
+        : Math.max(0, rawTarif - potongan);
+
+    const payments = tenant.riwayatPembayaran || [];
+    let hasilBayar = 0;
+    let targetTagihan = tarifBersih;
+
+    if (mode === 'bulanan') {
+      const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+      const periodPayments = payments.filter((p) => {
+        if (tenant.tipePeriode === 'tahunan') {
+          return (
+            p.tahunKey === year ||
+            p.periode.includes(String(year)) ||
+            p.tanggal.startsWith(String(year))
+          );
+        }
+        return p.bulanTahunKey === monthKey || p.tanggal.startsWith(monthKey);
+      });
+      hasilBayar = periodPayments.reduce((sum, p) => sum + (p.nominal || 0), 0);
+    } else if (mode === 'tahunan') {
+      const yearStr = String(year);
+      const periodPayments = payments.filter(
+        (p) => p.tahunKey === year || p.periode.includes(yearStr) || p.tanggal.startsWith(yearStr)
+      );
+      hasilBayar = periodPayments.reduce((sum, p) => sum + (p.nominal || 0), 0);
+      if (tenant.tipePeriode === 'bulanan') {
+        targetTagihan = tarifBersih * 12;
+      }
+    } else {
+      // semua
+      hasilBayar = tenant.totalTerbayar || payments.reduce((sum, p) => sum + (p.nominal || 0), 0);
+      targetTagihan = tarifBersih;
+    }
+
+    const belumBayar = Math.max(0, targetTagihan - hasilBayar);
+    let status: 'lunas' | 'cicilan' | 'belum_bayar' = 'belum_bayar';
+    if (hasilBayar >= targetTagihan && targetTagihan > 0) {
+      status = 'lunas';
+    } else if (hasilBayar > 0) {
+      status = 'cicilan';
+    }
+
+    return {
+      rawTarif,
+      diskonPersen,
+      tarifBersih,
+      targetTagihan,
+      hasilBayar,
+      belumBayar,
+      status,
+    };
+  };
+
+  // Payment Status Statistics for Header
+  const paymentStats = useMemo(() => {
+    let targetTagihanTotal = 0;
+    let uangTerkumpulTotal = 0;
+    let sisaPiutangTotal = 0;
+    let countLunas = 0;
+    let countCicilan = 0;
+    let countBelumBayar = 0;
+
+    landTenants.forEach((t) => {
+      const calc = getTenantPaymentStatus(t);
+      targetTagihanTotal += calc.tarifBersih;
+      uangTerkumpulTotal += calc.totalTerbayarPeriode;
+      sisaPiutangTotal += calc.sisaKurangBayar;
+
+      if (calc.status === 'lunas') countLunas++;
+      else if (calc.status === 'cicilan') countCicilan++;
+      else countBelumBayar++;
+    });
+
+    const percentTerkumpul =
+      targetTagihanTotal > 0
+        ? Math.min(100, Math.round((uangTerkumpulTotal / targetTagihanTotal) * 100))
+        : 0;
+
+    return {
+      targetTagihanTotal,
+      uangTerkumpulTotal,
+      sisaPiutangTotal,
+      percentTerkumpul,
+      countLunas,
+      countCicilan,
+      countBelumBayar,
+      totalTenants: landTenants.length,
+    };
+  }, [landTenants, monitorMonth, monitorYear]);
 
   // Filtered Tenants List
   const filteredTenants = useMemo(() => {
@@ -252,9 +333,76 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
         (discountFilter === 'dengan_diskon' && hasDiscount) ||
         (discountFilter === 'tanpa_diskon' && !hasDiscount);
 
+      // Payment Status Filter
+      if (activeView === 'paymentStatus' && paymentStatusFilter !== 'semua') {
+        const calc = getTenantPaymentStatus(t);
+        if (paymentStatusFilter === 'lunas' && calc.status !== 'lunas') return false;
+        if (paymentStatusFilter === 'cicilan' && calc.status !== 'cicilan') return false;
+        if (paymentStatusFilter === 'belum_bayar' && calc.status !== 'belum_bayar') return false;
+      }
+
       return matchSearch && matchCategory && matchDiscount;
     });
-  }, [landTenants, searchQuery, categoryFilter, discountFilter]);
+  }, [
+    landTenants,
+    searchQuery,
+    categoryFilter,
+    discountFilter,
+    activeView,
+    paymentStatusFilter,
+    monitorMonth,
+    monitorYear,
+  ]);
+
+  // Filtered tenants for rekap report based on selected period
+  const rekapFilteredTenants = useMemo(() => {
+    return landTenants;
+  }, [landTenants]);
+
+  const rekapStats = useMemo(() => {
+    let totalTargetTagihan = 0;
+    let totalHasilBayar = 0;
+    let totalBelumBayar = 0;
+    let countLunas = 0;
+    let countCicilan = 0;
+    let countBelumBayar = 0;
+
+    landTenants.forEach((t) => {
+      const data = getTenantRekapData(t, rekapPeriodMode, rekapSelectedMonth, rekapSelectedYear);
+      totalTargetTagihan += data.targetTagihan;
+      totalHasilBayar += data.hasilBayar;
+      totalBelumBayar += data.belumBayar;
+      if (data.status === 'lunas') countLunas++;
+      else if (data.status === 'cicilan') countCicilan++;
+      else countBelumBayar++;
+    });
+
+    return {
+      totalTargetTagihan,
+      totalHasilBayar,
+      totalBelumBayar,
+      countLunas,
+      countCicilan,
+      countBelumBayar,
+      totalPenyewa: landTenants.length,
+    };
+  }, [landTenants, rekapPeriodMode, rekapSelectedMonth, rekapSelectedYear]);
+
+  const handlePrintRekapSewa = () => {
+    window.print();
+  };
+
+  // Titimangsa desa / kota
+  const titimangsaKota = (() => {
+    if (mosqueProfile.desa) {
+      const d = mosqueProfile.desa.replace(/^desa\s+/gi, '').replace(/^kelurahan\s+/gi, '').trim();
+      return d;
+    }
+    if (mosqueProfile.kota) {
+      return mosqueProfile.kota.split(',')[0].trim();
+    }
+    return 'Bekasi';
+  })();
 
   // Handlers
   const handleOpenAddTenant = () => {
@@ -272,8 +420,14 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
     setIsPaymentModalOpen(true);
   };
 
-  const handleOpenReceipt = (tenant: LandTenant) => {
+  const handleOpenHistory = (tenant: LandTenant) => {
+    setSelectedTenantForHistory(tenant);
+    setIsHistoryModalOpen(true);
+  };
+
+  const handleOpenReceipt = (tenant: LandTenant, paymentRecord?: TenantPaymentRecord) => {
     setSelectedTenantForReceipt(tenant);
+    setSelectedPaymentRecordForReceipt(paymentRecord || null);
     setIsReceiptModalOpen(true);
   };
 
@@ -289,10 +443,65 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
     }
   };
 
+  // WhatsApp quick notification generator
+  const handleSendWhatsAppNotification = (tenant: LandTenant) => {
+    const rawPhone = (tenant.nomorTelepon || '').replace(/[^0-9]/g, '');
+    if (!rawPhone) {
+      alert('Nomor telepon penyewa belum tersedia.');
+      return;
+    }
+    const formattedPhone = rawPhone.startsWith('0')
+      ? '62' + rawPhone.slice(1)
+      : rawPhone.startsWith('62')
+      ? rawPhone
+      : '62' + rawPhone;
+
+    const calc = getTenantPaymentStatus(tenant);
+
+    let msg =
+      `*PEMBERITAHUAN SEWA LAHAN - ${mosqueProfile.namaMasjid.toUpperCase()}*\n\n` +
+      `Assalamu'alaikum Wr. Wb.\n` +
+      `Kepada Yth. *${tenant.namaPenyewa}*\n\n` +
+      `Berikut rincian status pembayaran sewa lahan *${tenant.namaLahan}* (${tenant.peruntukanUsaha}):\n` +
+      `• Periode: *${monitorPeriodLabel}*\n` +
+      `• Tarif Sewa: Rp ${calc.tarifBersih.toLocaleString('id-ID')}\n` +
+      `• Telah Dibayar: Rp ${calc.totalTerbayarPeriode.toLocaleString('id-ID')}\n` +
+      `• Sisa Tagihan: *Rp ${calc.sisaKurangBayar.toLocaleString('id-ID')}*\n` +
+      `• Status: *${
+        calc.status === 'lunas'
+          ? '✅ LUNAS'
+          : calc.status === 'cicilan'
+          ? '🟡 SEBAGIAN / BELUM LUNAS'
+          : '⚠️ BELUM BAYAR'
+      }*\n\n`;
+
+    if (calc.sisaKurangBayar > 0) {
+      msg +=
+        `Pembayaran dapat disetorkan langsung ke Bendahara DKM atau ditransfer melalui rekening kas masjid:\n` +
+        `🏦 *${mosqueProfile.namaBank || 'Bank Syariah'}*\n` +
+        `💳 No. Rekening: *${mosqueProfile.nomorRekening || '-'}*\n` +
+        `👤 Atas Nama: *${mosqueProfile.anRekening || mosqueProfile.namaMasjid}*\n\n` +
+        `Jatuh tempo setiap tanggal *${calc.jatuhTempo}*.\n` +
+        `Mohon konfirmasi setelah melakukan pembayaran. Terima kasih atas kerjasamanya.\n\n` +
+        `Wassalamu'alaikum Wr. Wb.\n` +
+        `*Pengurus DKM / Sie Aset & Wakaf*`;
+    } else {
+      msg +=
+        `Alhamdulillah, terima kasih atas pembayaran sewa yang telah lunas tepat waktu. Semoga usaha dan rezeki Bapak/Ibu selalu berkah dan lancar.\n\n` +
+        `Wassalamu'alaikum Wr. Wb.\n` +
+        `*Pengurus DKM / Sie Aset & Wakaf*`;
+    }
+
+    const url = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(msg)}`;
+    window.open(url, '_blank');
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      {/* Header Banner */}
-      <div className="bg-gradient-to-r from-emerald-900 via-teal-900 to-emerald-800 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
+      {/* Interactive Main View Content (Hidden during Print) */}
+      <div id="mosque-business-main-content" className="space-y-6 print:hidden">
+        {/* Header Banner */}
+        <div className="bg-gradient-to-r from-emerald-900 via-teal-900 to-emerald-800 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
         <div className="absolute right-0 top-0 translate-x-10 -translate-y-10 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1.5">
@@ -304,338 +513,674 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
               <span>Sewa Tanah Masjid</span>
             </h1>
             <p className="text-sm text-emerald-100/90 max-w-2xl leading-relaxed">
-              Kelola data sewa tanah wakaf/kavling usaha masjid, kategori sewa, tarif sewa, skema potongan biaya operasional, dan pencatatan kas otomatis.
+              Kelola hasil pembayaran sewa tanah wakaf, pantau siapa yang sudah lunas atau belum bayar, catat setoran kas, dan cetak kuitansi resmi.
             </p>
           </div>
 
           <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
             <button
               onClick={() => setIsReportModalOpen(true)}
-              className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 border border-white/20 cursor-pointer backdrop-blur-xs"
+              className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 border border-white/20 cursor-pointer backdrop-blur-xs shadow-2xs"
             >
               <Printer className="w-4 h-4 text-white" />
               <span>Cetak Rekap Sewa</span>
             </button>
             <button
               onClick={handleOpenAddTenant}
-              className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-xl text-xs font-extrabold transition flex items-center gap-2 shadow-lg shadow-emerald-500/20 cursor-pointer transform hover:-translate-y-0.5 active:scale-95"
+              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-lg shadow-emerald-950/20 cursor-pointer border border-emerald-500/50 active:scale-95"
             >
               <Plus className="w-4 h-4 stroke-[3]" />
-              <span>+ Tambah Sewa Tanah</span>
+              <span>+ Tambah Penyewa Baru</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* 4 Summary Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Total Sewa */}
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider">Total Sewa Tanah</span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center">
-              <Building2 className="w-4 h-4 stroke-[2.5]" />
-            </div>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-black text-slate-900 font-mono">
-              {stats.totalPenyewa}
-            </span>
-            <span className="text-xs font-semibold text-slate-500">Objek Sewa</span>
-          </div>
-          <div className="mt-2 flex items-center gap-2 text-[11px] font-medium text-slate-600">
-            <span className="text-emerald-700 font-bold">{categoriesSewa.length} Kategori Tersedia</span>
-          </div>
-        </div>
-
-        {/* Card 2: Total Realisasi Masuk Kas */}
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider">Total Kas Diterima</span>
-            <div className="w-8 h-8 rounded-xl bg-teal-50 text-teal-700 flex items-center justify-center">
-              <Coins className="w-4 h-4 stroke-[2.5]" />
-            </div>
-          </div>
-          <div className="text-xl sm:text-2xl font-black text-emerald-800 font-mono">
-            Rp {stats.totalKasDiterima.toLocaleString('id-ID')}
-          </div>
-          <p className="mt-2 text-[11px] text-slate-500 font-medium flex items-center gap-1">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Akumulasi sewa masuk ke Jurnal Kas</span>
-          </p>
-        </div>
-
-        {/* Card 3: Potongan Biaya Operasional */}
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider">Potongan Operasional</span>
-            <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center">
-              <Percent className="w-4 h-4 stroke-[2.5]" />
-            </div>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-black text-amber-700 font-mono">
-              {stats.penyewaDenganDiskon}
-            </span>
-            <span className="text-xs font-semibold text-slate-500">Sewa Ada Potongan</span>
-          </div>
-          <div className="mt-2 text-[11px] text-amber-800 font-semibold flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded-lg">
-            <Tag className="w-3 h-3 text-amber-600" />
-            <span>Biaya operasional: Rp {stats.totalPotonganDiskonNominal.toLocaleString('id-ID')}</span>
-          </div>
-        </div>
-
-        {/* Card 4: Estimasi Potensi Kas Bulanan */}
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs hover:shadow-md transition-shadow">
-          <div className="flex items-center justify-between text-slate-500 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider">Potensi Kas / Bulan</span>
-            <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center">
-              <TrendingUp className="w-4 h-4 stroke-[2.5]" />
-            </div>
-          </div>
-          <div className="text-xl sm:text-2xl font-black text-blue-900 font-mono">
-            Rp {Math.round(stats.estimasiKasBulanan).toLocaleString('id-ID')}
-          </div>
-          <p className="mt-2 text-[11px] text-slate-500 font-medium">
-            Tarif bersih sewa setelah potongan operasional
-          </p>
-        </div>
-      </div>
-
-      {/* Filter & Search Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-        {/* Search */}
-        <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Cari nama pihak sewa, kavling lahan, peruntukan usaha, kategori..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:bg-white focus:outline-none transition"
-          />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
-        </div>
-
-        {/* Filter Controls */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {/* Category Filter */}
-          <select
-            value={categoryFilter}
-            onChange={(e) => setCategoryFilter(e.target.value)}
-            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-          >
-            <option value="semua">Semua Kategori Sewa</option>
-            {categoriesSewa.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
-              </option>
-            ))}
-          </select>
-
-          {/* Discount Filter */}
-          <select
-            value={discountFilter}
-            onChange={(e) => setDiscountFilter(e.target.value as any)}
-            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-amber-900 bg-amber-50/70 border-amber-200 focus:ring-2 focus:ring-amber-500 focus:outline-none"
-          >
-            <option value="semua">Semua Skema Tarif</option>
-            <option value="dengan_diskon">🏷️ Ada Potongan Operasional (%)</option>
-            <option value="tanpa_diskon">Tarif Standar (Tanpa Potongan)</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Tenant Cards Grid */}
-      {filteredTenants.length === 0 ? (
-        <div className="bg-white rounded-2xl p-12 text-center border border-dashed border-slate-300">
-          <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-3 text-slate-400">
-            <Building2 className="w-8 h-8 stroke-1" />
-          </div>
-          <h3 className="text-base font-bold text-slate-800">
-            {searchQuery || categoryFilter !== 'semua' || discountFilter !== 'semua'
-              ? 'Tidak ada data sewa yang cocok dengan filter'
-              : 'Belum Ada Data Sewa Tanah'}
-          </h3>
-          <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
-            {searchQuery || categoryFilter !== 'semua' || discountFilter !== 'semua'
-              ? 'Silakan coba ubah kata kunci pencarian atau reset filter di atas.'
-              : 'Tambahkan data sewa tanah wakaf atau stand usaha masjid untuk mulai mencatat penerimaan sewa.'}
-          </p>
+      {/* Main Sub-Tab View Switcher */}
+      <div className="flex items-center justify-between gap-3 border-b border-slate-200 pb-2 flex-wrap">
+        <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl border border-slate-200">
           <button
-            onClick={handleOpenAddTenant}
-            className="mt-4 px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition inline-flex items-center gap-1.5 cursor-pointer shadow-md shadow-emerald-700/20"
+            type="button"
+            onClick={() => setActiveView('paymentStatus')}
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+              activeView === 'paymentStatus'
+                ? 'bg-emerald-700 text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+            }`}
           >
-            <Plus className="w-4 h-4 stroke-[3]" />
-            <span>+ Tambah Data Sewa Pertama</span>
+            <Coins className="w-4 h-4" />
+            <span>Kelola Hasil Pembayaran (Lunas / Belum)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveView('tenantList')}
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+              activeView === 'tenantList'
+                ? 'bg-emerald-700 text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+            }`}
+          >
+            <UserCheck className="w-4 h-4" />
+            <span>Daftar Objek & Data Penyewa ({landTenants.length})</span>
           </button>
         </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
-          {filteredTenants.map((tenant) => {
-            const diskonPersen = tenant.diskonPersen || 0;
-            const tarifNormal = tenant.tarifSewa || 0;
-            const nominalPotongan = (tarifNormal * diskonPersen) / 100;
-            const tarifBersih =
-              tenant.tarifSetelahDiskon !== undefined
-                ? tenant.tarifSetelahDiskon
-                : Math.max(0, tarifNormal - nominalPotongan);
 
-            return (
-              <div
-                key={tenant.id}
-                className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-md transition-all p-5 flex flex-col justify-between space-y-4 relative group"
-              >
-                {/* Top Section: Nama Pihak Sewa & Kategori Badge */}
+        {/* Quick helper note */}
+        <div className="text-xs text-slate-500 font-medium hidden sm:flex items-center gap-1.5">
+          <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+          <span>Otomatis terhubung dengan Jurnal Kas Masjid & Buku Besar</span>
+        </div>
+      </div>
+
+      {/* TAB 1: KELOLA HASIL PEMBAYARAN */}
+      {activeView === 'paymentStatus' && (
+        <div className="space-y-6">
+          {/* Period Selector & Monitoring Controller */}
+          <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center border border-emerald-200 shrink-0">
+                  <Calendar className="w-5 h-5" />
+                </div>
                 <div>
-                  <div className="flex items-start justify-between gap-3 mb-2">
-                    <div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="text-base font-bold text-slate-900 group-hover:text-emerald-800 transition">
-                          {tenant.namaPenyewa}
-                        </h3>
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-teal-50 text-teal-900 border border-teal-200">
-                          <Building2 className="w-3 h-3 text-teal-700" />
-                          <span>{tenant.kategori || 'Sewa Lahan'}</span>
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1.5 text-xs text-slate-600 mt-1 font-medium">
-                        <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                        <span>{tenant.nomorTelepon || '-'}</span>
-                        {tenant.alamatPenyewa && (
-                          <>
-                            <span className="text-slate-300">•</span>
-                            <span className="truncate max-w-[200px] text-slate-500">
-                              {tenant.alamatPenyewa}
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        onClick={() => handleOpenEditTenant(tenant)}
-                        title="Edit Data Sewa"
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-700 hover:bg-emerald-50 transition cursor-pointer"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteTenant(tenant)}
-                        title="Hapus Data Sewa"
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Lahan & Objek Info Box */}
-                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/70 space-y-1.5 text-xs mt-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-1.5 text-slate-900 font-bold">
-                        <MapPin className="w-4 h-4 text-emerald-700 shrink-0" />
-                        <span>{tenant.namaLahan}</span>
-                      </div>
-                      <span className="text-[11px] font-mono font-semibold text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200">
-                        {tenant.luasLahan || 'Lahan Wakaf'}
-                      </span>
-                    </div>
-                    <div className="text-slate-600 flex items-center gap-1 pl-5 text-[11px]">
-                      <span>Peruntukan:</span>
-                      <strong className="text-slate-800">{tenant.peruntukanUsaha}</strong>
-                    </div>
-                    {tenant.lokasiLahan && (
-                      <div className="text-slate-500 text-[11px] pl-5 italic">
-                        Patokan: {tenant.lokasiLahan}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Middle: Pricing & Discount Breakdown */}
-                <div className="bg-emerald-50/40 p-3.5 rounded-xl border border-emerald-200/70 space-y-2">
-                  <div className="flex items-end justify-between gap-2">
-                    <div>
-                      <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 block">
-                        Tarif Sewa Tagihan:
-                      </span>
-                      <div className="flex items-baseline gap-2 mt-0.5">
-                        <span className="text-lg sm:text-xl font-mono font-black text-emerald-900">
-                          Rp {tarifBersih.toLocaleString('id-ID')}
-                        </span>
-                        <span className="text-xs font-bold text-slate-600">
-                          / {tenant.tipePeriode === 'bulanan' ? 'bulan' : tenant.tipePeriode === 'tahunan' ? 'tahun' : 'musim'}
-                        </span>
-                      </div>
-                    </div>
-
-                    {diskonPersen > 0 && (
-                      <div className="text-right">
-                        <span className="text-[10px] line-through text-slate-400 font-mono block">
-                          Normal: Rp {tarifNormal.toLocaleString('id-ID')}
-                        </span>
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs">
-                          <Tag className="w-3 h-3 text-amber-700" />
-                          <span>Potongan Operasional {diskonPersen}% (-Rp {nominalPotongan.toLocaleString('id-ID')})</span>
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {diskonPersen > 0 && tenant.keteranganDiskon && (
-                    <div className="text-[11px] text-amber-900 bg-amber-50/80 px-2.5 py-1 rounded-lg border border-amber-200/80 font-medium">
-                      <strong>Rincian Biaya Operasional:</strong> {tenant.keteranganDiskon}
-                    </div>
-                  )}
-
-                  {/* Payment Status Info */}
-                  <div className="pt-2 border-t border-emerald-100 flex items-center justify-between text-[11px] text-slate-600">
-                    <span className="flex items-center gap-1">
-                      <Calendar className="w-3.5 h-3.5 text-emerald-700" />
-                      <span>
-                        {tenant.terakhirBayar
-                          ? `Terakhir Bayar: ${new Date(tenant.terakhirBayar).toLocaleDateString('id-ID')}`
-                          : 'Belum ada pembayaran sewa'}
-                      </span>
-                    </span>
-                    <span className="font-mono font-bold text-emerald-800">
-                      Total Lunas: Rp {(tenant.totalTerbayar || 0).toLocaleString('id-ID')}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Bottom Actions */}
-                <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
-                  <button
-                    onClick={() => handleOpenReceipt(tenant)}
-                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border border-slate-200"
-                  >
-                    <Receipt className="w-3.5 h-3.5 text-emerald-700" />
-                    <span>Kwitansi</span>
-                  </button>
-
-                  <button
-                    onClick={() => handleOpenPayment(tenant)}
-                    className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm shadow-emerald-700/20 cursor-pointer active:scale-95"
-                  >
-                    <Coins className="w-4 h-4 text-amber-300" />
-                    <span>Catat Bayar Sewa</span>
-                  </button>
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-800 block">
+                    Periode Monitoring Pembayaran
+                  </span>
+                  <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2 mt-0.5">
+                    <span>{monitorPeriodLabel}</span>
+                  </h3>
                 </div>
               </div>
-            );
-          })}
+
+              {/* Month & Year Selectors */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-1.5 bg-slate-50 p-1 rounded-xl border border-slate-200">
+                  <select
+                    value={monitorMonth}
+                    onChange={(e) => setMonitorMonth(Number(e.target.value))}
+                    className="bg-white border border-slate-300 text-xs font-bold text-slate-800 px-3 py-1.5 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none cursor-pointer"
+                  >
+                    {MONTH_NAMES.map((name, idx) => (
+                      <option key={name} value={idx + 1}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={monitorYear}
+                    onChange={(e) => setMonitorYear(Number(e.target.value))}
+                    className="bg-white border border-slate-300 text-xs font-bold text-slate-800 px-3 py-1.5 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none cursor-pointer"
+                  >
+                    {[2024, 2025, 2026, 2027, 2028].map((yr) => (
+                      <option key={yr} value={yr}>
+                        {yr}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMonitorMonth(new Date().getMonth() + 1);
+                    setMonitorYear(new Date().getFullYear());
+                  }}
+                  className="px-3 py-1.5 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition border border-slate-200 cursor-pointer"
+                >
+                  Bulan Ini
+                </button>
+              </div>
+            </div>
+
+            {/* 4 Financial & Collection Summary Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-slate-100">
+              {/* Target Tagihan */}
+              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                  Target Tagihan Periode Ini
+                </span>
+                <div className="text-lg font-black font-mono text-slate-900 mt-1">
+                  Rp {paymentStats.targetTagihanTotal.toLocaleString('id-ID')}
+                </div>
+                <div className="text-[11px] text-slate-500 mt-1 flex items-center gap-1 font-medium">
+                  <UserCheck className="w-3.5 h-3.5 text-slate-400" />
+                  <span>Dari {paymentStats.totalTenants} objek sewa aktif</span>
+                </div>
+              </div>
+
+              {/* Uang Masuk Kas */}
+              <div className="bg-emerald-50/70 p-3.5 rounded-xl border border-emerald-200">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider block">
+                    Uang Sewa Terkumpul
+                  </span>
+                  <span className="text-[11px] font-extrabold text-emerald-800 font-mono bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-300">
+                    {paymentStats.percentTerkumpul}%
+                  </span>
+                </div>
+                <div className="text-lg font-black font-mono text-emerald-900 mt-1">
+                  Rp {paymentStats.uangTerkumpulTotal.toLocaleString('id-ID')}
+                </div>
+                {/* Progress bar */}
+                <div className="w-full bg-emerald-200 rounded-full h-1.5 mt-2 overflow-hidden">
+                  <div
+                    className="bg-emerald-700 h-full rounded-full transition-all duration-500"
+                    style={{ width: `${paymentStats.percentTerkumpul}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Sisa Piutang / Belum Bayar */}
+              <div
+                className={`p-3.5 rounded-xl border ${
+                  paymentStats.sisaPiutangTotal > 0
+                    ? 'bg-rose-50/70 border-rose-200'
+                    : 'bg-slate-50 border-slate-200'
+                }`}
+              >
+                <span
+                  className={`text-[10px] font-bold uppercase tracking-wider block ${
+                    paymentStats.sisaPiutangTotal > 0 ? 'text-rose-800' : 'text-slate-500'
+                  }`}
+                >
+                  Sisa Belum Terbayar (Piutang)
+                </span>
+                <div
+                  className={`text-lg font-black font-mono mt-1 ${
+                    paymentStats.sisaPiutangTotal > 0 ? 'text-rose-700' : 'text-slate-700'
+                  }`}
+                >
+                  Rp {paymentStats.sisaPiutangTotal.toLocaleString('id-ID')}
+                </div>
+                <div className="text-[11px] text-slate-500 mt-1 font-medium">
+                  {paymentStats.countBelumBayar + paymentStats.countCicilan} penyewa belum tuntas
+                </div>
+              </div>
+
+              {/* Status Breakdown Mini Pills */}
+              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 flex flex-col justify-between">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                  Pencapaian Pelunasan
+                </span>
+                <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                  <span className="px-2 py-0.5 text-xs font-extrabold rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-300">
+                    🟢 Lunas: {paymentStats.countLunas}
+                  </span>
+                  <span className="px-2 py-0.5 text-xs font-extrabold rounded-lg bg-amber-100 text-amber-900 border border-amber-300">
+                    🟡 Cicilan: {paymentStats.countCicilan}
+                  </span>
+                  <span className="px-2 py-0.5 text-xs font-extrabold rounded-lg bg-rose-100 text-rose-800 border border-rose-300">
+                    🔴 Belum: {paymentStats.countBelumBayar}
+                  </span>
+                </div>
+                <span className="text-[10px] text-slate-400 mt-1 font-medium">
+                  Tingkat Pelunasan: {paymentStats.totalTenants > 0 ? Math.round((paymentStats.countLunas / paymentStats.totalTenants) * 100) : 0}% Lunas
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Filter Bar (Status Chips & Search) */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+              {/* Status Filter Chips */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setPaymentStatusFilter('semua')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                    paymentStatusFilter === 'semua'
+                      ? 'bg-slate-800 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  Semua ({paymentStats.totalTenants})
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPaymentStatusFilter('lunas')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
+                    paymentStatusFilter === 'lunas'
+                      ? 'bg-emerald-700 text-white shadow-xs'
+                      : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200'
+                  }`}
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Sudah Lunas ({paymentStats.countLunas})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPaymentStatusFilter('cicilan')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
+                    paymentStatusFilter === 'cicilan'
+                      ? 'bg-amber-600 text-white shadow-xs'
+                      : 'bg-amber-50 text-amber-900 hover:bg-amber-100 border border-amber-200'
+                  }`}
+                >
+                  <Clock className="w-3.5 h-3.5" />
+                  <span>Kurang Bayar / Cicilan ({paymentStats.countCicilan})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPaymentStatusFilter('belum_bayar')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
+                    paymentStatusFilter === 'belum_bayar'
+                      ? 'bg-rose-700 text-white shadow-xs'
+                      : 'bg-rose-50 text-rose-800 hover:bg-rose-100 border border-rose-200'
+                  }`}
+                >
+                  <AlertCircle className="w-3.5 h-3.5" />
+                  <span>Belum Bayar / Menunggak ({paymentStats.countBelumBayar})</span>
+                </button>
+              </div>
+
+              {/* Search Box */}
+              <div className="relative w-full md:w-64">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Cari penyewa, lahan..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Cards List of Tenants with Payment Management */}
+          {filteredTenants.length === 0 ? (
+            <div className="bg-white rounded-2xl p-12 text-center border border-slate-200 shadow-sm space-y-3">
+              <div className="w-14 h-14 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto">
+                <Search className="w-6 h-6" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-800">Tidak ada penyewa yang cocok dengan filter</h3>
+              <p className="text-xs text-slate-500 max-w-md mx-auto">
+                Coba ubah status filter (Semua, Lunas, Belum Bayar) atau kata kunci pencarian.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {filteredTenants.map((tenant) => {
+                const calc = getTenantPaymentStatus(tenant);
+
+                return (
+                  <div
+                    key={tenant.id}
+                    className={`bg-white rounded-2xl p-5 border transition-all duration-200 shadow-sm hover:shadow-md flex flex-col justify-between space-y-4 ${
+                      calc.status === 'lunas'
+                        ? 'border-emerald-200/90'
+                        : calc.status === 'cicilan'
+                        ? 'border-amber-200'
+                        : calc.isPastDue
+                        ? 'border-rose-300 ring-1 ring-rose-200'
+                        : 'border-slate-200'
+                    }`}
+                  >
+                    {/* Card Top: Tenant Info & Status Badge */}
+                    <div>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-bold text-slate-900">{tenant.namaPenyewa}</span>
+                            <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full border border-slate-200 font-semibold">
+                              {tenant.kategori || 'Sewa'}
+                            </span>
+                          </div>
+                          <h4 className="text-xs text-slate-600 font-medium flex items-center gap-1 mt-1">
+                            <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            <span>{tenant.namaLahan}</span>
+                          </h4>
+                          {tenant.nomorTelepon && (
+                            <p className="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
+                              <Phone className="w-3 h-3 text-slate-400" />
+                              <span>{tenant.nomorTelepon}</span>
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Status Badge */}
+                        <div className="text-right shrink-0">
+                          {calc.status === 'lunas' ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>LUNAS</span>
+                            </span>
+                          ) : calc.status === 'cicilan' ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-extrabold bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs">
+                              <Clock className="w-3.5 h-3.5 text-amber-600" />
+                              <span>CICILAN ({calc.persentaseBayar}%)</span>
+                            </span>
+                          ) : (
+                            <span
+                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-extrabold shadow-2xs ${
+                                calc.isPastDue
+                                  ? 'bg-rose-100 text-rose-800 border border-rose-300'
+                                  : 'bg-slate-100 text-slate-700 border border-slate-300'
+                              }`}
+                            >
+                              <AlertCircle
+                                className={`w-3.5 h-3.5 ${calc.isPastDue ? 'text-rose-600' : 'text-slate-500'}`}
+                              />
+                              <span>{calc.isPastDue ? 'MENUNGGAK' : 'BELUM BAYAR'}</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Financial Detail Box */}
+                      <div className="mt-3.5 p-3 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-500 text-[11px]">Tarif Sewa Periode Ini:</span>
+                          <span className="font-mono font-bold text-slate-800">
+                            Rp {calc.tarifBersih.toLocaleString('id-ID')}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-500 text-[11px]">Sudah Dibayar:</span>
+                          <span className="font-mono font-bold text-emerald-700">
+                            Rp {calc.totalTerbayarPeriode.toLocaleString('id-ID')}
+                          </span>
+                        </div>
+
+                        <div className="pt-1.5 border-t border-slate-200 flex items-center justify-between">
+                          <span
+                            className={`text-[11px] font-bold ${
+                              calc.sisaKurangBayar > 0 ? 'text-rose-700' : 'text-slate-700'
+                            }`}
+                          >
+                            Sisa Kurang Bayar:
+                          </span>
+                          <span
+                            className={`font-mono font-black ${
+                              calc.sisaKurangBayar > 0 ? 'text-rose-700' : 'text-slate-700'
+                            }`}
+                          >
+                            Rp {calc.sisaKurangBayar.toLocaleString('id-ID')}
+                          </span>
+                        </div>
+
+                        {/* Progress bar */}
+                        <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-300 ${
+                              calc.status === 'lunas'
+                                ? 'bg-emerald-600'
+                                : calc.status === 'cicilan'
+                                ? 'bg-amber-500'
+                                : 'bg-slate-300'
+                            }`}
+                            style={{ width: `${calc.persentaseBayar}%` }}
+                          />
+                        </div>
+
+                        {/* Due Date & Last Payment note */}
+                        <div className="flex items-center justify-between text-[10px] text-slate-400 pt-0.5">
+                          <span>Jatuh Tempo: Tgl {calc.jatuhTempo} tiap bulan</span>
+                          <span>
+                            {tenant.terakhirBayar
+                              ? `Bayar terakhir: ${new Date(tenant.terakhirBayar).toLocaleDateString('id-ID')}`
+                              : 'Belum pernah bayar'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Bottom Actions Bar */}
+                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleSendWhatsAppNotification(tenant)}
+                          title="Kirim pemberitahuan tagihan atau konfirmasi via WhatsApp"
+                          className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition flex items-center gap-1 cursor-pointer border border-slate-200"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5 text-emerald-700" />
+                          <span>Kirim WA</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleOpenHistory(tenant)}
+                          title="Lihat seluruh riwayat pembayaran sewa"
+                          className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition flex items-center gap-1 cursor-pointer border border-slate-200"
+                        >
+                          <History className="w-3.5 h-3.5 text-slate-600" />
+                          <span>Riwayat</span>
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 ml-auto">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenReceipt(tenant)}
+                          className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer border border-slate-200"
+                        >
+                          <Receipt className="w-3.5 h-3.5 text-emerald-700" />
+                          <span>Kwitansi</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleOpenPayment(tenant)}
+                          className="px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm shadow-emerald-700/20 cursor-pointer active:scale-95"
+                        >
+                          <Coins className="w-3.5 h-3.5 text-amber-300" />
+                          <span>Catat Bayar</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
+
+      {/* TAB 2: DAFTAR OBJEK & DATA PENYEWA LAHAN */}
+      {activeView === 'tenantList' && (
+        <div className="space-y-6">
+          {/* Filter Bar */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="flex items-center gap-2 flex-wrap flex-1">
+              <div className="relative flex-1 min-w-[200px]">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Cari nama pihak sewa, objek lahan, nomor kontak..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                />
+              </div>
+
+              <select
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                className="bg-slate-50 border border-slate-200 text-xs font-semibold px-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+              >
+                <option value="semua">Semua Kategori</option>
+                {categoriesSewa.map((cat) => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={discountFilter}
+                onChange={(e) => setDiscountFilter(e.target.value as any)}
+                className="bg-slate-50 border border-slate-200 text-xs font-semibold px-3 py-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+              >
+                <option value="semua">Semua Skema Potongan</option>
+                <option value="dengan_diskon">Dengan Potongan Operasional (%)</option>
+                <option value="tanpa_diskon">Tanpa Potongan</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Tenants Cards Grid */}
+          {filteredTenants.length === 0 ? (
+            <div className="bg-white rounded-2xl p-12 text-center border border-slate-200 shadow-sm space-y-3">
+              <div className="w-14 h-14 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mx-auto">
+                <Building2 className="w-6 h-6" />
+              </div>
+              <h3 className="text-sm font-bold text-slate-800">Tidak ada data penyewa yang sesuai</h3>
+              <p className="text-xs text-slate-500 max-w-md mx-auto">
+                Klik tombol &quot;+ Tambah Penyewa Baru&quot; di atas untuk mendaftarkan penyewa tanah wakaf baru.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {filteredTenants.map((tenant) => {
+                const diskon = tenant.diskonPersen || 0;
+                const normal = tenant.tarifSewa || 0;
+                const nominalPotongan = (normal * diskon) / 100;
+                const bersih =
+                  tenant.tarifSetelahDiskon !== undefined
+                    ? tenant.tarifSetelahDiskon
+                    : Math.max(0, normal - nominalPotongan);
+
+                return (
+                  <div
+                    key={tenant.id}
+                    className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between space-y-4 relative overflow-hidden"
+                  >
+                    {/* Top Section */}
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-teal-50 text-teal-900 border border-teal-200 mb-1">
+                            {tenant.kategori || 'Sewa Lahan'}
+                          </span>
+                          <h3 className="text-sm font-bold text-slate-900 leading-snug">
+                            {tenant.namaPenyewa}
+                          </h3>
+                        </div>
+
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditTenant(tenant)}
+                            className="p-1.5 text-slate-400 hover:text-emerald-700 hover:bg-slate-100 rounded-lg transition cursor-pointer"
+                            title="Edit Data Penyewa"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteTenant(tenant)}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                            title="Hapus Data Penyewa"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Detail Lahan & Peruntukan */}
+                      <div className="space-y-1 text-xs text-slate-600 bg-slate-50/70 p-3 rounded-xl border border-slate-100">
+                        <div className="flex items-start gap-1.5">
+                          <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                          <div>
+                            <strong className="text-slate-800">{tenant.namaLahan}</strong>
+                            {tenant.lokasiLahan && (
+                              <p className="text-[11px] text-slate-500">{tenant.lokasiLahan}</p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="pt-1 text-[11px] flex items-center justify-between text-slate-500">
+                          <span>Luas: {tenant.luasLahan || '-'}</span>
+                          <span>Usaha: {tenant.peruntukanUsaha}</span>
+                        </div>
+                      </div>
+
+                      {/* Tarif Breakdown Card */}
+                      <div className="p-3 bg-emerald-50/50 rounded-xl border border-emerald-100 space-y-1.5">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-slate-500 text-[11px]">Tarif Normal:</span>
+                          <span
+                            className={`font-mono ${
+                              diskon > 0
+                                ? 'line-through text-slate-400 text-[11px]'
+                                : 'font-bold text-slate-800'
+                            }`}
+                          >
+                            Rp {normal.toLocaleString('id-ID')}
+                          </span>
+                        </div>
+
+                        {diskon > 0 && (
+                          <div className="flex items-center justify-between text-xs text-amber-800 font-medium">
+                            <span className="text-[11px] flex items-center gap-1">
+                              <Tag className="w-3 h-3 text-amber-600" />
+                              <span>Potongan Ops ({diskon}%):</span>
+                            </span>
+                            <span className="font-mono text-rose-600 text-[11px]">
+                              - Rp {nominalPotongan.toLocaleString('id-ID')}
+                            </span>
+                          </div>
+                        )}
+
+                        <div className="pt-1.5 border-t border-emerald-200/60 flex items-center justify-between">
+                          <span className="text-xs font-bold text-emerald-950">
+                            Tarif Bersih / {tenant.tipePeriode === 'bulanan' ? 'bln' : tenant.tipePeriode === 'tahunan' ? 'thn' : 'periode'}:
+                          </span>
+                          <span className="text-sm font-mono font-black text-emerald-900">
+                            Rp {bersih.toLocaleString('id-ID')}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Total Terbayar info */}
+                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-600">
+                        <span>
+                          {tenant.terakhirBayar
+                            ? `Terakhir: ${new Date(tenant.terakhirBayar).toLocaleDateString('id-ID')}`
+                            : 'Belum ada pembayaran'}
+                        </span>
+                        <span className="font-mono font-bold text-emerald-800">
+                          Total: Rp {(tenant.totalTerbayar || 0).toLocaleString('id-ID')}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
+                      <button
+                        type="button"
+                        onClick={() => handleOpenReceipt(tenant)}
+                        className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border border-slate-200"
+                      >
+                        <Receipt className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>Kwitansi</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleOpenPayment(tenant)}
+                        className="px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm shadow-emerald-700/20 cursor-pointer active:scale-95"
+                      >
+                        <Coins className="w-3.5 h-3.5 text-amber-300" />
+                        <span>Catat Bayar</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+      </div>
 
       {/* Modals */}
       <TenantModal
@@ -667,10 +1212,33 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
         }}
       />
 
+      <TenantPaymentHistoryModal
+        isOpen={isHistoryModalOpen}
+        onClose={() => setIsHistoryModalOpen(false)}
+        tenant={selectedTenantForHistory}
+        mosqueProfile={mosqueProfile}
+        activePeriodLabel={monitorPeriodLabel}
+        activeMonthYearKey={monitorMonthYearKey}
+        onOpenPaymentModal={(t) => {
+          setSelectedTenantForPayment(t);
+          setIsPaymentModalOpen(true);
+        }}
+        onOpenReceiptModal={(t, pay) => {
+          setSelectedTenantForReceipt(t);
+          setSelectedPaymentRecordForReceipt(pay || null);
+          setIsReceiptModalOpen(true);
+        }}
+        onDeletePaymentRecord={onDeleteTenantPayment}
+      />
+
       <TenantReceiptModal
         isOpen={isReceiptModalOpen}
-        onClose={() => setIsReceiptModalOpen(false)}
+        onClose={() => {
+          setIsReceiptModalOpen(false);
+          setSelectedPaymentRecordForReceipt(null);
+        }}
         tenant={selectedTenantForReceipt}
+        paymentRecord={selectedPaymentRecordForReceipt}
         mosqueProfile={mosqueProfile}
       />
 
@@ -773,10 +1341,7 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    document.body.classList.remove('print-rekap-sewa-active');
-                    setIsReportModalOpen(false);
-                  }}
+                  onClick={() => setIsReportModalOpen(false)}
                   className="p-1 text-slate-400 hover:text-white rounded-lg transition cursor-pointer"
                   aria-label="Tutup"
                 >
@@ -819,13 +1384,16 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
                       mosqueProfile.alamat ? mosqueProfile.alamat.replace(/,\s*$/, '') : '',
                       mosqueProfile.desa ? `Desa ${mosqueProfile.desa.replace(/^desa\s+/gi, '')}` : '',
                       mosqueProfile.kecamatan ? `Kec. ${mosqueProfile.kecamatan.replace(/^kec\.?\s+/gi, '')}` : '',
-                      mosqueProfile.kota || ''
-                    ].filter(Boolean).join(' ')}
+                      mosqueProfile.kota || '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
                     {mosqueProfile.telepon ? ` • Telp: ${mosqueProfile.telepon}` : ''}
                   </p>
                   {mosqueProfile.nomorRekening && (
                     <p className="text-[11px] text-slate-500 italic">
-                      Rek. Infaq/Kas: {mosqueProfile.namaBank || 'Bank'} {mosqueProfile.nomorRekening} a.n {mosqueProfile.anRekening || mosqueProfile.namaMasjid}
+                      Rek. Infaq/Kas: {mosqueProfile.namaBank || 'Bank'} {mosqueProfile.nomorRekening} a.n{' '}
+                      {mosqueProfile.anRekening || mosqueProfile.namaMasjid}
                     </p>
                   )}
                   <div className="pt-2">
@@ -847,68 +1415,93 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
                   <table className="w-full text-left border-collapse text-xs border border-slate-300">
                     <thead>
                       <tr className="bg-slate-100 border-b-2 border-slate-300 text-slate-800 font-bold">
-                        <th className="py-2.5 px-2.5 border-r border-slate-300 text-center w-10">No</th>
-                        <th className="py-2.5 px-3 border-r border-slate-300">Nama Pihak Sewa & Kontak</th>
-                        <th className="py-2.5 px-3 border-r border-slate-300">Objek Lahan / Usaha</th>
-                        <th className="py-2.5 px-3 border-r border-slate-300">Kategori Sewa</th>
-                        <th className="py-2.5 px-3 text-right border-r border-slate-300">Tarif Normal</th>
-                        <th className="py-2.5 px-2.5 text-center border-r border-slate-300">Potongan (%)</th>
-                        <th className="py-2.5 px-3 text-right border-r border-slate-300">Tarif Bersih</th>
-                        <th className="py-2.5 px-3 text-right">Total Terbayar</th>
+                        <th className="py-2 px-2 border-r border-slate-300 text-center w-8">No</th>
+                        <th className="py-2 px-2.5 border-r border-slate-300">Nama Penyewa & Kontak</th>
+                        <th className="py-2 px-2.5 border-r border-slate-300">Objek Lahan & Usaha</th>
+                        <th className="py-2 px-2.5 text-right border-r border-slate-300">Tagihan Bersih</th>
+                        <th className="py-2 px-2.5 text-right border-r border-slate-300 bg-emerald-50/70 text-emerald-950">
+                          Hasil Bayar
+                        </th>
+                        <th className="py-2 px-2.5 text-right border-r border-slate-300 bg-rose-50/70 text-rose-950">
+                          Belum Bayar
+                        </th>
+                        <th className="py-2 px-2 text-center">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200">
                       {rekapFilteredTenants.length === 0 ? (
                         <tr>
-                          <td colSpan={8} className="py-8 text-center text-slate-500 italic">
+                          <td colSpan={7} className="py-8 text-center text-slate-500 italic">
                             Tidak ada data sewa lahan pada periode ini.
                           </td>
                         </tr>
                       ) : (
                         rekapFilteredTenants.map((t, idx) => {
-                          const diskon = t.diskonPersen || 0;
-                          const normal = t.tarifSewa || 0;
-                          const potongan = (normal * diskon) / 100;
-                          const bersih =
-                            t.tarifSetelahDiskon !== undefined
-                              ? t.tarifSetelahDiskon
-                              : Math.max(0, normal - potongan);
+                          const d = getTenantRekapData(
+                            t,
+                            rekapPeriodMode,
+                            rekapSelectedMonth,
+                            rekapSelectedYear
+                          );
 
                           return (
                             <tr key={t.id} className="hover:bg-slate-50">
-                              <td className="py-2 px-2.5 text-center font-medium text-slate-500 border-r border-slate-200">
+                              <td className="py-2 px-2 text-center font-medium text-slate-500 border-r border-slate-200">
                                 {idx + 1}
                               </td>
-                              <td className="py-2 px-3 border-r border-slate-200">
-                                <strong className="text-slate-900 block font-semibold">{t.namaPenyewa}</strong>
-                                <span className="text-[11px] text-slate-500">{t.nomorTelepon || '-'}</span>
-                              </td>
-                              <td className="py-2 px-3 border-r border-slate-200">
-                                <span className="font-semibold text-slate-800 block">{t.namaLahan}</span>
-                                <span className="text-[11px] text-slate-500">{t.peruntukanUsaha || '-'}</span>
-                              </td>
-                              <td className="py-2 px-3 border-r border-slate-200">
-                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-teal-50 text-teal-900 border border-teal-200">
-                                  {t.kategori || 'Sewa Lahan'}
+                              <td className="py-2 px-2.5 border-r border-slate-200">
+                                <strong className="text-slate-900 block font-semibold text-xs">
+                                  {t.namaPenyewa}
+                                </strong>
+                                <span className="text-[10px] text-slate-500 font-mono">
+                                  {t.nomorTelepon || '-'}
                                 </span>
                               </td>
-                              <td className="py-2 px-3 text-right font-mono border-r border-slate-200">
-                                Rp {normal.toLocaleString('id-ID')}
+                              <td className="py-2 px-2.5 border-r border-slate-200">
+                                <span className="font-semibold text-slate-800 block text-xs">
+                                  {t.namaLahan}
+                                </span>
+                                <span className="text-[10px] text-slate-500">
+                                  {t.peruntukanUsaha || '-'}
+                                  {t.luasLahan ? ` (${t.luasLahan})` : ''}
+                                </span>
                               </td>
-                              <td className="py-2 px-2.5 text-center border-r border-slate-200">
-                                {diskon > 0 ? (
-                                  <span className="font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 text-[11px]">
-                                    {diskon}%
+                              <td className="py-2 px-2.5 text-right font-mono font-semibold text-slate-800 border-r border-slate-200">
+                                Rp {d.targetTagihan.toLocaleString('id-ID')}
+                                {d.diskonPersen > 0 && (
+                                  <span className="block text-[9px] text-amber-700 font-sans">
+                                    Diskon {d.diskonPersen}%
                                   </span>
-                                ) : (
-                                  <span className="text-slate-400">-</span>
                                 )}
                               </td>
-                              <td className="py-2 px-3 text-right font-mono font-bold text-emerald-900 border-r border-slate-200">
-                                Rp {bersih.toLocaleString('id-ID')}
+                              <td className="py-2 px-2.5 text-right font-mono font-bold text-emerald-900 bg-emerald-50/30 border-r border-slate-200">
+                                Rp {d.hasilBayar.toLocaleString('id-ID')}
                               </td>
-                              <td className="py-2 px-3 text-right font-mono font-extrabold text-emerald-800">
-                                Rp {(t.totalTerbayar || 0).toLocaleString('id-ID')}
+                              <td className="py-2 px-2.5 text-right font-mono font-bold border-r border-slate-200">
+                                {d.belumBayar > 0 ? (
+                                  <span className="text-rose-700">
+                                    Rp {d.belumBayar.toLocaleString('id-ID')}
+                                  </span>
+                                ) : (
+                                  <span className="text-slate-400">Rp 0</span>
+                                )}
+                              </td>
+                              <td className="py-2 px-2 text-center">
+                                {d.status === 'lunas' && (
+                                  <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
+                                    LUNAS
+                                  </span>
+                                )}
+                                {d.status === 'cicilan' && (
+                                  <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                                    KURANG BAYAR
+                                  </span>
+                                )}
+                                {d.status === 'belum_bayar' && (
+                                  <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-900 border border-rose-300">
+                                    BELUM BAYAR
+                                  </span>
+                                )}
                               </td>
                             </tr>
                           );
@@ -916,16 +1509,54 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
                       )}
                     </tbody>
                     <tfoot>
-                      <tr className="bg-slate-100 border-t-2 border-slate-300 font-bold text-slate-900">
-                        <td colSpan={7} className="py-2.5 px-3 text-right border-r border-slate-300">
-                          TOTAL AKUMULASI KAS SEWA DITERIMA:
+                      <tr className="bg-slate-100 border-t-2 border-slate-400 font-bold text-slate-900">
+                        <td colSpan={3} className="py-2 px-2.5 text-right border-r border-slate-300 uppercase tracking-wider text-[11px]">
+                          TOTAL KESELURUHAN:
                         </td>
-                        <td className="py-2.5 px-3 text-right font-mono font-black text-emerald-900 text-sm">
-                          Rp {rekapStats.totalTerbayar.toLocaleString('id-ID')}
+                        <td className="py-2 px-2.5 text-right font-mono font-bold text-slate-900 border-r border-slate-300 text-xs">
+                          Rp {rekapStats.totalTargetTagihan.toLocaleString('id-ID')}
+                        </td>
+                        <td className="py-2 px-2.5 text-right font-mono font-black text-emerald-950 bg-emerald-100/50 border-r border-slate-300 text-xs">
+                          Rp {rekapStats.totalHasilBayar.toLocaleString('id-ID')}
+                        </td>
+                        <td className="py-2 px-2.5 text-right font-mono font-black text-rose-950 bg-rose-100/50 border-r border-slate-300 text-xs">
+                          Rp {rekapStats.totalBelumBayar.toLocaleString('id-ID')}
+                        </td>
+                        <td className="py-2 px-2 text-center text-[10px] font-bold text-slate-700">
+                          {rekapStats.countLunas}/{rekapStats.totalPenyewa} Lunas
                         </td>
                       </tr>
                     </tfoot>
                   </table>
+                </div>
+
+                {/* Summary Ringkasan Box */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 bg-slate-50 border border-slate-300 p-3 rounded-lg text-xs">
+                  <div className="border-b sm:border-b-0 sm:border-r border-slate-300 pb-2 sm:pb-0 sm:pr-2">
+                    <p className="text-[10px] uppercase font-bold text-slate-500">Target Tagihan Sewa:</p>
+                    <p className="text-sm font-mono font-extrabold text-slate-900 mt-0.5">
+                      Rp {rekapStats.totalTargetTagihan.toLocaleString('id-ID')}
+                    </p>
+                    <p className="text-[10px] text-slate-500 mt-0.5">{rekapStats.totalPenyewa} Total Objek Sewa</p>
+                  </div>
+                  <div className="border-b sm:border-b-0 sm:border-r border-slate-300 pb-2 sm:pb-0 sm:pr-2">
+                    <p className="text-[10px] uppercase font-bold text-emerald-800">Total Kas Hasil Bayar:</p>
+                    <p className="text-sm font-mono font-extrabold text-emerald-950 mt-0.5">
+                      Rp {rekapStats.totalHasilBayar.toLocaleString('id-ID')}
+                    </p>
+                    <p className="text-[10px] text-emerald-700 font-semibold mt-0.5">
+                      {rekapStats.countLunas} Lunas • {rekapStats.countCicilan} Kurang Bayar
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase font-bold text-rose-800">Total Belum Bayar (Piutang):</p>
+                    <p className="text-sm font-mono font-extrabold text-rose-950 mt-0.5">
+                      Rp {rekapStats.totalBelumBayar.toLocaleString('id-ID')}
+                    </p>
+                    <p className="text-[10px] text-rose-700 font-semibold mt-0.5">
+                      {rekapStats.countBelumBayar} Belum Bayar Sama Sekali
+                    </p>
+                  </div>
                 </div>
 
                 {/* Signatures */}
@@ -940,7 +1571,12 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
                   </div>
                   <div>
                     <p className="text-slate-600">
-                      {titimangsaKota}, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      {titimangsaKota},{' '}
+                      {new Date().toLocaleDateString('id-ID', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric',
+                      })}
                     </p>
                     <p className="font-bold text-slate-800 mt-1">Bendahara / Sie Aset Wakaf</p>
                     <div className="h-16" />
