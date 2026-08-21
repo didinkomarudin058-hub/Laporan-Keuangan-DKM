@@ -81,44 +81,36 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
         if (paymentRecord.periode) {
           setBulanTahun(paymentRecord.periode.replace(/^Bulan\s+/i, ''));
         }
-        // Gunakan nominal asli sebelum potongan jika ada, atau nominal pembayaran
-        const dibayar = paymentRecord.nominalAsli || paymentRecord.nominal || 0;
-        setCustomNominal(dibayar);
 
-        const sisa =
-          paymentRecord.sisaKurangBayar !== undefined
-            ? paymentRecord.sisaKurangBayar
-            : paymentRecord.statusBayar === 'cicilan'
-            ? Math.max(0, tarifSebelumPotongan - dibayar)
-            : 0;
-        setCustomSisa(sisa);
-
-        if (paymentRecord.statusBayar === 'cicilan' || sisa > 0) {
+        if (paymentRecord.statusBayar === 'cicilan') {
+          const dibayar = paymentRecord.nominalAsli || paymentRecord.nominal || 0;
+          setCustomNominal(dibayar);
+          const sisa =
+            paymentRecord.sisaKurangBayar !== undefined
+              ? paymentRecord.sisaKurangBayar
+              : Math.max(0, tarifSebelumPotongan - dibayar);
+          setCustomSisa(sisa);
           setStatusBayar('belum_lunas');
         } else {
+          // Status LUNAS: selalu gunakan tarif asli penuh sebelum potongan
+          setCustomNominal(tarifSebelumPotongan);
+          setCustomSisa(0);
           setStatusBayar('lunas');
         }
       } else {
         const now = new Date();
         setBulanTahun(now.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }));
-
-        const dibayar = tenant.totalTerbayar !== undefined ? tenant.totalTerbayar : tarifSebelumPotongan;
-        const sisa = Math.max(0, tarifSebelumPotongan - dibayar);
-        setCustomNominal(dibayar > 0 ? dibayar : tarifSebelumPotongan);
-        setCustomSisa(sisa);
-
-        if (sisa > 0 && dibayar < tarifSebelumPotongan) {
-          setStatusBayar('belum_lunas');
-        } else {
-          setStatusBayar('lunas');
-        }
+        // Default selalu Lunas dengan Tarif Asli penuh
+        setCustomNominal(tarifSebelumPotongan);
+        setCustomSisa(0);
+        setStatusBayar('lunas');
       }
     }
   }, [isOpen, tenant, paymentRecord]);
 
   if (!isOpen || !tenant) return null;
 
-  // Nominal murni sebelum potongan
+  // Nominal murni sebelum potongan (Tarif Asli)
   const tarifSewaSebelumPotongan = tenant.tarifSewa || 0;
 
   const receiptNumber =
@@ -126,7 +118,8 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
     `KW-SEWA-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}-${tenant.id.slice(-4).toUpperCase()}`;
 
   const isLunas = statusBayar === 'lunas';
-  const nominal = customNominal || (isLunas ? tarifSewaSebelumPotongan : 0);
+  // Jika lunas, selalu gunakan tarif asli murni sebelum potongan
+  const nominal = isLunas ? tarifSewaSebelumPotongan : (customNominal || 0);
   const sisaKurangBayar = isLunas ? 0 : (customSisa !== undefined ? customSisa : Math.max(0, tarifSewaSebelumPotongan - nominal));
   const terbilangText = nominal > 0 ? `${angkaKeTerbilang(nominal)} Rupiah` : 'Nol Rupiah';
 
@@ -196,7 +189,14 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
             {/* Status Selector */}
             <select
               value={statusBayar}
-              onChange={(e) => setStatusBayar(e.target.value as 'lunas' | 'belum_lunas')}
+              onChange={(e) => {
+                const next = e.target.value as 'lunas' | 'belum_lunas';
+                setStatusBayar(next);
+                if (next === 'lunas') {
+                  setCustomNominal(tarifSewaSebelumPotongan);
+                  setCustomSisa(0);
+                }
+              }}
               className={`text-xs font-bold px-2 py-1 rounded-md border focus:outline-none cursor-pointer ${
                 statusBayar === 'lunas'
                   ? 'bg-emerald-800 text-emerald-100 border-emerald-600'
