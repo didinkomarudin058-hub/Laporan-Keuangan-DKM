@@ -52,12 +52,8 @@ export const TenantPaymentModal: React.FC<TenantPaymentModalProps> = ({
   useEffect(() => {
     if (tenant) {
       const rawTarif = tenant.tarifSewa || 0;
-      const diskonPersen = tenant.diskonPersen || 0;
-      const calculatedNet = Math.max(0, Math.round(rawTarif - (rawTarif * diskonPersen) / 100));
-      const netTarif = tenant.tarifSetelahDiskon !== undefined ? tenant.tarifSetelahDiskon : calculatedNet;
-
       setNominalAsli(rawTarif || '');
-      setNominal(netTarif || rawTarif || '');
+      setNominal(rawTarif || '');
       setStatusBayar('lunas');
       setTanggal(new Date().toISOString().split('T')[0]);
 
@@ -73,7 +69,6 @@ export const TenantPaymentModal: React.FC<TenantPaymentModalProps> = ({
       setPosDanaTujuan(tenant.posDanaTujuan || 'Kas Operasional');
       setMetodePembayaran(metodePembayaranList[0] || 'Transfer Bank');
       
-      // Clean keterangan without the word "potongan"
       setKeterangan(`Penerimaan Sewa ${tenant.namaLahan} - ${tenant.namaPenyewa}`);
       setPetugas(mosqueProfile.bendaharaDKM || 'Pengurus Aset Wakaf DKM');
       setAutoPushToKas(true);
@@ -82,23 +77,15 @@ export const TenantPaymentModal: React.FC<TenantPaymentModalProps> = ({
 
   if (!isOpen || !tenant) return null;
 
-  const discountPercent = tenant.diskonPersen || 0;
   const numAsli = Number(nominalAsli) || 0;
-  const calculatedDiscountAmount = (numAsli * discountPercent) / 100;
-  const calculatedNetRate = Math.max(0, Math.round(numAsli - calculatedDiscountAmount));
   const numBayar = Number(nominal) || 0;
-  const sisaKurang = Math.max(0, calculatedNetRate - numBayar);
+  const sisaKurang = Math.max(0, numAsli - numBayar);
 
   // Handler when admin edits nominal asli
   const handleNominalAsliChange = (val: string) => {
     setNominalAsli(val);
     const n = Number(val) || 0;
-    if (discountPercent > 0) {
-      const net = Math.max(0, Math.round(n - (n * discountPercent) / 100));
-      setNominal(net);
-    } else {
-      setNominal(n);
-    }
+    setNominal(n);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -114,12 +101,12 @@ export const TenantPaymentModal: React.FC<TenantPaymentModalProps> = ({
       ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
       : undefined;
 
-    const actualStatus = num >= calculatedNetRate && calculatedNetRate > 0 ? 'lunas' : statusBayar;
+    const actualStatus = num >= numAsli && numAsli > 0 ? 'lunas' : statusBayar;
 
     onConfirmPayment(tenant.id, {
       nominal: num,
       nominalAsli: numAsli,
-      diskonPersen: discountPercent,
+      diskonPersen: tenant.diskonPersen || 0,
       tanggal,
       periode,
       bulanTahunKey,
@@ -180,121 +167,41 @@ export const TenantPaymentModal: React.FC<TenantPaymentModalProps> = ({
               </p>
             </div>
             <div className="text-right shrink-0">
-              {discountPercent > 0 ? (
-                <>
-                  <div className="text-xs line-through text-slate-400 font-mono">
-                    Rp {numAsli.toLocaleString('id-ID')}
-                  </div>
-                  <div className="text-sm font-mono font-extrabold text-emerald-800">
-                    Rp {calculatedNetRate.toLocaleString('id-ID')}
-                  </div>
-                  <span className="inline-block text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-1.5 py-0.2 rounded-md">
-                    Potongan Ops {discountPercent}%
-                  </span>
-                </>
-              ) : (
-                <>
-                  <span className="text-[10px] text-slate-500 font-medium">Tarif Normal:</span>
-                  <div className="text-sm font-mono font-extrabold text-emerald-800">
-                    Rp {numAsli.toLocaleString('id-ID')}
-                  </div>
-                </>
-              )}
+              <span className="text-[10px] text-slate-500 font-medium">Tarif Sewa:</span>
+              <div className="text-sm font-mono font-extrabold text-emerald-800">
+                Rp {numAsli.toLocaleString('id-ID')}
+              </div>
               <div className="text-[10px] font-bold text-slate-500">
                 / {tenant.tipePeriode === 'bulanan' ? 'bulan' : tenant.tipePeriode === 'tahunan' ? 'tahun' : 'musim'}
               </div>
             </div>
           </div>
-
-          {discountPercent > 0 && tenant.keteranganDiskon && (
-            <div className="mt-2.5 pt-2 border-t border-emerald-200/60 flex items-center gap-1.5 text-xs text-amber-900 bg-amber-50/80 px-2.5 py-1.5 rounded-lg border border-amber-200">
-              <Tag className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-              <span className="text-[11px] font-medium">
-                <strong>Rincian Biaya Operasional:</strong> {tenant.keteranganDiskon} (Alokasi Rp {calculatedDiscountAmount.toLocaleString('id-ID')})
-              </span>
-            </div>
-          )}
         </div>
 
         {/* Payment Form */}
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          {/* Nominal Asli Input (Sebelum Potongan) */}
-          <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2.5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Nominal Asli (Sebelum Potongan) <span className="text-rose-500">*</span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-500">
-                    Rp
-                  </span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="5000"
-                    required
-                    value={nominalAsli}
-                    onChange={(e) => handleNominalAsliChange(e.target.value)}
-                    placeholder="Masukkan nominal asli"
-                    className="w-full pl-9 pr-3 py-2 text-xs font-mono font-bold text-slate-900 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-emerald-900 mb-1">
-                  Nominal Setor ke Kas (Rp) <span className="text-rose-500">*</span>
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-700">
-                    Rp
-                  </span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="5000"
-                    required
-                    value={nominal}
-                    onChange={(e) => setNominal(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 text-sm font-mono font-extrabold text-emerald-950 bg-emerald-50/50 border border-emerald-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"
-                  />
-                </div>
+          {/* Nominal Pembayaran Input */}
+          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
+            <div>
+              <label className="block text-xs font-bold text-emerald-950 mb-1">
+                Nominal Pembayaran Sewa (Rp) <span className="text-rose-500">*</span>
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-700">
+                  Rp
+                </span>
+                <input
+                  type="number"
+                  min="0"
+                  step="5000"
+                  required
+                  value={nominal}
+                  onChange={(e) => setNominal(e.target.value)}
+                  placeholder="Masukkan jumlah yang dibayarkan"
+                  className="w-full pl-9 pr-3 py-2.5 text-sm font-mono font-extrabold text-emerald-950 bg-white border border-emerald-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                />
               </div>
             </div>
-
-            {/* Quick Option Buttons if Potongan Operasional > 0 */}
-            {discountPercent > 0 && (
-              <div className="pt-2 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2">
-                <span className="text-[11px] text-slate-600">
-                  Potongan Ops ({discountPercent}%): <strong>Rp {calculatedDiscountAmount.toLocaleString('id-ID')}</strong>
-                </span>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setNominal(numAsli)}
-                    className={`px-2 py-1 text-[10px] font-bold rounded-lg border transition cursor-pointer ${
-                      Number(nominal) === numAsli
-                        ? 'bg-slate-800 text-white border-slate-800'
-                        : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
-                    }`}
-                  >
-                    Gunakan Tarif Asli: Rp {numAsli.toLocaleString('id-ID')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setNominal(calculatedNetRate)}
-                    className={`px-2 py-1 text-[10px] font-bold rounded-lg border transition cursor-pointer ${
-                      Number(nominal) === calculatedNetRate
-                        ? 'bg-emerald-700 text-white border-emerald-700'
-                        : 'bg-white text-emerald-800 border-emerald-300 hover:bg-emerald-50'
-                    }`}
-                  >
-                    Gunakan Tarif Bersih: Rp {calculatedNetRate.toLocaleString('id-ID')}
-                  </button>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Tanggal Pembayaran & Periode */}

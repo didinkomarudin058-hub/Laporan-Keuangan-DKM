@@ -150,16 +150,9 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
   const monitorMonthYearKey = `${monitorYear}-${String(monitorMonth).padStart(2, '0')}`;
   const monitorPeriodLabel = `Bulan ${monitorMonthName} ${monitorYear}`;
 
-  // Helper to calculate tenant status for the monitored period
+  // Helper to calculate tenant status for the monitored period (Nominal Asli murni)
   const getTenantPaymentStatus = (tenant: LandTenant) => {
     const rawTarif = tenant.tarifSewa || 0;
-    const diskonPersen = tenant.diskonPersen || 0;
-    const nominalPotongan = (rawTarif * diskonPersen) / 100;
-    const tarifBersih =
-      tenant.tarifSetelahDiskon !== undefined
-        ? tenant.tarifSetelahDiskon
-        : Math.max(0, rawTarif - nominalPotongan);
-
     const payments = tenant.riwayatPembayaran || [];
 
     // Filter payments relevant for the monitored period
@@ -175,16 +168,16 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
     });
 
     const totalTerbayarPeriode = periodPayments.reduce((sum, p) => sum + (p.nominal || 0), 0);
-    const sisaKurangBayar = Math.max(0, tarifBersih - totalTerbayarPeriode);
+    const sisaKurangBayar = Math.max(0, rawTarif - totalTerbayarPeriode);
 
     let status: 'lunas' | 'cicilan' | 'belum_bayar' = 'belum_bayar';
-    if (totalTerbayarPeriode >= tarifBersih && tarifBersih > 0) {
+    if (totalTerbayarPeriode >= rawTarif && rawTarif > 0) {
       status = 'lunas';
     } else if (totalTerbayarPeriode > 0) {
       status = 'cicilan';
     }
 
-    const persentaseBayar = tarifBersih > 0 ? Math.min(100, Math.round((totalTerbayarPeriode / tarifBersih) * 100)) : 100;
+    const persentaseBayar = rawTarif > 0 ? Math.min(100, Math.round((totalTerbayarPeriode / rawTarif) * 100)) : 100;
 
     // Cek apakah menunggak (jika tanggal sekarang lewat dari jatuh tempo)
     const today = new Date();
@@ -195,9 +188,8 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
     const isPastDue = isCurrentOrPastMonth && today.getDate() > jatuhTempo && status !== 'lunas';
 
     return {
-      tarifBersih,
       rawTarif,
-      diskonPersen,
+      tarifBersih: rawTarif,
       totalTerbayarPeriode,
       sisaKurangBayar,
       status,
@@ -217,16 +209,16 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
   ) => {
     const rawTarif = tenant.tarifSewa || 0;
     const diskonPersen = tenant.diskonPersen || 0;
-    const nominalPotongan = (rawTarif * diskonPersen) / 100;
-    const tarifBersih =
-      tenant.tarifSetelahDiskon !== undefined
-        ? tenant.tarifSetelahDiskon
-        : Math.max(0, rawTarif - nominalPotongan);
+
+    let targetTarifAsli = rawTarif;
+    if (mode === 'tahunan' && tenant.tipePeriode === 'bulanan') {
+      targetTarifAsli = rawTarif * 12;
+    }
+    const nominalPotongan = (targetTarifAsli * diskonPersen) / 100;
+    const targetTagihanBersih = Math.max(0, targetTarifAsli - nominalPotongan);
 
     const payments = tenant.riwayatPembayaran || [];
     let hasilBayar = 0;
-    let targetTarifAsli = rawTarif;
-    let targetTagihanBersih = tarifBersih;
 
     if (mode === 'bulanan') {
       const monthKey = `${year}-${String(month).padStart(2, '0')}`;
@@ -247,15 +239,9 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
         (p) => p.tahunKey === year || p.periode.includes(yearStr) || p.tanggal.startsWith(yearStr)
       );
       hasilBayar = periodPayments.reduce((sum, p) => sum + (p.nominal || 0), 0);
-      if (tenant.tipePeriode === 'bulanan') {
-        targetTarifAsli = rawTarif * 12;
-        targetTagihanBersih = tarifBersih * 12;
-      }
     } else {
       // semua
       hasilBayar = tenant.totalTerbayar || payments.reduce((sum, p) => sum + (p.nominal || 0), 0);
-      targetTarifAsli = rawTarif;
-      targetTagihanBersih = tarifBersih;
     }
 
     const belumBayar = Math.max(0, targetTagihanBersih - hasilBayar);
@@ -266,16 +252,46 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
       status = 'cicilan';
     }
 
+    // Kolom sesuai format tabel rekap:
+    // Tagihan = targetTarifAsli
+    // Bayar = tarif asli yang dibayar (jika lunas = targetTarifAsli, jika cicilan = proporsional/hasil bayar, jika belum bayar = 0)
+    // Potongan = nominal potongan rupiah (jika lunas = nominalPotongan, jika belum bayar = 0)
+    // Jumlah Setelah Dipotong = kas bersih yang diterima (jika lunas = targetTagihanBersih, jika cicilan = hasilBayar, jika belum bayar = 0)
+    let nilaiBayar = 0;
+    let nilaiPotongan = 0;
+    let nilaiSetelahPotong = 0;
+
+    if (status === 'lunas') {
+      nilaiBayar = targetTarifAsli;
+      nilaiPotongan = nominalPotongan;
+      nilaiSetelahPotong = targetTagihanBersih;
+    } else if (status === 'cicilan') {
+      nilaiSetelahPotong = hasilBayar;
+      if (targetTagihanBersih > 0 && nominalPotongan > 0) {
+        nilaiPotongan = Math.round((hasilBayar / targetTagihanBersih) * nominalPotongan);
+        nilaiBayar = hasilBayar + nilaiPotongan;
+      } else {
+        nilaiBayar = hasilBayar;
+        nilaiPotongan = 0;
+      }
+    } else {
+      nilaiBayar = 0;
+      nilaiPotongan = 0;
+      nilaiSetelahPotong = 0;
+    }
+
     return {
       rawTarif,
       diskonPersen,
       nominalPotongan,
-      tarifBersih,
       targetTarifAsli,
       targetTagihanBersih,
       hasilBayar,
       belumBayar,
       status,
+      nilaiBayar,
+      nilaiPotongan,
+      nilaiSetelahPotong,
     };
   };
 
@@ -365,10 +381,10 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
   }, [landTenants]);
 
   const rekapStats = useMemo(() => {
-    let totalTarifAsli = 0;
+    let totalTagihan = 0;
+    let totalBayar = 0;
     let totalPotongan = 0;
-    let totalTagihanBersih = 0;
-    let totalHasilBayar = 0;
+    let totalSetelahDipotong = 0;
     let totalBelumBayar = 0;
     let countLunas = 0;
     let countCicilan = 0;
@@ -376,10 +392,10 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
 
     landTenants.forEach((t) => {
       const data = getTenantRekapData(t, rekapPeriodMode, rekapSelectedMonth, rekapSelectedYear);
-      totalTarifAsli += data.targetTarifAsli;
-      totalPotongan += (data.targetTarifAsli - data.targetTagihanBersih);
-      totalTagihanBersih += data.targetTagihanBersih;
-      totalHasilBayar += data.hasilBayar;
+      totalTagihan += data.targetTarifAsli;
+      totalBayar += data.nilaiBayar;
+      totalPotongan += data.nilaiPotongan;
+      totalSetelahDipotong += data.nilaiSetelahPotong;
       totalBelumBayar += data.belumBayar;
       if (data.status === 'lunas') countLunas++;
       else if (data.status === 'cicilan') countCicilan++;
@@ -387,10 +403,10 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
     });
 
     return {
-      totalTarifAsli,
+      totalTagihan,
+      totalBayar,
       totalPotongan,
-      totalTagihanBersih,
-      totalHasilBayar,
+      totalSetelahDipotong,
       totalBelumBayar,
       countLunas,
       countCicilan,
@@ -1114,41 +1130,14 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
                         </div>
                       </div>
 
-                      {/* Tarif Breakdown Card */}
-                      <div className="p-3 bg-emerald-50/50 rounded-xl border border-emerald-100 space-y-1.5">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-slate-500 text-[11px]">Tarif Normal:</span>
-                          <span
-                            className={`font-mono ${
-                              diskon > 0
-                                ? 'line-through text-slate-400 text-[11px]'
-                                : 'font-bold text-slate-800'
-                            }`}
-                          >
-                            Rp {normal.toLocaleString('id-ID')}
-                          </span>
-                        </div>
-
-                        {diskon > 0 && (
-                          <div className="flex items-center justify-between text-xs text-amber-800 font-medium">
-                            <span className="text-[11px] flex items-center gap-1">
-                              <Tag className="w-3 h-3 text-amber-600" />
-                              <span>Potongan Ops ({diskon}%):</span>
-                            </span>
-                            <span className="font-mono text-rose-600 text-[11px]">
-                              - Rp {nominalPotongan.toLocaleString('id-ID')}
-                            </span>
-                          </div>
-                        )}
-
-                        <div className="pt-1.5 border-t border-emerald-200/60 flex items-center justify-between">
-                          <span className="text-xs font-bold text-emerald-950">
-                            Tarif Bersih / {tenant.tipePeriode === 'bulanan' ? 'bln' : tenant.tipePeriode === 'tahunan' ? 'thn' : 'periode'}:
-                          </span>
-                          <span className="text-sm font-mono font-black text-emerald-900">
-                            Rp {bersih.toLocaleString('id-ID')}
-                          </span>
-                        </div>
+                      {/* Tarif Sewa Box */}
+                      <div className="p-3 bg-emerald-50/50 rounded-xl border border-emerald-100 flex items-center justify-between">
+                        <span className="text-xs font-bold text-emerald-950">
+                          Tarif Sewa / {tenant.tipePeriode === 'bulanan' ? 'bln' : tenant.tipePeriode === 'tahunan' ? 'thn' : 'periode'}:
+                        </span>
+                        <span className="text-sm font-mono font-black text-emerald-900">
+                          Rp {normal.toLocaleString('id-ID')}
+                        </span>
                       </div>
 
                       {/* Total Terbayar info */}
@@ -1426,25 +1415,26 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
                   <table className="w-full text-left border-collapse text-xs border border-slate-300">
                     <thead>
                       <tr className="bg-slate-100 border-b-2 border-slate-300 text-slate-800 font-bold">
-                        <th className="py-2 px-2 border-r border-slate-300 text-center w-8">No</th>
-                        <th className="py-2 px-2.5 border-r border-slate-300">Nama Penyewa & Kontak</th>
-                        <th className="py-2 px-2.5 border-r border-slate-300">Objek Lahan & Usaha</th>
-                        <th className="py-2 px-2 text-right border-r border-slate-300">Tarif Asli</th>
-                        <th className="py-2 px-1.5 text-center border-r border-slate-300 w-16">Potongan</th>
-                        <th className="py-2 px-2 text-right border-r border-slate-300">Tagihan Bersih</th>
-                        <th className="py-2 px-2.5 text-right border-r border-slate-300 bg-emerald-50/70 text-emerald-950">
-                          Hasil Bayar
+                        <th className="py-2.5 px-2 border-r border-slate-300 text-center w-9">NO</th>
+                        <th className="py-2.5 px-3 border-r border-slate-300">Nama Penyewa</th>
+                        <th className="py-2.5 px-3 border-r border-slate-300">Objek Lahan</th>
+                        <th className="py-2.5 px-3 text-right border-r border-slate-300">Tagihan</th>
+                        <th className="py-2.5 px-3 text-right border-r border-slate-300 bg-blue-50/50 text-blue-950">
+                          Bayar
                         </th>
-                        <th className="py-2 px-2.5 text-right border-r border-slate-300 bg-rose-50/70 text-rose-950">
-                          Belum Bayar
+                        <th className="py-2.5 px-3 text-right border-r border-slate-300 bg-amber-50/50 text-amber-950">
+                          Potongan
                         </th>
-                        <th className="py-2 px-2 text-center w-24">Status</th>
+                        <th className="py-2.5 px-3 text-right border-r border-slate-300 bg-emerald-50/70 text-emerald-950">
+                          Jumlah Setelah Dipotong
+                        </th>
+                        <th className="py-2.5 px-2.5 text-center w-28">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200">
                       {rekapFilteredTenants.length === 0 ? (
                         <tr>
-                          <td colSpan={9} className="py-8 text-center text-slate-500 italic">
+                          <td colSpan={8} className="py-8 text-center text-slate-500 italic">
                             Tidak ada data sewa lahan pada periode ini.
                           </td>
                         </tr>
@@ -1459,10 +1449,10 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
 
                           return (
                             <tr key={t.id} className="hover:bg-slate-50">
-                              <td className="py-2 px-2 text-center font-medium text-slate-500 border-r border-slate-200">
+                              <td className="py-2.5 px-2 text-center font-medium text-slate-600 border-r border-slate-200">
                                 {idx + 1}
                               </td>
-                              <td className="py-2 px-2.5 border-r border-slate-200">
+                              <td className="py-2.5 px-3 border-r border-slate-200">
                                 <strong className="text-slate-900 block font-semibold text-xs">
                                   {t.namaPenyewa}
                                 </strong>
@@ -1470,7 +1460,7 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
                                   {t.nomorTelepon || '-'}
                                 </span>
                               </td>
-                              <td className="py-2 px-2.5 border-r border-slate-200">
+                              <td className="py-2.5 px-3 border-r border-slate-200">
                                 <span className="font-semibold text-slate-800 block text-xs">
                                   {t.namaLahan}
                                 </span>
@@ -1479,47 +1469,44 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
                                   {t.luasLahan ? ` (${t.luasLahan})` : ''}
                                 </span>
                               </td>
-                              <td className="py-2 px-2 text-right font-mono font-medium text-slate-700 border-r border-slate-200">
+                              <td className="py-2.5 px-3 text-right font-mono font-medium text-slate-800 border-r border-slate-200">
                                 Rp {d.targetTarifAsli.toLocaleString('id-ID')}
                               </td>
-                              <td className="py-2 px-1.5 text-center border-r border-slate-200">
-                                {d.diskonPersen > 0 ? (
-                                  <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-300 font-mono">
-                                    {d.diskonPersen}%
-                                  </span>
+                              <td className="py-2.5 px-3 text-right font-mono font-semibold text-blue-900 bg-blue-50/20 border-r border-slate-200">
+                                {d.nilaiBayar > 0 ? (
+                                  `Rp ${d.nilaiBayar.toLocaleString('id-ID')}`
                                 ) : (
-                                  <span className="text-slate-400">-</span>
+                                  <span className="text-slate-400 font-normal">-----</span>
                                 )}
                               </td>
-                              <td className="py-2 px-2 text-right font-mono font-semibold text-slate-900 border-r border-slate-200">
-                                Rp {d.targetTagihanBersih.toLocaleString('id-ID')}
-                              </td>
-                              <td className="py-2 px-2.5 text-right font-mono font-bold text-emerald-900 bg-emerald-50/30 border-r border-slate-200">
-                                Rp {d.hasilBayar.toLocaleString('id-ID')}
-                              </td>
-                              <td className="py-2 px-2.5 text-right font-mono font-bold border-r border-slate-200">
-                                {d.belumBayar > 0 ? (
-                                  <span className="text-rose-700">
-                                    Rp {d.belumBayar.toLocaleString('id-ID')}
-                                  </span>
+                              <td className="py-2.5 px-3 text-right font-mono font-semibold text-amber-900 bg-amber-50/20 border-r border-slate-200">
+                                {d.nilaiPotongan > 0 ? (
+                                  `Rp ${d.nilaiPotongan.toLocaleString('id-ID')}`
                                 ) : (
-                                  <span className="text-slate-400">Rp 0</span>
+                                  <span className="text-slate-400 font-normal">-----</span>
                                 )}
                               </td>
-                              <td className="py-2 px-2 text-center">
+                              <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-900 bg-emerald-50/30 border-r border-slate-200">
+                                {d.nilaiSetelahPotong > 0 ? (
+                                  `Rp ${d.nilaiSetelahPotong.toLocaleString('id-ID')}`
+                                ) : (
+                                  <span className="text-slate-400 font-normal">-----</span>
+                                )}
+                              </td>
+                              <td className="py-2.5 px-2.5 text-center">
                                 {d.status === 'lunas' && (
                                   <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300">
-                                    LUNAS
+                                    Lunas
                                   </span>
                                 )}
                                 {d.status === 'cicilan' && (
                                   <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300">
-                                    KURANG BAYAR
+                                    Kurang Bayar
                                   </span>
                                 )}
                                 {d.status === 'belum_bayar' && (
                                   <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-900 border border-rose-300">
-                                    BELUM BAYAR
+                                    Belum Bayar
                                   </span>
                                 )}
                               </td>
@@ -1530,25 +1517,22 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
                     </tbody>
                     <tfoot>
                       <tr className="bg-slate-100 border-t-2 border-slate-400 font-bold text-slate-900">
-                        <td colSpan={3} className="py-2 px-2.5 text-right border-r border-slate-300 uppercase tracking-wider text-[11px]">
+                        <td colSpan={3} className="py-2.5 px-3 text-right border-r border-slate-300 uppercase tracking-wider text-[11px]">
                           TOTAL KESELURUHAN:
                         </td>
-                        <td className="py-2 px-2 text-right font-mono font-bold text-slate-800 border-r border-slate-300 text-xs">
-                          Rp {rekapStats.totalTarifAsli.toLocaleString('id-ID')}
+                        <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900 border-r border-slate-300 text-xs">
+                          Rp {rekapStats.totalTagihan.toLocaleString('id-ID')}
                         </td>
-                        <td className="py-2 px-1.5 text-center font-mono text-[10px] text-amber-800 border-r border-slate-300">
-                          {rekapStats.totalPotongan > 0 ? `-Rp ${rekapStats.totalPotongan.toLocaleString('id-ID')}` : '-'}
+                        <td className="py-2.5 px-3 text-right font-mono font-bold text-blue-950 bg-blue-100/40 border-r border-slate-300 text-xs">
+                          Rp {rekapStats.totalBayar.toLocaleString('id-ID')}
                         </td>
-                        <td className="py-2 px-2 text-right font-mono font-bold text-slate-900 border-r border-slate-300 text-xs">
-                          Rp {rekapStats.totalTagihanBersih.toLocaleString('id-ID')}
+                        <td className="py-2.5 px-3 text-right font-mono font-bold text-amber-950 bg-amber-100/40 border-r border-slate-300 text-xs">
+                          Rp {rekapStats.totalPotongan.toLocaleString('id-ID')}
                         </td>
-                        <td className="py-2 px-2.5 text-right font-mono font-black text-emerald-950 bg-emerald-100/50 border-r border-slate-300 text-xs">
-                          Rp {rekapStats.totalHasilBayar.toLocaleString('id-ID')}
+                        <td className="py-2.5 px-3 text-right font-mono font-black text-emerald-950 bg-emerald-100/50 border-r border-slate-300 text-xs">
+                          Rp {rekapStats.totalSetelahDipotong.toLocaleString('id-ID')}
                         </td>
-                        <td className="py-2 px-2.5 text-right font-mono font-black text-rose-950 bg-rose-100/50 border-r border-slate-300 text-xs">
-                          Rp {rekapStats.totalBelumBayar.toLocaleString('id-ID')}
-                        </td>
-                        <td className="py-2 px-2 text-center text-[10px] font-bold text-slate-700">
+                        <td className="py-2.5 px-2.5 text-center text-[10px] font-bold text-slate-700">
                           {rekapStats.countLunas}/{rekapStats.totalPenyewa} Lunas
                         </td>
                       </tr>
@@ -1557,28 +1541,27 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
                 </div>
 
                 {/* Summary Ringkasan Box */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 bg-slate-50 border border-slate-300 p-3 rounded-lg text-xs">
-                  <div className="border-b sm:border-b-0 sm:border-r border-slate-300 pb-2 sm:pb-0 sm:pr-2">
-                    <p className="text-[10px] uppercase font-bold text-slate-500">Target Tagihan Sewa:</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 border border-slate-300 p-3.5 rounded-lg text-xs">
+                  <div className="border-b sm:border-b-0 sm:border-r border-slate-300 pb-2.5 sm:pb-0 sm:pr-2.5">
+                    <p className="text-[10px] uppercase font-bold text-slate-500">Total Tagihan (Tarif Asli):</p>
                     <p className="text-sm font-mono font-extrabold text-slate-900 mt-0.5">
-                      Rp {rekapStats.totalTagihanBersih.toLocaleString('id-ID')}
+                      Rp {rekapStats.totalTagihan.toLocaleString('id-ID')}
                     </p>
                     <p className="text-[10px] text-slate-500 mt-0.5">
-                      {rekapStats.totalPenyewa} Objek
-                      {rekapStats.totalPotongan > 0 && ` (Potongan: Rp ${rekapStats.totalPotongan.toLocaleString('id-ID')})`}
+                      {rekapStats.totalPenyewa} Total Objek Sewa
                     </p>
                   </div>
-                  <div className="border-b sm:border-b-0 sm:border-r border-slate-300 pb-2 sm:pb-0 sm:pr-2">
-                    <p className="text-[10px] uppercase font-bold text-emerald-800">Total Kas Hasil Bayar:</p>
+                  <div className="border-b sm:border-b-0 sm:border-r border-slate-300 pb-2.5 sm:pb-0 sm:pr-2.5">
+                    <p className="text-[10px] uppercase font-bold text-emerald-800">Jumlah Setelah Dipotong (Kas Masuk):</p>
                     <p className="text-sm font-mono font-extrabold text-emerald-950 mt-0.5">
-                      Rp {rekapStats.totalHasilBayar.toLocaleString('id-ID')}
+                      Rp {rekapStats.totalSetelahDipotong.toLocaleString('id-ID')}
                     </p>
                     <p className="text-[10px] text-emerald-700 font-semibold mt-0.5">
-                      {rekapStats.countLunas} Lunas • {rekapStats.countCicilan} Kurang Bayar
+                      {rekapStats.countLunas} Lunas • Potongan: Rp {rekapStats.totalPotongan.toLocaleString('id-ID')}
                     </p>
                   </div>
                   <div>
-                    <p className="text-[10px] uppercase font-bold text-rose-800">Total Belum Bayar (Piutang):</p>
+                    <p className="text-[10px] uppercase font-bold text-rose-800">Sisa Belum Bayar (Piutang):</p>
                     <p className="text-sm font-mono font-extrabold text-rose-950 mt-0.5">
                       Rp {rekapStats.totalBelumBayar.toLocaleString('id-ID')}
                     </p>
