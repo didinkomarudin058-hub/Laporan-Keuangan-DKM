@@ -1,5 +1,21 @@
 import React, { useState } from 'react';
-import { X, Download, ZoomIn, ZoomOut, RotateCw, ExternalLink, Calendar, Tag, Wallet, CreditCard, DollarSign } from 'lucide-react';
+import { 
+  X, 
+  Download, 
+  ZoomIn, 
+  ZoomOut, 
+  RotateCw, 
+  Phone, 
+  Copy, 
+  Check, 
+  Share2,
+  Calendar, 
+  Tag, 
+  Wallet, 
+  CreditCard, 
+  DollarSign,
+  Loader2
+} from 'lucide-react';
 import { Transaction } from '../types';
 
 interface ReceiptModalProps {
@@ -15,6 +31,9 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
 }) => {
   const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [rotation, setRotation] = useState<number>(0);
+  const [isSharing, setIsSharing] = useState<boolean>(false);
+  const [copied, setCopied] = useState<boolean>(false);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   if (!isOpen || !transaction || !transaction.buktiUrl) return null;
 
@@ -55,6 +74,71 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
     return dateStr;
   };
 
+  const handleShareWhatsApp = async () => {
+    if (!transaction.buktiUrl) return;
+    setIsSharing(true);
+
+    const waText = 
+      `*BUKTI TRANSAKSI KAS DKM*\n` +
+      `• No. Ref: *${transaction.id}*\n` +
+      `• Tanggal: *${formatDateIndo(transaction.tanggal)}*\n` +
+      `• Keterangan: *${transaction.keterangan}*\n` +
+      `• Kategori: ${transaction.kategori} (${transaction.danaKat})\n` +
+      `• Nominal: *${transaction.jenis === 'pemasukan' ? '+' : '-'} Rp ${transaction.jumlah.toLocaleString('id-ID')}*\n` +
+      (transaction.donatur ? `• Donatur/Pihak: *${transaction.donatur}*\n` : '') +
+      `• Metode: ${transaction.metodePembayaran || 'Tunai'}\n\n` +
+      `_Tercatat pada Sistem Keuangan DKM Masjid_`;
+
+    try {
+      // Try fetching the image to create a File for Web Share
+      const res = await fetch(transaction.buktiUrl);
+      const blob = await res.blob();
+      const file = new File([blob], `Bukti-${transaction.id}.jpg`, { type: blob.type || 'image/jpeg' });
+
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            title: `Bukti Transaksi - ${transaction.id}`,
+            text: waText,
+            files: [file],
+          });
+          setIsSharing(false);
+          return;
+        } catch (err: any) {
+          if (err.name === 'AbortError') {
+            setIsSharing(false);
+            return;
+          }
+        }
+      }
+
+      // Fallback: Copy to clipboard + download + open wa.me
+      try {
+        if (navigator.clipboard && (window as any).ClipboardItem) {
+          const item = new (window as any).ClipboardItem({ [blob.type || 'image/jpeg']: blob });
+          await navigator.clipboard.write([item]);
+        }
+      } catch (_) {}
+
+      // Trigger download
+      handleDownload();
+
+      // Open WhatsApp web
+      const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(waText)}`;
+      window.open(waUrl, '_blank');
+
+      setToastMsg('Gambar telah diunduh! Silakan lampirkan gambar pada chat WhatsApp.');
+      setTimeout(() => setToastMsg(null), 5000);
+    } catch (e) {
+      console.error(e);
+      // Direct WA open fallback
+      const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(waText)}`;
+      window.open(waUrl, '_blank');
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-3 sm:p-6 overflow-y-auto">
       <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden my-auto flex flex-col max-h-[90vh]">
@@ -76,6 +160,19 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
           <div className="flex items-center gap-1.5">
             <button
+              onClick={handleShareWhatsApp}
+              disabled={isSharing}
+              className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white flex items-center gap-1 transition cursor-pointer"
+              title="Bagi Gambar ke WhatsApp"
+            >
+              {isSharing ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Phone className="w-3.5 h-3.5 text-emerald-200 fill-emerald-200/30" />
+              )}
+              <span className="hidden sm:inline">WhatsApp</span>
+            </button>
+            <button
               onClick={handleDownload}
               className="px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-semibold text-white flex items-center gap-1 transition cursor-pointer"
               title="Unduh Gambar"
@@ -91,6 +188,13 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Toast info */}
+        {toastMsg && (
+          <div className="bg-emerald-700 text-white px-4 py-1.5 text-xs text-center font-medium animate-in fade-in">
+            {toastMsg}
+          </div>
+        )}
 
         {/* Toolbar Controls */}
         <div className="bg-slate-100 border-b border-slate-200 px-4 py-2 flex items-center justify-between text-xs text-slate-700">

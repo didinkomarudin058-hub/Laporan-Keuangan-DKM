@@ -1,5 +1,20 @@
-import React, { useState, useEffect } from 'react';
-import { X, Printer, Phone, Building2, CheckCircle2, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  X, 
+  Printer, 
+  Phone, 
+  Building2, 
+  CheckCircle2, 
+  AlertCircle, 
+  Share2, 
+  Download, 
+  Copy, 
+  Check, 
+  Loader2, 
+  ImageIcon,
+  Send
+} from 'lucide-react';
+import html2canvas from 'html2canvas';
 import { LandTenant, MosqueProfile, TenantPaymentRecord } from '../types';
 
 interface TenantReceiptModalProps {
@@ -72,6 +87,11 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
   const [statusBayar, setStatusBayar] = useState<'lunas' | 'belum_lunas'>('lunas');
   const [customNominal, setCustomNominal] = useState<number>(0);
   const [customSisa, setCustomSisa] = useState<number>(0);
+
+  const [isSharing, setIsSharing] = useState<boolean>(false);
+  const [isDownloadingImg, setIsDownloadingImg] = useState<boolean>(false);
+  const [isCopied, setIsCopied] = useState<boolean>(false);
+  const [shareToast, setShareToast] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen && tenant) {
@@ -146,35 +166,193 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
     return 'Bekasi';
   })();
 
-  const handlePrint = () => {
-    window.print();
+  const generateImageBlob = async (): Promise<Blob | null> => {
+    const cardEl = document.getElementById('kwitansi-print-card');
+    if (!cardEl) return null;
+
+    const canvas = await html2canvas(cardEl, {
+      scale: 3, // Ultra-crisp rendering
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+    });
+
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => resolve(blob), 'image/png', 0.95);
+    });
   };
 
-  const handleSendWhatsApp = () => {
+  const getWaTextMessage = () => {
+    return (
+      `*BUKTI PEMBAYARAN SEWA*\n` +
+      `*${mosqueProfile.namaMasjid}*\n\n` +
+      `Assalamu'alaikum Wr. Wb. Bpk/Ibu *${tenant.namaPenyewa}*,\n` +
+      (isLunas
+        ? `Terima kasih telah melakukan pembayaran sewa lahan (*LUNAS*):\n`
+        : `Terima kasih telah melakukan pembayaran sewa lahan (*CICILAN / SEBAGIAN*):\n`) +
+      `• No. Kwitansi: *${receiptNumber}*\n` +
+      `• Keterangan: Bayar sewa bulan *${bulanTahun}*\n` +
+      `• Objek: *${tenant.namaLahan}* (${tenant.peruntukanUsaha || tenant.kategori || 'Sewa Lahan'})\n` +
+      `• Luas: ${tenant.luasLahan || '-'}\n` +
+      `• Tarif Sewa Asli: Rp ${tarifSewaAsli.toLocaleString('id-ID')}\n` +
+      `• Jumlah Diterima: *Rp ${nominal.toLocaleString('id-ID')}* (${terbilangText})\n` +
+      (!isLunas ? `• Sisa Tagihan: *Rp ${sisaKurangBayar.toLocaleString('id-ID')}*\n` : '') +
+      `• Status: *${isLunas ? 'LUNAS (Tercatat di Kas DKM)' : 'BELUM LUNAS (Kurang Bayar)'}*\n\n` +
+      (!isLunas
+        ? `Mohon dapat melunasi sisa tagihan sebelum jatuh tempo. Jazakumullah khairan katsiran.\n\n`
+        : `Semoga usaha yang dijalankan berkah dan lancar selalu. Aamiin.\n\n`) +
+      `_Pengurus DKM / Sie Aset & Wakaf ${mosqueProfile.namaMasjid}_`
+    );
+  };
+
+  const getCleanPhone = () => {
     let cleanPhone = (tenant.nomorTelepon || '').replace(/[^0-9]/g, '');
     if (cleanPhone.startsWith('0')) {
       cleanPhone = '62' + cleanPhone.slice(1);
     }
+    return cleanPhone;
+  };
 
-    const message = encodeURIComponent(
-      `*BUKTI PEMBAYARAN SEWA*\n` +
-      `*${mosqueProfile.namaMasjid}*\n\n` +
-      `Assalamu'alaikum Wr. Wb. Bpk/Ibu ${tenant.namaPenyewa},\n` +
-      (isLunas
-        ? `Terima kasih telah melakukan pembayaran sewa:\n`
-        : `Terima kasih telah melakukan pembayaran sewa (Cicilan / Sebagian):\n`) +
-      `• No. Kwitansi: ${receiptNumber}\n` +
-      `• Keterangan: Bayar sewa bulan ${bulanTahun}\n` +
-      `• Objek: ${tenant.namaLahan} (${tenant.kategori || tenant.peruntukanUsaha || 'Sewa Lahan'})\n` +
-      `• Luas: ${tenant.luasLahan || '-'}\n` +
-      `• Tarif Sewa Asli: Rp ${tarifSewaAsli.toLocaleString('id-ID')}\n` +
-      `• Jumlah Diterima (Masuk): Rp ${nominal.toLocaleString('id-ID')} (${terbilangText})\n` +
-      (!isLunas ? `• Sisa Belum Bayar: Rp ${sisaKurangBayar.toLocaleString('id-ID')}\n` : '') +
-      `• Status: ${isLunas ? 'LUNAS (Tercatat di Kas DKM)' : 'BELUM LUNAS (Kurang Bayar)'}\n\n` +
-      (!isLunas ? `Mohon dapat melunasi sisa tagihan sebelum jatuh tempo. Jazakumullah khairan katsiran.\n\n` : `Semoga usaha yang dijalankan berkah dan lancar selalu. Aamiin.\n`) +
-      `_Pengurus DKM / Sie Aset & Wakaf ${mosqueProfile.namaMasjid}_`
-    );
-    window.open(`https://wa.me/${cleanPhone}?text=${message}`, '_blank');
+  // 1. Share WhatsApp with Image File (or auto-download + open chat)
+  const handleShareWhatsAppImage = async () => {
+    setIsSharing(true);
+    setShareToast('Menyiapkan gambar kwitansi beresolusi tinggi...');
+
+    try {
+      const blob = await generateImageBlob();
+      if (!blob) {
+        alert('Gagal mengambil gambar kwitansi. Silakan coba lagi.');
+        setIsSharing(false);
+        setShareToast(null);
+        return;
+      }
+
+      const safeName = tenant.namaPenyewa.replace(/[^a-zA-Z0-9]/g, '_');
+      const filename = `Kwitansi-${safeName}-${receiptNumber}.png`;
+      const imageFile = new File([blob], filename, { type: 'image/png' });
+      const cleanPhone = getCleanPhone();
+      const waMessage = getWaTextMessage();
+
+      // Check if browser supports sharing files directly to WhatsApp via Web Share API (Android/iOS/supported desktop)
+      if (navigator.canShare && navigator.canShare({ files: [imageFile] })) {
+        try {
+          await navigator.share({
+            title: `Kwitansi Pembayaran Sewa - ${tenant.namaPenyewa}`,
+            text: waMessage,
+            files: [imageFile],
+          });
+          setShareToast('Gambar kwitansi berhasil dikirim!');
+          setTimeout(() => setShareToast(null), 3000);
+          setIsSharing(false);
+          return;
+        } catch (err: any) {
+          if (err.name === 'AbortError') {
+            setIsSharing(false);
+            setShareToast(null);
+            return;
+          }
+        }
+      }
+
+      // Fallback for browsers that do not support navigator.share files (e.g. PC browser):
+      // A. Copy image to clipboard for instant Ctrl+V
+      try {
+        if (navigator.clipboard && (window as any).ClipboardItem) {
+          const item = new (window as any).ClipboardItem({ 'image/png': blob });
+          await navigator.clipboard.write([item]);
+        }
+      } catch (_) {}
+
+      // B. Trigger automatic download of the PNG file
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+
+      // C. Open WhatsApp with pre-filled message text
+      const waUrl = cleanPhone
+        ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(waMessage)}`
+        : `https://api.whatsapp.com/send?text=${encodeURIComponent(waMessage)}`;
+
+      window.open(waUrl, '_blank');
+
+      setShareToast(
+        'Gambar kwitansi telah diunduh & disalin ke clipboard! Silakan Paste (Ctrl+V) atau lampirkan gambar di chat WhatsApp.'
+      );
+      setTimeout(() => setShareToast(null), 6500);
+    } catch (error) {
+      console.error('Error sharing receipt image:', error);
+      alert('Terjadi kesalahan saat memproses gambar kwitansi.');
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  // 2. Download Image PNG
+  const handleDownloadImage = async () => {
+    setIsDownloadingImg(true);
+    try {
+      const blob = await generateImageBlob();
+      if (!blob) return;
+      const safeName = tenant.namaPenyewa.replace(/[^a-zA-Z0-9]/g, '_');
+      const filename = `Kwitansi-${safeName}-${receiptNumber}.png`;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+
+      setShareToast('Gambar kwitansi PNG berhasil diunduh!');
+      setTimeout(() => setShareToast(null), 3000);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsDownloadingImg(false);
+    }
+  };
+
+  // 3. Copy Image to Clipboard
+  const handleCopyImage = async () => {
+    try {
+      const blob = await generateImageBlob();
+      if (!blob) return;
+      if (navigator.clipboard && (window as any).ClipboardItem) {
+        const item = new (window as any).ClipboardItem({ 'image/png': blob });
+        await navigator.clipboard.write([item]);
+        setIsCopied(true);
+        setShareToast('Gambar kwitansi berhasil disalin ke clipboard! Siap di-paste (Ctrl+V).');
+        setTimeout(() => {
+          setIsCopied(false);
+          setShareToast(null);
+        }, 3500);
+      } else {
+        alert('Fitur salin gambar tidak didukung di browser ini. Silakan gunakan tombol Unduh.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Gagal menyalin gambar.');
+    }
+  };
+
+  // 4. Send WhatsApp text only
+  const handleSendWhatsAppTextOnly = () => {
+    const cleanPhone = getCleanPhone();
+    const message = encodeURIComponent(getWaTextMessage());
+    const waUrl = cleanPhone
+      ? `https://wa.me/${cleanPhone}?text=${message}`
+      : `https://api.whatsapp.com/send?text=${message}`;
+    window.open(waUrl, '_blank');
+  };
+
+  const handlePrint = () => {
+    window.print();
   };
 
   return (
@@ -207,7 +385,6 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
                   setCustomNominal(tarifSewaAsli);
                   setCustomSisa(0);
                 } else if (customNominal === tarifSewaAsli) {
-                  // Set default partial to 50% if currently equal to full rate
                   const half = Math.round(tarifSewaAsli / 2);
                   setCustomNominal(half);
                   setCustomSisa(tarifSewaAsli - half);
@@ -253,26 +430,14 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
               />
             </div>
 
-            {tenant.nomorTelepon && (
-              <button
-                type="button"
-                onClick={handleSendWhatsApp}
-                className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-[11px] font-bold transition flex items-center gap-1 cursor-pointer"
-                title="Kirim ke WhatsApp Penyewa"
-              >
-                <Phone className="w-3 h-3" />
-                <span className="hidden sm:inline">WhatsApp</span>
-              </button>
-            )}
-
             <button
               type="button"
               onClick={handlePrint}
-              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-[11px] font-bold transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+              className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-md text-[11px] font-bold transition flex items-center gap-1 cursor-pointer border border-slate-700"
               title="Cetak atau Simpan PDF"
             >
               <Printer className="w-3.5 h-3.5" />
-              <span>Cetak / PDF</span>
+              <span className="hidden sm:inline">Cetak / PDF</span>
             </button>
 
             <button
@@ -285,6 +450,23 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Share Toast Banner Notification */}
+        {shareToast && (
+          <div className="bg-emerald-800 text-white px-4 py-2 text-xs flex items-center justify-between gap-2 animate-in fade-in slide-in-from-top-2">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-300 shrink-0" />
+              <span className="font-medium leading-tight">{shareToast}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShareToast(null)}
+              className="text-emerald-200 hover:text-white p-0.5"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
 
         {/* Kwitansi Body (Printable Card) */}
         <div className="overflow-y-auto p-3 sm:p-4 bg-slate-50/50 flex-1">
@@ -457,6 +639,92 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
                 </p>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Modal Footer Sharing Action Bar (Print:hidden) */}
+        <div className="p-3 sm:p-3.5 bg-slate-900 border-t border-slate-800 print:hidden shrink-0 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {/* 1. Primary WhatsApp Image Share */}
+            <button
+              type="button"
+              disabled={isSharing}
+              onClick={handleShareWhatsAppImage}
+              className="flex-1 sm:flex-none px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs rounded-lg shadow-sm transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              title="Kirim Gambar Kwitansi ke WhatsApp (Mobile Share / Download + Buka WA)"
+            >
+              {isSharing ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-white" />
+                  <span>Memproses Gambar...</span>
+                </>
+              ) : (
+                <>
+                  <Phone className="w-4 h-4 text-emerald-200 fill-emerald-200/40" />
+                  <span>Bagi Gambar ke WhatsApp</span>
+                </>
+              )}
+            </button>
+
+            {/* 2. Download Image PNG */}
+            <button
+              type="button"
+              disabled={isDownloadingImg}
+              onClick={handleDownloadImage}
+              className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+              title="Unduh file gambar kwitansi format PNG"
+            >
+              {isDownloadingImg ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Download className="w-3.5 h-3.5 text-emerald-400" />
+              )}
+              <span className="hidden md:inline">Unduh Gambar (PNG)</span>
+              <span className="md:hidden">Unduh PNG</span>
+            </button>
+
+            {/* 3. Copy Image to Clipboard */}
+            <button
+              type="button"
+              onClick={handleCopyImage}
+              className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 transition flex items-center justify-center gap-1.5 cursor-pointer"
+              title="Salin gambar ke Clipboard untuk Paste (Ctrl+V) langsung"
+            >
+              {isCopied ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-emerald-300">Tersalin!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5 text-slate-300" />
+                  <span className="hidden md:inline">Salin Gambar</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          <div className="flex items-center gap-1.5 justify-end">
+            {/* 4. Text Only WA link */}
+            {tenant.nomorTelepon && (
+              <button
+                type="button"
+                onClick={handleSendWhatsAppTextOnly}
+                className="px-2.5 py-2 text-slate-400 hover:text-slate-200 text-xs font-medium transition flex items-center gap-1 cursor-pointer"
+                title="Kirim hanya teks rincian tanpa gambar"
+              >
+                <Send className="w-3 h-3" />
+                <span className="hidden sm:inline">Teks Saja</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-lg transition cursor-pointer"
+            >
+              Tutup
+            </button>
           </div>
         </div>
       </div>
