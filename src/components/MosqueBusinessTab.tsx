@@ -244,9 +244,9 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
       hasilBayar = tenant.totalTerbayar || payments.reduce((sum, p) => sum + (p.nominal || 0), 0);
     }
 
-    const belumBayar = Math.max(0, targetTagihanBersih - hasilBayar);
+    const belumBayar = Math.max(0, targetTarifAsli - hasilBayar);
     let status: 'lunas' | 'cicilan' | 'belum_bayar' = 'belum_bayar';
-    if (hasilBayar >= targetTagihanBersih && targetTagihanBersih > 0) {
+    if (hasilBayar >= targetTarifAsli && targetTarifAsli > 0) {
       status = 'lunas';
     } else if (hasilBayar > 0) {
       status = 'cicilan';
@@ -254,26 +254,17 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
 
     // Kolom sesuai format tabel rekap:
     // Tagihan = targetTarifAsli
-    // Bayar = tarif asli yang dibayar (jika lunas = targetTarifAsli, jika cicilan = proporsional/hasil bayar, jika belum bayar = 0)
-    // Potongan = nominal potongan rupiah (jika lunas = nominalPotongan, jika belum bayar = 0)
-    // Jumlah Setelah Dipotong = kas bersih yang diterima (jika lunas = targetTagihanBersih, jika cicilan = hasilBayar, jika belum bayar = 0)
+    // Bayar = nominal yang dibayarkan/dicicil oleh penyewa
+    // Potongan = potongan yang diambil dari jumlah yang dicicil/dibayar (diskonPersen % dari nilai bayar)
+    // Jumlah Setelah Dipotong = kas bersih yang masuk kas masjid (hasil potongan dari cicilan)
     let nilaiBayar = 0;
     let nilaiPotongan = 0;
     let nilaiSetelahPotong = 0;
 
-    if (status === 'lunas') {
-      nilaiBayar = targetTarifAsli;
-      nilaiPotongan = nominalPotongan;
-      nilaiSetelahPotong = targetTagihanBersih;
-    } else if (status === 'cicilan') {
-      nilaiSetelahPotong = hasilBayar;
-      if (targetTagihanBersih > 0 && nominalPotongan > 0) {
-        nilaiPotongan = Math.round((hasilBayar / targetTagihanBersih) * nominalPotongan);
-        nilaiBayar = hasilBayar + nilaiPotongan;
-      } else {
-        nilaiBayar = hasilBayar;
-        nilaiPotongan = 0;
-      }
+    if (hasilBayar > 0) {
+      nilaiBayar = hasilBayar;
+      nilaiPotongan = Math.round((hasilBayar * diskonPersen) / 100);
+      nilaiSetelahPotong = Math.max(0, hasilBayar - nilaiPotongan);
     } else {
       nilaiBayar = 0;
       nilaiPotongan = 0;

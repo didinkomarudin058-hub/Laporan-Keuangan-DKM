@@ -100,9 +100,11 @@ export interface TenantPaymentRecord {
   periode: string; // e.g. "Bulan Agustus 2026", "Tahun 2026"
   bulanTahunKey?: string; // "YYYY-MM"
   tahunKey?: number; // YYYY
-  nominal: number; // Jumlah dibayar
-  nominalAsli?: number; // Nilai sebelum potongan jika ada
-  diskonPersen?: number;
+  nominal: number; // Jumlah dibayar / dicicil oleh penyewa
+  nominalAsli?: number; // Nilai tarif sewa asli
+  diskonPersen?: number; // Persentase potongan
+  potonganNominal?: number; // Nominal potongan yang diambil dari jumlah dicicil/dibayar
+  nominalSetorKas?: number; // Uang yang masuk ke kas masjid (hasil potongan)
   metodePembayaran: PaymentMethod | string;
   posDanaTujuan: FundCategory | string;
   keterangan?: string;

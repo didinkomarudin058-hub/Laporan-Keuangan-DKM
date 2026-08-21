@@ -15,6 +15,8 @@ interface TenantPaymentModalProps {
       nominal: number;
       nominalAsli?: number;
       diskonPersen?: number;
+      potonganNominal?: number;
+      nominalSetorKas?: number;
       tanggal: string;
       periode: string;
       bulanTahunKey?: string;
@@ -80,12 +82,14 @@ export const TenantPaymentModal: React.FC<TenantPaymentModalProps> = ({
   const numAsli = Number(nominalAsli) || 0;
   const numBayar = Number(nominal) || 0;
   const sisaKurang = Math.max(0, numAsli - numBayar);
+  const diskonPersen = tenant.diskonPersen || 0;
+  const nominalPotonganCicilan = Math.round((numBayar * diskonPersen) / 100);
+  const nominalMasukKas = Math.max(0, numBayar - nominalPotonganCicilan);
 
-  // Handler when admin edits nominal asli
-  const handleNominalAsliChange = (val: string) => {
-    setNominalAsli(val);
-    const n = Number(val) || 0;
-    setNominal(n);
+  // Quick preset installment buttons
+  const setQuickAmount = (val: number) => {
+    setNominal(val);
+    setStatusBayar(val >= numAsli ? 'lunas' : 'cicilan');
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -101,12 +105,14 @@ export const TenantPaymentModal: React.FC<TenantPaymentModalProps> = ({
       ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
       : undefined;
 
-    const actualStatus = num >= numAsli && numAsli > 0 ? 'lunas' : statusBayar;
+    const actualStatus = num >= numAsli && numAsli > 0 ? 'lunas' : 'cicilan';
 
     onConfirmPayment(tenant.id, {
       nominal: num,
       nominalAsli: numAsli,
-      diskonPersen: tenant.diskonPersen || 0,
+      diskonPersen: diskonPersen,
+      potonganNominal: nominalPotonganCicilan,
+      nominalSetorKas: nominalMasukKas,
       tanggal,
       periode,
       bulanTahunKey,
@@ -181,11 +187,22 @@ export const TenantPaymentModal: React.FC<TenantPaymentModalProps> = ({
         {/* Payment Form */}
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           {/* Nominal Pembayaran Input */}
-          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
+          <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-3">
             <div>
-              <label className="block text-xs font-bold text-emerald-950 mb-1">
-                Nominal Pembayaran Sewa (Rp) <span className="text-rose-500">*</span>
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-bold text-emerald-950">
+                  Nominal Pembayaran / Cicilan Sewa (Rp) <span className="text-rose-500">*</span>
+                </label>
+                {numBayar >= numAsli && numAsli > 0 ? (
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-emerald-100 text-emerald-900 border border-emerald-300">
+                    Pelunasan Penuh (100%)
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300">
+                    Cicilan / Pembayaran Sebagian
+                  </span>
+                )}
+              </div>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-emerald-700">
                   Rp
@@ -202,6 +219,92 @@ export const TenantPaymentModal: React.FC<TenantPaymentModalProps> = ({
                 />
               </div>
             </div>
+
+            {/* Quick preset installment buttons */}
+            {numAsli > 0 && (
+              <div className="flex items-center gap-1.5 flex-wrap pt-1 border-t border-slate-200/80">
+                <span className="text-[10px] text-slate-500 font-semibold">Pilih Cepat:</span>
+                <button
+                  type="button"
+                  onClick={() => setQuickAmount(numAsli)}
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
+                    numBayar === numAsli
+                      ? 'bg-emerald-700 text-white'
+                      : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  100% (Lunas)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickAmount(Math.round(numAsli * 0.5))}
+                  className={`px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
+                    numBayar === Math.round(numAsli * 0.5)
+                      ? 'bg-amber-600 text-white'
+                      : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-100'
+                  }`}
+                >
+                  50% (Cicil)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickAmount(Math.round(numAsli * 0.33))}
+                  className="px-2 py-0.5 rounded text-[10px] font-bold bg-white text-slate-700 border border-slate-200 hover:bg-slate-100 transition cursor-pointer"
+                >
+                  1/3 (Cicil)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickAmount(Math.round(numAsli * 0.25))}
+                  className="px-2 py-0.5 rounded text-[10px] font-bold bg-white text-slate-700 border border-slate-200 hover:bg-slate-100 transition cursor-pointer"
+                >
+                  25% (Cicil)
+                </button>
+              </div>
+            )}
+
+            {/* Real-time Calculation Breakdown Box */}
+            {numBayar > 0 && (
+              <div className="bg-white p-3 rounded-xl border border-emerald-200 shadow-2xs space-y-1.5 text-xs">
+                <div className="flex items-center justify-between text-slate-600 text-[11px]">
+                  <span>Jumlah Disetor Penyewa (Cicilan/Bayar):</span>
+                  <span className="font-mono font-bold text-slate-900">
+                    Rp {numBayar.toLocaleString('id-ID')}
+                  </span>
+                </div>
+
+                {diskonPersen > 0 && (
+                  <div className="flex items-center justify-between text-amber-800 text-[11px] font-semibold">
+                    <span className="flex items-center gap-1">
+                      <Tag className="w-3 h-3 text-amber-600" />
+                      <span>Potongan Biaya ({diskonPersen}% dari jumlah cicil):</span>
+                    </span>
+                    <span className="font-mono font-bold text-rose-600">
+                      - Rp {nominalPotonganCicilan.toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                )}
+
+                <div className="pt-1.5 border-t border-slate-100 flex items-center justify-between">
+                  <span className="font-bold text-emerald-950 flex items-center gap-1">
+                    <Percent className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>Masuk ke Kas Masjid (Hasil Potongan):</span>
+                  </span>
+                  <span className="font-mono font-extrabold text-sm text-emerald-800">
+                    Rp {nominalMasukKas.toLocaleString('id-ID')}
+                  </span>
+                </div>
+
+                {sisaKurang > 0 && (
+                  <div className="pt-1 border-t border-dashed border-slate-200 flex items-center justify-between text-[11px] text-amber-800">
+                    <span>Sisa Piutang / Kurang Bayar:</span>
+                    <span className="font-mono font-bold text-amber-900">
+                      Rp {sisaKurang.toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Tanggal Pembayaran & Periode */}

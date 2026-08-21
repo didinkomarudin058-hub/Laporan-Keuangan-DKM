@@ -346,8 +346,20 @@ export const TenantPaymentHistoryModal: React.FC<TenantPaymentHistoryModalProps>
                             <span className="font-medium text-slate-700 block">{pay.metodePembayaran}</span>
                             <span className="text-[10px] text-slate-500">{pay.posDanaTujuan}</span>
                           </td>
-                          <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-800">
-                            Rp {pay.nominal.toLocaleString('id-ID')}
+                          <td className="py-2.5 px-3 text-right font-mono">
+                            <div className="font-bold text-slate-900 text-xs">
+                              Rp {pay.nominal.toLocaleString('id-ID')}
+                            </div>
+                            {pay.diskonPersen && pay.diskonPersen > 0 ? (
+                              <div className="text-[10px] space-y-0.5 mt-0.5">
+                                <span className="text-amber-700 block font-semibold">
+                                  Potongan ({pay.diskonPersen}%): -Rp {(pay.potonganNominal || Math.round((pay.nominal * pay.diskonPersen) / 100)).toLocaleString('id-ID')}
+                                </span>
+                                <span className="text-emerald-700 block font-extrabold">
+                                  Masuk Kas: Rp {(pay.nominalSetorKas || (pay.nominal - (pay.potonganNominal || Math.round((pay.nominal * pay.diskonPersen) / 100)))).toLocaleString('id-ID')}
+                                </span>
+                              </div>
+                            ) : null}
                           </td>
                           <td className="py-2.5 px-3 text-center">
                             {pay.statusBayar === 'cicilan' ? (

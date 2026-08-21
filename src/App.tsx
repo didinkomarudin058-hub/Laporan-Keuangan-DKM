@@ -959,6 +959,8 @@ export default function App() {
       nominal: number;
       nominalAsli?: number;
       diskonPersen?: number;
+      potonganNominal?: number;
+      nominalSetorKas?: number;
       tanggal: string;
       periode: string;
       bulanTahunKey?: string;
@@ -976,28 +978,34 @@ export default function App() {
 
     let createdTrxId: string | undefined = undefined;
     const nominal = Number(payment.nominal) || 0;
+    const diskonPersen = payment.diskonPersen !== undefined ? payment.diskonPersen : (tenant.diskonPersen || 0);
+    const potonganNominal = payment.potonganNominal !== undefined 
+      ? Number(payment.potonganNominal) 
+      : Math.round((nominal * diskonPersen) / 100);
+    const nominalSetorKas = payment.nominalSetorKas !== undefined 
+      ? Number(payment.nominalSetorKas) 
+      : Math.max(0, nominal - potonganNominal);
 
-    if (payment.autoPushToKas && nominal > 0) {
+    if (payment.autoPushToKas && nominalSetorKas > 0) {
       const newTrxId = `TRX-SEWA-${new Date().getFullYear()}${String(
         new Date().getMonth() + 1
       ).padStart(2, '0')}-${String(Math.floor(Math.random() * 900) + 100)}`;
       createdTrxId = newTrxId;
 
-      const cleanKeterangan = (payment.keterangan || '')
-        .replace(/\s*\(potongan[^)]*\)/gi, '')
-        .replace(/\s*-\s*potongan[^-\n]*/gi, '')
-        .replace(/potongan operasional/gi, '')
-        .replace(/potongan/gi, '')
-        .trim();
+      const cleanKeterangan = (payment.keterangan || '').trim();
 
       const newTrx: Transaction = {
         id: newTrxId,
         tanggal: payment.tanggal,
         jenis: 'pemasukan',
-        jumlah: nominal,
+        jumlah: nominalSetorKas, // Yang masuk ke kas masjid adalah hasil potongan!
         kategori: 'Hasil Usaha & Pengelolaan Aset Masjid',
         danaKat: (payment.posDanaTujuan as FundCategory) || 'Kas Pembangunan',
-        keterangan: cleanKeterangan || `Penerimaan Sewa Tanah - ${tenant.namaLahan} (${payment.periode})`,
+        keterangan:
+          cleanKeterangan ||
+          `Penerimaan Sewa Tanah - ${tenant.namaLahan} (${payment.periode})${
+            diskonPersen > 0 ? ` (Hasil Potongan ${diskonPersen}%)` : ''
+          }`,
         petugas: payment.petugas || mosqueProfile.bendaharaDKM || 'Sie Aset & Wakaf',
         metodePembayaran: (payment.metodePembayaran as any) || 'Transfer Bank',
       };
@@ -1021,9 +1029,9 @@ export default function App() {
       tanggal: payment.tanggal,
       periode: payment.periode,
       pendapatanKotor: nominal,
-      biayaOperasional: 0,
-      labaBersih: nominal,
-      setoranKasMasjid: nominal,
+      biayaOperasional: potonganNominal,
+      labaBersih: nominalSetorKas,
+      setoranKasMasjid: nominalSetorKas,
       posDanaTujuan: payment.posDanaTujuan as FundCategory,
       metodePembayaran: payment.metodePembayaran as any,
       statusSetor: createdTrxId ? 'sudah_masuk_kas' : 'belum_disetor',
@@ -1047,8 +1055,10 @@ export default function App() {
       bulanTahunKey: payment.bulanTahunKey || payment.tanggal.slice(0, 7),
       tahunKey: Number(payment.tanggal.slice(0, 4)) || new Date().getFullYear(),
       nominal: nominal,
-      nominalAsli: payment.nominalAsli,
-      diskonPersen: payment.diskonPersen,
+      nominalAsli: payment.nominalAsli || tenant.tarifSewa,
+      diskonPersen: diskonPersen,
+      potonganNominal: potonganNominal,
+      nominalSetorKas: nominalSetorKas,
       metodePembayaran: payment.metodePembayaran,
       posDanaTujuan: payment.posDanaTujuan,
       keterangan: payment.keterangan,
@@ -1083,7 +1093,9 @@ export default function App() {
     }
 
     setToastMessage(
-      `Pembayaran sewa Rp ${nominal.toLocaleString('id-ID')} dari ${tenant.namaPenyewa} berhasil dicatat & disetor ke kas!`
+      diskonPersen > 0
+        ? `Pembayaran cicilan Rp ${nominal.toLocaleString('id-ID')} dicatat! Masuk ke kas DKM (hasil potongan): Rp ${nominalSetorKas.toLocaleString('id-ID')}`
+        : `Pembayaran sewa Rp ${nominal.toLocaleString('id-ID')} dari ${tenant.namaPenyewa} berhasil dicatat & disetor ke kas!`
     );
     setTimeout(() => setToastMessage(null), 3500);
   };
