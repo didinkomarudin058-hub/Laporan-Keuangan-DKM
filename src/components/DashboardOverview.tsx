@@ -360,51 +360,6 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         </div>
       </div>
 
-      {/* Mosque Business Enterprises (Hasil Usaha Masjid) Overview Banner */}
-      <div className="bg-gradient-to-r from-emerald-900 via-teal-900 to-slate-900 text-white rounded-2xl p-5 border border-emerald-800 shadow-sm relative overflow-hidden flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div className="flex items-start gap-3.5 z-10">
-          <div className="w-11 h-11 rounded-xl bg-emerald-700/80 text-amber-300 flex items-center justify-center shrink-0 border border-emerald-500/40">
-            <Store className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="font-extrabold text-sm sm:text-base text-white">
-                Hasil & Unit Usaha Masjid (DKM Enterprise)
-              </h3>
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-400 text-slate-950">
-                {businessUnits.length} Unit Aktif
-              </span>
-            </div>
-            <p className="text-xs text-emerald-200/90 mt-0.5 leading-relaxed max-w-xl">
-              Pemberdayaan aset mandiri masjid (Sewa Aula, Kantin, Depot Air Minum RO, Parkir). Laba bersih otomatis disetorkan ke Jurnal Kas DKM.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 z-10 w-full md:w-auto justify-between md:justify-end border-t md:border-t-0 border-emerald-800/80 pt-3 md:pt-0">
-          <div className="text-left md:text-right">
-            <span className="text-[10px] uppercase font-bold text-emerald-300 block">
-              Dana Usaha Masuk Kas
-            </span>
-            <div className="text-base sm:text-lg font-mono font-extrabold text-amber-300">
-              Rp {businessRecords
-                .filter((r) => r.statusSetor === 'sudah_masuk_kas')
-                .reduce((sum, r) => sum + (r.setoranKasMasjid || 0), 0)
-                .toLocaleString('id-ID')}
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => onNavigateTab('business')}
-            className="px-3.5 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-xs transition flex items-center gap-1.5 shrink-0 cursor-pointer"
-          >
-            <span>Kelola Usaha DKM</span>
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
       {/* Recent Mutasi Table & QRIS Info Card */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Recent Transactions (2 cols) */}
