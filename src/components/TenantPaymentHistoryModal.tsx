@@ -50,13 +50,6 @@ export const TenantPaymentHistoryModal: React.FC<TenantPaymentHistoryModalProps>
   if (!isOpen || !tenant) return null;
 
   const rawTarif = tenant.tarifSewa || 0;
-  const diskonPersen = tenant.diskonPersen || 0;
-  const nominalPotongan = (rawTarif * diskonPersen) / 100;
-  const tarifBersih =
-    tenant.tarifSetelahDiskon !== undefined
-      ? tenant.tarifSetelahDiskon
-      : Math.max(0, rawTarif - nominalPotongan);
-
   const payments = tenant.riwayatPembayaran || [];
 
   // Hitung pembayaran untuk periode aktif yang sedang dimonitor
@@ -69,10 +62,10 @@ export const TenantPaymentHistoryModal: React.FC<TenantPaymentHistoryModalProps>
   });
 
   const totalTerbayarPeriodeAktif = periodPayments.reduce((sum, p) => sum + (p.nominal || 0), 0);
-  const sisaKurangBayarPeriodeAktif = Math.max(0, tarifBersih - totalTerbayarPeriodeAktif);
+  const sisaKurangBayarPeriodeAktif = Math.max(0, rawTarif - totalTerbayarPeriodeAktif);
 
   let statusPeriodeAktif: 'lunas' | 'cicilan' | 'belum_bayar' = 'belum_bayar';
-  if (totalTerbayarPeriodeAktif >= tarifBersih && tarifBersih > 0) {
+  if (totalTerbayarPeriodeAktif >= rawTarif && rawTarif > 0) {
     statusPeriodeAktif = 'lunas';
   } else if (totalTerbayarPeriodeAktif > 0) {
     statusPeriodeAktif = 'cicilan';
@@ -112,7 +105,7 @@ export const TenantPaymentHistoryModal: React.FC<TenantPaymentHistoryModalProps>
       `Kepada Yth. *${tenant.namaPenyewa}*\n\n` +
       `Berikut rincian status pembayaran sewa lahan *${tenant.namaLahan}* (${tenant.peruntukanUsaha}):\n` +
       `• Periode: *${activePeriodLabel}*\n` +
-      `• Tarif Sewa: Rp ${tarifBersih.toLocaleString('id-ID')}\n` +
+      `• Tarif Sewa Asli: Rp ${rawTarif.toLocaleString('id-ID')}\n` +
       `• Total Terbayar: Rp ${totalTerbayarPeriodeAktif.toLocaleString('id-ID')}\n` +
       `• Sisa Tagihan: *Rp ${sisaKurangBayarPeriodeAktif.toLocaleString('id-ID')}*\n` +
       `• Status: *${
@@ -216,15 +209,13 @@ export const TenantPaymentHistoryModal: React.FC<TenantPaymentHistoryModalProps>
             {/* 3 Metric Mini Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="bg-white p-3 rounded-xl border border-slate-200">
-                <span className="text-[10px] font-bold text-slate-500 uppercase block">Tarif Tagihan Bersih</span>
+                <span className="text-[10px] font-bold text-slate-500 uppercase block">Tarif Sewa Asli</span>
                 <div className="text-base font-black font-mono text-slate-900 mt-0.5">
-                  Rp {tarifBersih.toLocaleString('id-ID')}
+                  Rp {rawTarif.toLocaleString('id-ID')}
                 </div>
-                {diskonPersen > 0 && (
-                  <span className="text-[10px] text-amber-700 font-semibold">
-                    (Diskon Ops {diskonPersen}% dari Rp {rawTarif.toLocaleString('id-ID')})
-                  </span>
-                )}
+                <span className="text-[10px] text-slate-500 font-medium">
+                  {tenant.tipePeriode === 'bulanan' ? 'Per Bulan' : tenant.tipePeriode === 'tahunan' ? 'Per Tahun' : 'Per Periode'}
+                </span>
               </div>
 
               <div className="bg-white p-3 rounded-xl border border-emerald-200">
