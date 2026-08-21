@@ -14,7 +14,7 @@ import {
   ImageIcon,
   Send
 } from 'lucide-react';
-import html2canvas from 'html2canvas';
+import { toBlob, toPng } from 'html-to-image';
 import { LandTenant, MosqueProfile, TenantPaymentRecord } from '../types';
 
 interface TenantReceiptModalProps {
@@ -170,16 +170,32 @@ export const TenantReceiptModal: React.FC<TenantReceiptModalProps> = ({
     const cardEl = document.getElementById('kwitansi-print-card');
     if (!cardEl) return null;
 
-    const canvas = await html2canvas(cardEl, {
-      scale: 3, // Ultra-crisp rendering
-      useCORS: true,
-      backgroundColor: '#ffffff',
-      logging: false,
-    });
+    try {
+      const blob = await toBlob(cardEl, {
+        pixelRatio: 2.5,
+        backgroundColor: '#ffffff',
+        cacheBust: true,
+      });
+      if (blob) return blob;
 
-    return new Promise((resolve) => {
-      canvas.toBlob((blob) => resolve(blob), 'image/png', 0.95);
-    });
+      // Fallback via toPng
+      const dataUrl = await toPng(cardEl, {
+        pixelRatio: 2.5,
+        backgroundColor: '#ffffff',
+        cacheBust: true,
+      });
+      const res = await fetch(dataUrl);
+      return await res.blob();
+    } catch (err) {
+      console.error('Error in toBlob/toPng:', err);
+      // Secondary attempt with standard pixelRatio
+      const dataUrl = await toPng(cardEl, {
+        backgroundColor: '#ffffff',
+        quality: 0.95,
+      });
+      const res = await fetch(dataUrl);
+      return await res.blob();
+    }
   };
 
   const getWaTextMessage = () => {
