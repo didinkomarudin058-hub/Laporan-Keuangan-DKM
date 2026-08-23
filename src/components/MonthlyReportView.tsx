@@ -331,7 +331,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
   };
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-6 pb-12 print:space-y-0 print:pb-0 print:bg-white">
       {/* Top Bar Header */}
       <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4 print:hidden">
         <div>

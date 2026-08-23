@@ -1256,7 +1256,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900 font-sans antialiased selection:bg-emerald-200 relative">
+    <div className="min-h-screen bg-slate-100 print:bg-white print:min-h-0 text-slate-900 font-sans antialiased selection:bg-emerald-200 relative">
       {/* Top App Navbar */}
       <Navbar
         mosqueProfile={mosqueProfile}
@@ -1268,7 +1268,7 @@ export default function App() {
       />
 
       {/* Main View Container */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 md:pb-12">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 md:pb-12 print:p-0 print:m-0 print:max-w-none print:bg-white">
         {activeTab === 'dashboard' && (
           <DashboardOverview
             transactions={transactions}
