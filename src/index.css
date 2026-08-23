@@ -175,6 +175,7 @@
   .overflow-y-auto {
     overflow: visible !important;
     max-height: none !important;
+    background: transparent !important;
   }
 
   table {
@@ -182,6 +183,11 @@
     max-width: 100% !important;
     border-collapse: collapse !important;
     table-layout: auto !important;
+    background: transparent !important;
+  }
+
+  table tbody tr {
+    background-color: transparent !important;
   }
 
   #report-modal-sheet table,
@@ -200,6 +206,7 @@
   #report-modal-sheet td {
     padding: 6px 8px !important;
     color: #0f172a !important;
+    background-color: transparent !important;
   }
 
   #report-modal-sheet tfoot tr {

@@ -663,7 +663,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
               </thead>
               <tbody className="divide-y divide-slate-300 text-slate-800">
                 {fundBreakdown.map((item, idx) => (
-                  <tr key={item.kategori} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                  <tr key={item.kategori} className="bg-white hover:bg-slate-50 transition">
                     <td className="p-2 border-r border-slate-300 text-center">{idx + 1}</td>
                     <td className="p-2 border-r border-slate-300 font-semibold">{item.kategori}</td>
                     <td className="p-2 border-r border-slate-300 text-right">{item.saldoAwal.toLocaleString('id-ID')}</td>
@@ -728,7 +728,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
                       }
 
                       return catIncomeList.map((item, idx) => (
-                        <tr key={item.kategori} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                        <tr key={item.kategori} className="bg-white hover:bg-slate-50 transition">
                           <td className="p-1.5 sm:p-2 border-r border-slate-300 text-center">{idx + 1}</td>
                           <td className="p-1.5 sm:p-2 border-r border-slate-300 font-medium break-words">{item.kategori}</td>
                           <td className="p-1.5 sm:p-2 border-r border-slate-300 text-center">{item.count}</td>
@@ -783,7 +783,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
                       }
 
                       return catExpenseList.map((item, idx) => (
-                        <tr key={item.kategori} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                        <tr key={item.kategori} className="bg-white hover:bg-slate-50 transition">
                           <td className="p-1.5 sm:p-2 border-r border-slate-300 text-center">{idx + 1}</td>
                           <td className="p-1.5 sm:p-2 border-r border-slate-300 font-medium break-words">{item.kategori}</td>
                           <td className="p-1.5 sm:p-2 border-r border-slate-300 text-center">{item.count}</td>
@@ -839,10 +839,10 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
                     </td>
                   </tr>
                 ) : (
-                  reportDisplayTransactions.map((trx, idx) => (
+                  reportDisplayTransactions.map((trx) => (
                     <tr
                       key={trx.id}
-                      className={`${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'} hover:bg-slate-100 transition`}
+                      className="bg-white hover:bg-slate-50 transition"
                     >
                       <td className="py-3 px-2.5 border-r border-slate-300 whitespace-nowrap text-slate-800 font-medium">
                         {formatDateIndo(trx.tanggal)}

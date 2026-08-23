@@ -1410,13 +1410,13 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
                         <th className="py-2.5 px-3 border-r border-slate-300">Nama Penyewa</th>
                         <th className="py-2.5 px-3 border-r border-slate-300">Objek Lahan</th>
                         <th className="py-2.5 px-3 text-right border-r border-slate-300">Tagihan</th>
-                        <th className="py-2.5 px-3 text-right border-r border-slate-300 bg-blue-50/50 text-blue-950">
+                        <th className="py-2.5 px-3 text-right border-r border-slate-300 text-blue-950">
                           Bayar
                         </th>
-                        <th className="py-2.5 px-3 text-right border-r border-slate-300 bg-amber-50/50 text-amber-950">
+                        <th className="py-2.5 px-3 text-right border-r border-slate-300 text-amber-950">
                           Potongan
                         </th>
-                        <th className="py-2.5 px-3 text-right border-r border-slate-300 bg-emerald-50/70 text-emerald-950">
+                        <th className="py-2.5 px-3 text-right border-r border-slate-300 text-emerald-950">
                           Jumlah Setelah Dipotong
                         </th>
                         <th className="py-2.5 px-2.5 text-center w-28">Status</th>
@@ -1439,7 +1439,7 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
                           );
 
                           return (
-                            <tr key={t.id} className="hover:bg-slate-50">
+                            <tr key={t.id} className="hover:bg-slate-50 bg-white">
                               <td className="py-2.5 px-2 text-center font-medium text-slate-600 border-r border-slate-200">
                                 {idx + 1}
                               </td>
@@ -1463,21 +1463,21 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
                               <td className="py-2.5 px-3 text-right font-mono font-medium text-slate-800 border-r border-slate-200">
                                 Rp {d.targetTarifAsli.toLocaleString('id-ID')}
                               </td>
-                              <td className="py-2.5 px-3 text-right font-mono font-semibold text-blue-900 bg-blue-50/20 border-r border-slate-200">
+                              <td className="py-2.5 px-3 text-right font-mono font-semibold text-blue-900 border-r border-slate-200">
                                 {d.nilaiBayar > 0 ? (
                                   `Rp ${d.nilaiBayar.toLocaleString('id-ID')}`
                                 ) : (
                                   <span className="text-slate-400 font-normal">-----</span>
                                 )}
                               </td>
-                              <td className="py-2.5 px-3 text-right font-mono font-semibold text-amber-900 bg-amber-50/20 border-r border-slate-200">
+                              <td className="py-2.5 px-3 text-right font-mono font-semibold text-amber-900 border-r border-slate-200">
                                 {d.nilaiPotongan > 0 ? (
                                   `Rp ${d.nilaiPotongan.toLocaleString('id-ID')}`
                                 ) : (
                                   <span className="text-slate-400 font-normal">-----</span>
                                 )}
                               </td>
-                              <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-900 bg-emerald-50/30 border-r border-slate-200">
+                              <td className="py-2.5 px-3 text-right font-mono font-bold text-emerald-900 border-r border-slate-200">
                                 {d.nilaiSetelahPotong > 0 ? (
                                   `Rp ${d.nilaiSetelahPotong.toLocaleString('id-ID')}`
                                 ) : (
@@ -1514,13 +1514,13 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
                         <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900 border-r border-slate-300 text-xs">
                           Rp {rekapStats.totalTagihan.toLocaleString('id-ID')}
                         </td>
-                        <td className="py-2.5 px-3 text-right font-mono font-bold text-blue-950 bg-blue-100/40 border-r border-slate-300 text-xs">
+                        <td className="py-2.5 px-3 text-right font-mono font-bold text-blue-950 border-r border-slate-300 text-xs">
                           Rp {rekapStats.totalBayar.toLocaleString('id-ID')}
                         </td>
-                        <td className="py-2.5 px-3 text-right font-mono font-bold text-amber-950 bg-amber-100/40 border-r border-slate-300 text-xs">
+                        <td className="py-2.5 px-3 text-right font-mono font-bold text-amber-950 border-r border-slate-300 text-xs">
                           Rp {rekapStats.totalPotongan.toLocaleString('id-ID')}
                         </td>
-                        <td className="py-2.5 px-3 text-right font-mono font-black text-emerald-950 bg-emerald-100/50 border-r border-slate-300 text-xs">
+                        <td className="py-2.5 px-3 text-right font-mono font-black text-emerald-950 border-r border-slate-300 text-xs">
                           Rp {rekapStats.totalSetelahDipotong.toLocaleString('id-ID')}
                         </td>
                         <td className="py-2.5 px-2.5 text-center text-[10px] font-bold text-slate-700">
