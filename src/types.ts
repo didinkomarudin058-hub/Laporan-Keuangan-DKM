@@ -1,5 +1,14 @@
 export type TransactionType = 'pemasukan' | 'pengeluaran';
 
+export type AppTab =
+  | 'dashboard'
+  | 'transactions'
+  | 'business'
+  | 'monthlyReport'
+  | 'analytics'
+  | 'tvMode'
+  | 'settings';
+
 export type FundCategory = string;
 export type PaymentMethod = string;
 

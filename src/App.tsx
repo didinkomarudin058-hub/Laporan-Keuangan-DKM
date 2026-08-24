@@ -6,12 +6,12 @@ import { MonthlyReportView } from './components/MonthlyReportView';
 import { AnalyticsCharts } from './components/AnalyticsCharts';
 import { PublicDisplayBoard } from './components/PublicDisplayBoard';
 import { AddTransactionModal } from './components/AddTransactionModal';
-import { MosqueSettingsModal } from './components/MosqueSettingsModal';
+import { MosqueSettingsTab } from './components/MosqueSettingsTab';
 import { PwaInstallModal } from './components/PwaInstallModal';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { MosqueBusinessTab } from './components/MosqueBusinessTab';
 import { FloatingActionButton } from './components/FloatingActionButton';
-import { FundCategory, MosqueProfile, Transaction, TransactionType, MosqueBusinessUnit, BusinessRecord, LandTenant, TenantPaymentRecord } from './types';
+import { FundCategory, MosqueProfile, Transaction, TransactionType, MosqueBusinessUnit, BusinessRecord, LandTenant, TenantPaymentRecord, AppTab } from './types';
 import {
   initialMosqueProfile,
   initialTransactions,
@@ -322,9 +322,7 @@ export default function App() {
   }, [currentUser?.uid, currentUser?.isLocal]);
 
   // Tab State
-  const [activeTab, setActiveTab] = useState<
-    'dashboard' | 'transactions' | 'monthlyReport' | 'analytics' | 'tvMode' | 'business'
-  >(() => {
+  const [activeTab, setActiveTab] = useState<AppTab>(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const tabParam = params.get('tab');
@@ -343,6 +341,9 @@ export default function App() {
       if (tabParam === 'business' || tabParam === 'usaha') {
         return 'business';
       }
+      if (tabParam === 'settings' || tabParam === 'pengaturan') {
+        return 'settings';
+      }
     }
     return 'dashboard';
   });
@@ -360,7 +361,6 @@ export default function App() {
   const [defaultAddFundCategory, setDefaultAddFundCategory] =
     useState<FundCategory>('Kas Operasional');
 
-  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [settingsDefaultTab, setSettingsDefaultTab] = useState<
     'profile' | 'categories' | 'account' | 'backup' | 'pwa'
   >('profile');
@@ -412,11 +412,6 @@ export default function App() {
         window.history.pushState({ tab: activeTab }, '');
         return;
       }
-      if (isSettingsModalOpen) {
-        setIsSettingsModalOpen(false);
-        window.history.pushState({ tab: activeTab }, '');
-        return;
-      }
       if (isPwaModalOpen) {
         setIsPwaModalOpen(false);
         window.history.pushState({ tab: activeTab }, '');
@@ -445,13 +440,13 @@ export default function App() {
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [activeTab, isAddModalOpen, isSettingsModalOpen, isPwaModalOpen]);
+  }, [activeTab, isAddModalOpen, isPwaModalOpen]);
 
-  const handleOpenSettingsModal = (
+  const handleNavigateToSettings = (
     tab: 'profile' | 'account' | 'categories' | 'backup' | 'pwa' = 'profile'
   ) => {
     setSettingsDefaultTab(tab);
-    setIsSettingsModalOpen(true);
+    setActiveTab('settings');
   };
 
   // Transaction Handlers
@@ -1262,7 +1257,7 @@ export default function App() {
         mosqueProfile={mosqueProfile}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        onOpenSettingsModal={(tab) => handleOpenSettingsModal(tab || 'profile')}
+        onOpenSettingsModal={(tab) => handleNavigateToSettings(tab || 'profile')}
         onOpenPwaModal={() => setIsPwaModalOpen(true)}
         currentUser={currentUser}
       />
@@ -1351,6 +1346,37 @@ export default function App() {
             mosqueProfile={mosqueProfile}
           />
         )}
+
+        {activeTab === 'settings' && (
+          <MosqueSettingsTab
+            mosqueProfile={mosqueProfile}
+            onSaveProfile={handleSaveProfile}
+            currentUser={currentUser}
+            categoriesPemasukan={categoriesPemasukan}
+            categoriesPengeluaran={categoriesPengeluaran}
+            onAddCategory={handleAddCategory}
+            onEditCategory={handleEditCategory}
+            onDeleteCategory={handleDeleteCategory}
+            onResetCategories={handleResetCategories}
+            categoriesSewa={categoriesSewa}
+            onAddCategorySewa={handleAddCategorySewa}
+            onEditCategorySewa={handleEditCategorySewa}
+            onDeleteCategorySewa={handleDeleteCategorySewa}
+            posDanaList={posDanaList}
+            onAddPosDana={handleAddPosDana}
+            onEditPosDana={handleEditPosDana}
+            onDeletePosDana={handleDeletePosDana}
+            metodePembayaranList={metodePembayaranList}
+            onAddMetodePembayaran={handleAddMetodePembayaran}
+            onEditMetodePembayaran={handleEditMetodePembayaran}
+            onDeleteMetodePembayaran={handleDeleteMetodePembayaran}
+            onExportBackup={handleExportBackup}
+            onImportBackup={handleImportBackup}
+            onResetData={handleResetData}
+            defaultSubTab={settingsDefaultTab}
+            onOpenPwaModal={() => setIsPwaModalOpen(true)}
+          />
+        )}
       </main>
 
       {/* Floating '+' Action Button - Only visible in Ikhtisar / Dashboard */}
@@ -1381,7 +1407,7 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onOpenAddModal={() => handleOpenAddModal()}
-        onOpenSettingsModal={() => handleOpenSettingsModal('profile')}
+        onOpenSettingsModal={() => handleNavigateToSettings('profile')}
       />
 
       {/* Footer */}
@@ -1412,40 +1438,8 @@ export default function App() {
         metodePembayaranList={metodePembayaranList}
         onOpenCategoryManager={() => {
           setIsAddModalOpen(false);
-          handleOpenSettingsModal('categories');
+          handleNavigateToSettings('categories');
         }}
-      />
-
-      {/* Consolidated Menu Pengaturan Modal */}
-      <MosqueSettingsModal
-        isOpen={isSettingsModalOpen}
-        onClose={() => setIsSettingsModalOpen(false)}
-        mosqueProfile={mosqueProfile}
-        onSaveProfile={handleSaveProfile}
-        currentUser={currentUser}
-        categoriesPemasukan={categoriesPemasukan}
-        categoriesPengeluaran={categoriesPengeluaran}
-        onAddCategory={handleAddCategory}
-        onEditCategory={handleEditCategory}
-        onDeleteCategory={handleDeleteCategory}
-        onResetCategories={handleResetCategories}
-        categoriesSewa={categoriesSewa}
-        onAddCategorySewa={handleAddCategorySewa}
-        onEditCategorySewa={handleEditCategorySewa}
-        onDeleteCategorySewa={handleDeleteCategorySewa}
-        posDanaList={posDanaList}
-        onAddPosDana={handleAddPosDana}
-        onEditPosDana={handleEditPosDana}
-        onDeletePosDana={handleDeletePosDana}
-        metodePembayaranList={metodePembayaranList}
-        onAddMetodePembayaran={handleAddMetodePembayaran}
-        onEditMetodePembayaran={handleEditMetodePembayaran}
-        onDeleteMetodePembayaran={handleDeleteMetodePembayaran}
-        onExportBackup={handleExportBackup}
-        onImportBackup={handleImportBackup}
-        onResetData={handleResetData}
-        defaultTab={settingsDefaultTab}
-        onOpenPwaModal={() => setIsPwaModalOpen(true)}
       />
 
       {/* PWA Installation Modal */}

@@ -20,7 +20,7 @@ import {
   Camera,
   Store,
 } from 'lucide-react';
-import { FundCategory, MosqueProfile, Transaction, MosqueBusinessUnit, BusinessRecord } from '../types';
+import { FundCategory, MosqueProfile, Transaction, MosqueBusinessUnit, BusinessRecord, AppTab } from '../types';
 import { ReceiptModal } from './ReceiptModal';
 
 interface DashboardOverviewProps {
@@ -32,7 +32,7 @@ interface DashboardOverviewProps {
   businessUnits?: MosqueBusinessUnit[];
   businessRecords?: BusinessRecord[];
   onOpenAddModal?: (defaultCategory?: FundCategory) => void;
-  onNavigateTab: (tab: 'dashboard' | 'transactions' | 'business' | 'monthlyReport' | 'analytics' | 'tvMode') => void;
+  onNavigateTab: (tab: AppTab) => void;
   onSelectFundFilter: (fund: FundCategory | 'semua') => void;
   readOnly?: boolean;
 }

@@ -6,16 +6,15 @@ import {
   BarChart3,
   ListFilter,
   Settings,
-  Store,
 } from 'lucide-react';
 import { User } from 'firebase/auth';
-import { MosqueProfile } from '../types';
+import { MosqueProfile, AppTab } from '../types';
 
 interface NavbarProps {
   mosqueProfile: MosqueProfile;
-  activeTab: 'dashboard' | 'transactions' | 'business' | 'monthlyReport' | 'analytics' | 'tvMode';
-  setActiveTab: (tab: 'dashboard' | 'transactions' | 'business' | 'monthlyReport' | 'analytics' | 'tvMode') => void;
-  onOpenSettingsModal: (tab?: 'profile' | 'account' | 'categories' | 'backup' | 'pwa') => void;
+  activeTab: AppTab;
+  setActiveTab: (tab: AppTab) => void;
+  onOpenSettingsModal?: (tab?: 'profile' | 'account' | 'categories' | 'backup' | 'pwa') => void;
   onOpenPwaModal?: () => void;
   currentUser?: User | null;
 }
@@ -24,7 +23,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   mosqueProfile,
   activeTab,
   setActiveTab,
-  onOpenSettingsModal,
 }) => {
   return (
     <header id="dkm-app-navbar" className="bg-emerald-900 text-white shadow-md border-b border-emerald-800 sticky top-0 z-30 print:hidden">
@@ -55,93 +53,99 @@ export const Navbar: React.FC<NavbarProps> = ({
       </div>
 
       {/* Navigation Sub-bar (Desktop & Tablet) */}
-      <div className="bg-emerald-950/60 border-t border-emerald-800/70 px-4 sm:px-6 hidden md:block">
-        <div className="max-w-7xl mx-auto flex overflow-x-auto no-scrollbar gap-1 sm:gap-2 py-1.5 items-center">
+      <div className="bg-emerald-950/70 border-t border-emerald-800/70 px-4 sm:px-6 hidden md:block">
+        <div className="max-w-7xl mx-auto flex overflow-x-auto no-scrollbar gap-1 sm:gap-1.5 py-1.5 items-center">
           <button
             id="nav-tab-dashboard"
             onClick={() => setActiveTab('dashboard')}
-            className={`px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
               activeTab === 'dashboard'
-                ? 'bg-emerald-600 text-white shadow-sm font-semibold'
-                : 'text-emerald-200/90 hover:text-white hover:bg-emerald-800/50'
+                ? 'bg-emerald-950 text-amber-300 font-bold border-b-2 border-amber-400 shadow-xs'
+                : 'text-emerald-100/90 font-medium hover:text-amber-200 hover:bg-emerald-800/50'
             }`}
           >
-            <Building2 className="w-4 h-4 text-white" />
+            <Building2 className={`w-4 h-4 ${activeTab === 'dashboard' ? 'text-amber-300' : 'text-emerald-200'}`} />
             <span>Ikhtisar Kas Utama</span>
           </button>
 
           <button
             id="nav-tab-transactions"
             onClick={() => setActiveTab('transactions')}
-            className={`px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
               activeTab === 'transactions'
-                ? 'bg-emerald-600 text-white shadow-sm font-semibold'
-                : 'text-emerald-200/90 hover:text-white hover:bg-emerald-800/50'
+                ? 'bg-emerald-950 text-amber-300 font-bold border-b-2 border-amber-400 shadow-xs'
+                : 'text-emerald-100/90 font-medium hover:text-amber-200 hover:bg-emerald-800/50'
             }`}
           >
-            <ListFilter className="w-4 h-4 text-white" />
+            <ListFilter className={`w-4 h-4 ${activeTab === 'transactions' ? 'text-amber-300' : 'text-emerald-200'}`} />
             <span>Jurnal Transaksi</span>
           </button>
 
           <button
             id="nav-tab-business"
             onClick={() => setActiveTab('business')}
-            className={`px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
               activeTab === 'business'
-                ? 'bg-emerald-600 text-white shadow-sm font-semibold'
-                : 'text-emerald-200/90 hover:text-white hover:bg-emerald-800/50'
+                ? 'bg-emerald-950 text-amber-300 font-bold border-b-2 border-amber-400 shadow-xs'
+                : 'text-emerald-100/90 font-medium hover:text-amber-200 hover:bg-emerald-800/50'
             }`}
           >
-            <Building2 className="w-4 h-4 text-white" />
+            <Building2 className={`w-4 h-4 ${activeTab === 'business' ? 'text-amber-300' : 'text-emerald-200'}`} />
             <span>Sewa</span>
           </button>
 
           <button
             id="nav-tab-monthly-report"
             onClick={() => setActiveTab('monthlyReport')}
-            className={`px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
               activeTab === 'monthlyReport'
-                ? 'bg-emerald-600 text-white shadow-sm font-semibold'
-                : 'text-emerald-200/90 hover:text-white hover:bg-emerald-800/50'
+                ? 'bg-emerald-950 text-amber-300 font-bold border-b-2 border-amber-400 shadow-xs'
+                : 'text-emerald-100/90 font-medium hover:text-amber-200 hover:bg-emerald-800/50'
             }`}
           >
-            <FileText className="w-4 h-4" />
+            <FileText className={`w-4 h-4 ${activeTab === 'monthlyReport' ? 'text-amber-300' : 'text-emerald-200'}`} />
             <span>Laporan Bulanan & AI Narasi</span>
           </button>
 
           <button
             id="nav-tab-analytics"
             onClick={() => setActiveTab('analytics')}
-            className={`px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
               activeTab === 'analytics'
-                ? 'bg-emerald-600 text-white shadow-sm font-semibold'
-                : 'text-emerald-200/90 hover:text-white hover:bg-emerald-800/50'
+                ? 'bg-emerald-950 text-amber-300 font-bold border-b-2 border-amber-400 shadow-xs'
+                : 'text-emerald-100/90 font-medium hover:text-amber-200 hover:bg-emerald-800/50'
             }`}
           >
-            <BarChart3 className="w-4 h-4" />
+            <BarChart3 className={`w-4 h-4 ${activeTab === 'analytics' ? 'text-amber-300' : 'text-emerald-200'}`} />
             <span>Grafik & Analisis Kas</span>
           </button>
 
           <button
             id="nav-tab-tv-mode"
             onClick={() => setActiveTab('tvMode')}
-            className={`px-3 py-1.5 rounded-md text-xs sm:text-sm font-medium transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+            className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
               activeTab === 'tvMode'
-                ? 'bg-amber-500 text-emerald-950 font-bold shadow-sm'
-                : 'bg-emerald-800/60 text-amber-300 hover:bg-emerald-800 border border-emerald-700/60'
+                ? 'bg-emerald-950 text-amber-300 font-bold border-b-2 border-amber-400 shadow-xs'
+                : 'bg-emerald-800/60 text-amber-300 font-medium hover:bg-emerald-800 border border-emerald-700/60'
             }`}
           >
-            <Tv className="w-4 h-4" />
+            <Tv className="w-4 h-4 text-amber-300" />
             <span>Tampilan TV Kas</span>
           </button>
 
           <button
-            onClick={() => onOpenSettingsModal('profile')}
-            className="ml-auto p-1.5 rounded-md text-xs font-medium bg-emerald-800/60 text-emerald-100 hover:text-white hover:bg-emerald-800 border border-emerald-700/60 transition flex items-center justify-center shrink-0 cursor-pointer"
+            id="nav-tab-settings"
+            onClick={() => setActiveTab('settings')}
+            className={`ml-auto px-3.5 py-1.5 rounded-lg text-xs sm:text-sm transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+              activeTab === 'settings'
+                ? 'bg-emerald-950 text-amber-300 font-bold border-b-2 border-amber-400 shadow-xs'
+                : 'text-emerald-100/90 font-medium hover:text-amber-200 hover:bg-emerald-800/50'
+            }`}
             title="Menu Pengaturan DKM"
             aria-label="Pengaturan"
           >
-            <Settings className="w-4 h-4 text-amber-300" />
+            <Settings className={`w-4 h-4 ${activeTab === 'settings' ? 'text-amber-300' : 'text-amber-300/90'}`} />
+            <span>Pengaturan</span>
           </button>
         </div>
       </div>
