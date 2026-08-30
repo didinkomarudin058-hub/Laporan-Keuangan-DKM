@@ -4,6 +4,7 @@ import {
   ListFilter,
   FileText,
   Settings,
+  Users,
 } from 'lucide-react';
 import { AppTab } from '../types';
 
@@ -24,13 +25,13 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       <button
         id="mobile-nav-dashboard"
         onClick={() => setActiveTab('dashboard')}
-        className={`flex flex-col items-center justify-center py-1 px-2 rounded-lg transition text-[10px] cursor-pointer ${
+        className={`flex flex-col items-center justify-center py-1 px-1.5 rounded-lg transition text-[9.5px] cursor-pointer ${
           activeTab === 'dashboard'
             ? 'text-amber-400 bg-slate-800/90 font-bold'
             : 'text-slate-400 hover:text-slate-200 font-medium'
         }`}
       >
-        <Building2 className={`w-5 h-5 mb-0.5 ${activeTab === 'dashboard' ? 'text-amber-400' : 'text-slate-400'}`} />
+        <Building2 className={`w-4.5 h-4.5 mb-0.5 ${activeTab === 'dashboard' ? 'text-amber-400' : 'text-slate-400'}`} />
         <span>Ikhtisar</span>
       </button>
 
@@ -38,13 +39,13 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       <button
         id="mobile-nav-transactions"
         onClick={() => setActiveTab('transactions')}
-        className={`flex flex-col items-center justify-center py-1 px-2 rounded-lg transition text-[10px] cursor-pointer ${
+        className={`flex flex-col items-center justify-center py-1 px-1.5 rounded-lg transition text-[9.5px] cursor-pointer ${
           activeTab === 'transactions'
             ? 'text-amber-400 bg-slate-800/90 font-bold'
             : 'text-slate-400 hover:text-slate-200 font-medium'
         }`}
       >
-        <ListFilter className={`w-5 h-5 mb-0.5 ${activeTab === 'transactions' ? 'text-amber-400' : 'text-slate-400'}`} />
+        <ListFilter className={`w-4.5 h-4.5 mb-0.5 ${activeTab === 'transactions' ? 'text-amber-400' : 'text-slate-400'}`} />
         <span>Jurnal</span>
       </button>
 
@@ -52,42 +53,56 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       <button
         id="mobile-nav-monthly-report"
         onClick={() => setActiveTab('monthlyReport')}
-        className={`flex flex-col items-center justify-center py-1 px-2 rounded-lg transition text-[10px] cursor-pointer ${
+        className={`flex flex-col items-center justify-center py-1 px-1.5 rounded-lg transition text-[9.5px] cursor-pointer ${
           activeTab === 'monthlyReport'
             ? 'text-amber-400 bg-slate-800/90 font-bold'
             : 'text-slate-400 hover:text-slate-200 font-medium'
         }`}
       >
-        <FileText className={`w-5 h-5 mb-0.5 ${activeTab === 'monthlyReport' ? 'text-amber-400' : 'text-slate-400'}`} />
+        <FileText className={`w-4.5 h-4.5 mb-0.5 ${activeTab === 'monthlyReport' ? 'text-amber-400' : 'text-slate-400'}`} />
         <span>Laporan</span>
       </button>
 
-      {/* 4. Usaha DKM / Sewa Tanah */}
+      {/* 4. Portal Jamaah */}
+      <button
+        id="mobile-nav-jamaah"
+        onClick={() => setActiveTab('jamaah')}
+        className={`flex flex-col items-center justify-center py-1 px-1.5 rounded-lg transition text-[9.5px] cursor-pointer ${
+          activeTab === 'jamaah'
+            ? 'text-amber-400 bg-slate-800/90 font-bold'
+            : 'text-amber-300 hover:text-amber-200 font-semibold'
+        }`}
+      >
+        <Users className={`w-4.5 h-4.5 mb-0.5 ${activeTab === 'jamaah' ? 'text-amber-400' : 'text-amber-300'}`} />
+        <span>Jamaah</span>
+      </button>
+
+      {/* 5. Usaha DKM / Sewa Tanah */}
       <button
         id="mobile-nav-business"
         onClick={() => setActiveTab('business')}
-        className={`flex flex-col items-center justify-center py-1 px-2 rounded-lg transition text-[10px] cursor-pointer ${
+        className={`flex flex-col items-center justify-center py-1 px-1.5 rounded-lg transition text-[9.5px] cursor-pointer ${
           activeTab === 'business'
             ? 'text-amber-400 bg-slate-800/90 font-bold'
             : 'text-slate-400 hover:text-slate-200 font-medium'
         }`}
       >
-        <Building2 className={`w-5 h-5 mb-0.5 ${activeTab === 'business' ? 'text-amber-400' : 'text-slate-400'}`} />
+        <Building2 className={`w-4.5 h-4.5 mb-0.5 ${activeTab === 'business' ? 'text-amber-400' : 'text-slate-400'}`} />
         <span>Sewa</span>
       </button>
 
-      {/* 5. Menu Pengaturan */}
+      {/* 6. Menu Pengaturan */}
       <button
         id="mobile-nav-settings"
         onClick={() => setActiveTab('settings')}
-        className={`flex flex-col items-center justify-center py-1 px-2 rounded-lg transition text-[10px] cursor-pointer ${
+        className={`flex flex-col items-center justify-center py-1 px-1.5 rounded-lg transition text-[9.5px] cursor-pointer ${
           activeTab === 'settings'
             ? 'text-amber-400 bg-slate-800/90 font-bold'
             : 'text-slate-400 hover:text-slate-200 font-medium'
         }`}
         title="Menu Pengaturan DKM & Opsi"
       >
-        <Settings className={`w-5 h-5 mb-0.5 ${activeTab === 'settings' ? 'text-amber-400' : 'text-slate-400'}`} />
+        <Settings className={`w-4.5 h-4.5 mb-0.5 ${activeTab === 'settings' ? 'text-amber-400' : 'text-slate-400'}`} />
         <span>Pengaturan</span>
       </button>
     </div>

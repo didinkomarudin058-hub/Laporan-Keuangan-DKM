@@ -19,6 +19,7 @@ import {
   Coins,
   Camera,
   Store,
+  Users,
 } from 'lucide-react';
 import { FundCategory, MosqueProfile, Transaction, MosqueBusinessUnit, BusinessRecord, AppTab } from '../types';
 import { ReceiptModal } from './ReceiptModal';
@@ -192,6 +193,20 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                 "{mosqueProfile.motto}"
               </p>
             </div>
+          </div>
+
+          {/* Quick Access to Jamaah Portal & TV Mode */}
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 shrink-0">
+            <button
+              id="dashboard-btn-to-jamaah"
+              type="button"
+              onClick={() => onNavigateTab('jamaah')}
+              className="py-2.5 px-4 bg-amber-400 hover:bg-amber-300 text-emerald-950 text-xs sm:text-sm font-extrabold rounded-xl shadow-md transition flex items-center gap-2 cursor-pointer active:scale-95 border border-amber-300"
+              title="Buka Portal Transparansi Kas untuk Jamaah & Dapatkan Link QR"
+            >
+              <Users className="w-4 h-4 stroke-[2.5]" />
+              <span>Portal Jamaah & QR</span>
+            </button>
           </div>
         </div>
       </div>

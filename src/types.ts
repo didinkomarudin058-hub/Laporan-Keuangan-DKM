@@ -7,6 +7,7 @@ export type AppTab =
   | 'monthlyReport'
   | 'analytics'
   | 'tvMode'
+  | 'jamaah'
   | 'settings';
 
 export type FundCategory = string;

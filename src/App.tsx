@@ -5,6 +5,7 @@ import { TransactionList } from './components/TransactionList';
 import { MonthlyReportView } from './components/MonthlyReportView';
 import { AnalyticsCharts } from './components/AnalyticsCharts';
 import { PublicDisplayBoard } from './components/PublicDisplayBoard';
+import { JamaahReportPortal } from './components/JamaahReportPortal';
 import { AddTransactionModal } from './components/AddTransactionModal';
 import { MosqueSettingsTab } from './components/MosqueSettingsTab';
 import { PwaInstallModal } from './components/PwaInstallModal';
@@ -340,6 +341,9 @@ export default function App() {
       }
       if (tabParam === 'business' || tabParam === 'usaha') {
         return 'business';
+      }
+      if (tabParam === 'jamaah' || tabParam === 'warga' || tabParam === 'publik') {
+        return 'jamaah';
       }
       if (tabParam === 'settings' || tabParam === 'pengaturan') {
         return 'settings';
@@ -1344,6 +1348,23 @@ export default function App() {
           <PublicDisplayBoard
             transactions={transactions}
             mosqueProfile={mosqueProfile}
+          />
+        )}
+
+        {activeTab === 'jamaah' && (
+          <JamaahReportPortal
+            transactions={transactions}
+            mosqueProfile={mosqueProfile}
+            businessUnits={businessUnits}
+            businessRecords={businessRecords}
+            landTenants={landTenants}
+            posDanaList={posDanaList}
+            selectedMonth={reportMonth}
+            selectedYear={reportYear}
+            onMonthYearChange={(m, y) => {
+              setReportMonth(m);
+              setReportYear(y);
+            }}
           />
         )}
 

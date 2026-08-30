@@ -6,6 +6,7 @@ import {
   BarChart3,
   ListFilter,
   Settings,
+  Users,
 } from 'lucide-react';
 import { User } from 'firebase/auth';
 import { MosqueProfile, AppTab } from '../types';
@@ -49,6 +50,24 @@ export const Navbar: React.FC<NavbarProps> = ({
               {[mosqueProfile.alamat, mosqueProfile.desa ? `Desa ${mosqueProfile.desa}` : '', mosqueProfile.kota].filter(Boolean).join(' ')}
             </p>
           </div>
+        </div>
+
+        {/* Quick Jamaah Link Badge on Header */}
+        <div className="flex items-center gap-2">
+          <button
+            id="nav-quick-jamaah-btn"
+            onClick={() => setActiveTab('jamaah')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition flex items-center gap-1.5 border cursor-pointer ${
+              activeTab === 'jamaah'
+                ? 'bg-amber-400 text-emerald-950 border-amber-300 shadow-sm'
+                : 'bg-emerald-800/80 text-amber-300 hover:bg-emerald-700/80 border-amber-400/40'
+            }`}
+            title="Buka Portal Transparansi Laporan Kas untuk Jamaah"
+          >
+            <Users className="w-4 h-4 stroke-[2.2]" />
+            <span className="hidden sm:inline">Portal Jamaah</span>
+            <span className="sm:hidden">Jamaah</span>
+          </button>
         </div>
       </div>
 
@@ -118,6 +137,19 @@ export const Navbar: React.FC<NavbarProps> = ({
           >
             <BarChart3 className={`w-4 h-4 ${activeTab === 'analytics' ? 'text-amber-300' : 'text-emerald-200'}`} />
             <span>Grafik & Analisis Kas</span>
+          </button>
+
+          <button
+            id="nav-tab-jamaah"
+            onClick={() => setActiveTab('jamaah')}
+            className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+              activeTab === 'jamaah'
+                ? 'bg-emerald-950 text-amber-300 font-bold border-b-2 border-amber-400 shadow-xs'
+                : 'text-amber-300 font-medium hover:text-amber-200 hover:bg-emerald-800/50'
+            }`}
+          >
+            <Users className={`w-4 h-4 ${activeTab === 'jamaah' ? 'text-amber-300' : 'text-amber-300'}`} />
+            <span>Laporan Jamaah</span>
           </button>
 
           <button
