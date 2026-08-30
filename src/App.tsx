@@ -31,6 +31,7 @@ import {
   saveTransactionToFirestore,
   deleteTransactionFromFirestore,
   bulkSaveTransactionsToFirestore,
+  getOrCreateMosquePublicId,
 } from './lib/firebase';
 
 export default function App() {
@@ -528,9 +529,8 @@ export default function App() {
       localStorage.setItem(STORAGE_KEY_TRANSACTIONS, JSON.stringify(next));
       return next;
     });
-    if (currentUser?.uid && !currentUser.isLocal && auth.currentUser) {
-      deleteTransactionFromFirestore(currentUser.uid, id);
-    }
+    const syncId = currentUser?.uid || getOrCreateMosquePublicId();
+    deleteTransactionFromFirestore(syncId, id);
     setToastMessage('Transaksi berhasil dihapus.');
     setTimeout(() => setToastMessage(null), 2500);
   };
@@ -539,6 +539,7 @@ export default function App() {
     trxData: Omit<Transaction, 'id'>,
     editId?: string
   ) => {
+    const syncId = currentUser?.uid || getOrCreateMosquePublicId();
     if (editId) {
       const updatedTrx: Transaction = { ...trxData, id: editId };
       setTransactions((prev) => {
@@ -546,9 +547,7 @@ export default function App() {
         localStorage.setItem(STORAGE_KEY_TRANSACTIONS, JSON.stringify(next));
         return next;
       });
-      if (currentUser?.uid && !currentUser.isLocal && auth.currentUser) {
-        saveTransactionToFirestore(currentUser.uid, updatedTrx);
-      }
+      saveTransactionToFirestore(syncId, updatedTrx);
       setToastMessage('Transaksi berhasil diperbarui!');
       setTimeout(() => setToastMessage(null), 2500);
     } else {
@@ -564,9 +563,7 @@ export default function App() {
         localStorage.setItem(STORAGE_KEY_TRANSACTIONS, JSON.stringify(next));
         return next;
       });
-      if (currentUser?.uid && !currentUser.isLocal && auth.currentUser) {
-        saveTransactionToFirestore(currentUser.uid, newTrx);
-      }
+      saveTransactionToFirestore(syncId, newTrx);
       setToastMessage('Transaksi baru berhasil dicatat & disimpan!');
       setTimeout(() => setToastMessage(null), 2500);
     }
@@ -575,9 +572,8 @@ export default function App() {
   // Profile Handler
   const handleSaveProfile = (updatedProfile: MosqueProfile) => {
     setMosqueProfile(updatedProfile);
-    if (currentUser) {
-      saveSettingsToFirestore(currentUser.uid, { mosqueProfile: updatedProfile });
-    }
+    const syncId = currentUser?.uid || getOrCreateMosquePublicId();
+    saveSettingsToFirestore(syncId, { mosqueProfile: updatedProfile });
   };
 
   // Category Handlers
@@ -597,12 +593,11 @@ export default function App() {
       }
     }
 
-    if (currentUser) {
-      saveSettingsToFirestore(currentUser.uid, {
-        categoriesPemasukan: updatedPemasukan,
-        categoriesPengeluaran: updatedPengeluaran,
-      });
-    }
+    const syncId = currentUser?.uid || getOrCreateMosquePublicId();
+    saveSettingsToFirestore(syncId, {
+      categoriesPemasukan: updatedPemasukan,
+      categoriesPengeluaran: updatedPengeluaran,
+    });
   };
 
   const handleEditCategory = (
@@ -627,12 +622,11 @@ export default function App() {
       )
     );
 
-    if (currentUser) {
-      saveSettingsToFirestore(currentUser.uid, {
-        categoriesPemasukan: updatedPemasukan,
-        categoriesPengeluaran: updatedPengeluaran,
-      });
-    }
+    const syncId = currentUser?.uid || getOrCreateMosquePublicId();
+    saveSettingsToFirestore(syncId, {
+      categoriesPemasukan: updatedPemasukan,
+      categoriesPengeluaran: updatedPengeluaran,
+    });
   };
 
   const handleDeleteCategory = (type: TransactionType, name: string) => {
@@ -647,12 +641,11 @@ export default function App() {
       setCategoriesPengeluaran(updatedPengeluaran);
     }
 
-    if (currentUser) {
-      saveSettingsToFirestore(currentUser.uid, {
-        categoriesPemasukan: updatedPemasukan,
-        categoriesPengeluaran: updatedPengeluaran,
-      });
-    }
+    const syncId = currentUser?.uid || getOrCreateMosquePublicId();
+    saveSettingsToFirestore(syncId, {
+      categoriesPemasukan: updatedPemasukan,
+      categoriesPengeluaran: updatedPengeluaran,
+    });
   };
 
   const handleResetCategories = () => {
@@ -664,13 +657,12 @@ export default function App() {
       setCategoriesPemasukan(CATEGORIES_PEMASUKAN);
       setCategoriesPengeluaran(CATEGORIES_PENGELUARAN);
       setCategoriesSewa(CATEGORIES_SEWA);
-      if (currentUser) {
-        saveSettingsToFirestore(currentUser.uid, {
-          categoriesPemasukan: CATEGORIES_PEMASUKAN,
-          categoriesPengeluaran: CATEGORIES_PENGELUARAN,
-          categoriesSewa: CATEGORIES_SEWA,
-        });
-      }
+      const syncId = currentUser?.uid || getOrCreateMosquePublicId();
+      saveSettingsToFirestore(syncId, {
+        categoriesPemasukan: CATEGORIES_PEMASUKAN,
+        categoriesPengeluaran: CATEGORIES_PENGELUARAN,
+        categoriesSewa: CATEGORIES_SEWA,
+      });
     }
   };
 
@@ -681,11 +673,10 @@ export default function App() {
       const updated = [...categoriesSewa, trimmed];
       setCategoriesSewa(updated);
       localStorage.setItem(STORAGE_KEY_CATEGORIES_SEWA, JSON.stringify(updated));
-      if (currentUser?.uid) {
-        saveSettingsToFirestore(currentUser.uid, {
-          categoriesSewa: updated,
-        });
-      }
+      const syncId = currentUser?.uid || getOrCreateMosquePublicId();
+      saveSettingsToFirestore(syncId, {
+        categoriesSewa: updated,
+      });
     }
   };
 
@@ -702,12 +693,11 @@ export default function App() {
       setLandTenants(updatedTenants);
       localStorage.setItem(STORAGE_KEY_LAND_TENANTS, JSON.stringify(updatedTenants));
 
-      if (currentUser?.uid) {
-        saveSettingsToFirestore(currentUser.uid, {
-          categoriesSewa: updated,
-          landTenants: updatedTenants,
-        });
-      }
+      const syncId = currentUser?.uid || getOrCreateMosquePublicId();
+      saveSettingsToFirestore(syncId, {
+        categoriesSewa: updated,
+        landTenants: updatedTenants,
+      });
     }
   };
 
@@ -715,11 +705,10 @@ export default function App() {
     const updated = categoriesSewa.filter((c) => c !== name);
     setCategoriesSewa(updated);
     localStorage.setItem(STORAGE_KEY_CATEGORIES_SEWA, JSON.stringify(updated));
-    if (currentUser?.uid) {
-      saveSettingsToFirestore(currentUser.uid, {
-        categoriesSewa: updated,
-      });
-    }
+    const syncId = currentUser?.uid || getOrCreateMosquePublicId();
+    saveSettingsToFirestore(syncId, {
+      categoriesSewa: updated,
+    });
   };
 
   // Pos Dana Handlers
@@ -727,9 +716,8 @@ export default function App() {
     if (!posDanaList.includes(name)) {
       const updated = [...posDanaList, name];
       setPosDanaList(updated);
-      if (currentUser) {
-        saveSettingsToFirestore(currentUser.uid, { posDanaList: updated });
-      }
+      const syncId = currentUser?.uid || getOrCreateMosquePublicId();
+      saveSettingsToFirestore(syncId, { posDanaList: updated });
     }
   };
 
@@ -739,9 +727,8 @@ export default function App() {
     setTransactions((prev) =>
       prev.map((t) => (t.danaKat === oldName ? { ...t, danaKat: newName } : t))
     );
-    if (currentUser) {
-      saveSettingsToFirestore(currentUser.uid, { posDanaList: updated });
-    }
+    const syncId = currentUser?.uid || getOrCreateMosquePublicId();
+    saveSettingsToFirestore(syncId, { posDanaList: updated });
   };
 
   const handleDeletePosDana = (name: string) => {
@@ -1311,6 +1298,27 @@ export default function App() {
     }
   };
 
+  // Auto-sync real DKM data to Firestore so public visitors always receive live real data
+  useEffect(() => {
+    if (!dkmParam && !isPublicMode) {
+      const syncId = currentUser?.uid || getOrCreateMosquePublicId();
+      saveSettingsToFirestore(syncId, {
+        mosqueProfile,
+        categoriesPemasukan,
+        categoriesPengeluaran,
+        categoriesSewa,
+        posDanaList,
+        metodePembayaranList,
+        businessUnits,
+        businessRecords,
+        landTenants,
+      });
+      if (transactions.length > 0) {
+        bulkSaveTransactionsToFirestore(syncId, transactions);
+      }
+    }
+  }, [currentUser?.uid]);
+
   // Determine if the current session is in Read-Only Mode (e.g. accessed via public transparency link or without login)
   const isSharedOrPublicVisitor = Boolean(
     isPublicMode ||
@@ -1327,7 +1335,7 @@ export default function App() {
     (isSharedOrPublicVisitor && (!currentUser || (dkmParam && currentUser.uid !== dkmParam)))
   );
 
-  const effectiveDkmId = dkmParam || currentUser?.uid || undefined;
+  const effectiveDkmId = dkmParam || currentUser?.uid || getOrCreateMosquePublicId();
 
   return (
     <div className="min-h-screen bg-slate-100 print:bg-white print:min-h-0 text-slate-900 font-sans antialiased selection:bg-emerald-200 relative">
@@ -1338,13 +1346,7 @@ export default function App() {
         setActiveTab={setActiveTab}
         onOpenSettingsModal={(tab) => handleNavigateToSettings(tab || 'profile')}
         onOpenPwaModal={() => setIsPwaModalOpen(true)}
-        currentUser={currentUser}
-        readOnly={isReadOnly}
         isPublicMode={isPublicMode}
-        onOpenLoginModal={() => {
-          setIsPublicMode(false);
-          handleNavigateToSettings('account');
-        }}
       />
 
       {/* Main View Container */}
@@ -1365,10 +1367,6 @@ export default function App() {
             posDanaList={posDanaList}
             isPublicMode={true}
             dkmId={effectiveDkmId}
-            onOpenLoginModal={() => {
-              setIsPublicMode(false);
-              handleNavigateToSettings('account');
-            }}
             onTogglePublicPreview={(mode) => setIsPublicMode(mode)}
           />
         ) : (

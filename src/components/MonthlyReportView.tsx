@@ -27,6 +27,7 @@ import {
 import { MosqueProfile, Transaction } from '../types';
 import { exportTransactionsToExcel } from '../lib/excelExport';
 import { ReceiptModal } from './ReceiptModal';
+import { getOrCreateMosquePublicId } from '../lib/firebase';
 
 interface MonthlyReportViewProps {
   transactions: Transaction[];
@@ -354,9 +355,10 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
     });
   };
 
-  // Public Transparency URL Generator
+  // Public Transparency URL Generator - guarantees real DKM account ID is attached
+  const activeDkmId = dkmId || getOrCreateMosquePublicId();
   const publicShareUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}${window.location.pathname}?${dkmId ? `dkm=${dkmId}&` : ''}mode=publik`
+    ? `${window.location.origin}${window.location.pathname}?dkm=${activeDkmId}&mode=publik`
     : '';
 
   const handleCopyLink = async () => {
@@ -389,7 +391,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
       `• Total Pengeluaran: Rp ${formatRp(totalExpense)}\n` +
       `• *Saldo Kas Saat Ini: Rp ${formatRp(endingBalance)}*\n` +
       `---------------------------------------\n\n` +
-      `🌐 *Lihat Laporan Lengkap & Nota Bukti (Tanpa Login):*\n${publicShareUrl}\n\n` +
+      `🌐 *Lihat Laporan Lengkap & Nota Bukti:*\n${publicShareUrl}\n\n` +
       `_Laporan terbuka resmi untuk seluruh jamaah & masyarakat._`;
 
     const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
@@ -400,51 +402,6 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
 
   return (
     <div className="space-y-6 pb-12 print:space-y-0 print:pb-0 print:bg-white">
-      {/* Public Transparency Banner when in Public Mode */}
-      {isPublicMode && (
-        <div className="bg-gradient-to-r from-emerald-950 via-emerald-900 to-teal-950 text-white rounded-2xl p-4 sm:p-5 shadow-md border border-emerald-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
-          <div className="flex items-start sm:items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-amber-400 text-emerald-950 flex items-center justify-center font-black shrink-0 shadow-xs">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-sm sm:text-base font-bold text-amber-300">
-                  Portal Transparansi Kas Masjid Terbuka
-                </h3>
-                <span className="bg-emerald-800 text-emerald-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-emerald-700">
-                  Akses Publik Tanpa Login
-                </span>
-              </div>
-              <p className="text-xs text-emerald-100/90 mt-0.5 leading-relaxed">
-                Laporan keuangan resmi {mosqueProfile.namaMasjid}. Publik dapat melihat rincian mutasi kas, saldo per pos dana, serta bukti nota secara terbuka dan transparan tanpa perlu login.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => setIsPublicModalOpen(true)}
-              className="px-3.5 py-2 bg-emerald-800 hover:bg-emerald-700 text-amber-300 text-xs font-bold rounded-xl border border-emerald-700/80 transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
-            >
-              <QrCode className="w-4 h-4" />
-              <span>Bagikan / QR Code</span>
-            </button>
-            {onTogglePublicPreview && (
-              <button
-                type="button"
-                onClick={() => onTogglePublicPreview(false)}
-                className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl border border-slate-700 transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
-                title="Keluar dari pratinjau publik dan kembali ke mode pengurus"
-              >
-                <span>Keluar Mode Publik</span>
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Top Bar Header */}
       <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4 print:hidden">
         <div>
@@ -458,17 +415,19 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          {/* Public Transparency Button */}
-          <button
-            id="report-btn-public-transparency"
-            type="button"
-            onClick={() => setIsPublicModalOpen(true)}
-            className="bg-emerald-800 hover:bg-emerald-700 text-amber-300 border border-emerald-700/80 font-bold text-xs py-2 px-3.5 rounded-lg shadow-sm flex items-center gap-1.5 transition cursor-pointer active:scale-95"
-            title="Buka Fitur Transparansi Publik & QR Code untuk Warga/Jamaah"
-          >
-            <Globe className="w-4 h-4 text-amber-300" />
-            <span>Transparansi Publik & QR</span>
-          </button>
+          {/* Public Transparency Button - Only shown for DKM Pengurus (hidden in public mode) */}
+          {!isPublicMode && (
+            <button
+              id="report-btn-public-transparency"
+              type="button"
+              onClick={() => setIsPublicModalOpen(true)}
+              className="bg-emerald-800 hover:bg-emerald-700 text-amber-300 border border-emerald-700/80 font-bold text-xs py-2 px-3.5 rounded-lg shadow-sm flex items-center gap-1.5 transition cursor-pointer active:scale-95"
+              title="Buka Fitur Transparansi Publik & QR Code untuk Warga/Jamaah"
+            >
+              <Globe className="w-4 h-4 text-amber-300" />
+              <span>Transparansi Publik & QR</span>
+            </button>
+          )}
 
           {/* Period Mode Selector Pill Tabs */}
           <div className="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200 text-xs font-bold">

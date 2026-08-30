@@ -18,7 +18,6 @@ interface NavbarProps {
   onOpenSettingsModal?: (tab?: 'profile' | 'account' | 'categories' | 'backup' | 'pwa') => void;
   onOpenPwaModal?: () => void;
   isPublicMode?: boolean;
-  onOpenLoginModal?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -26,7 +25,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
   isPublicMode = false,
-  onOpenLoginModal,
 }) => {
   return (
     <header id="dkm-app-navbar" className="bg-emerald-900 text-white shadow-md border-b border-emerald-800 sticky top-0 z-30 print:hidden">
@@ -46,35 +44,14 @@ export const Navbar: React.FC<NavbarProps> = ({
             )}
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-base sm:text-xl font-bold tracking-tight text-white leading-tight">
-                {mosqueProfile.namaMasjid}
-              </h1>
-              {isPublicMode && (
-                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 bg-amber-400/90 text-emerald-950 text-[10px] font-extrabold rounded-full shadow-2xs">
-                  <Globe className="w-3 h-3" />
-                  Transparansi Publik
-                </span>
-              )}
-            </div>
+            <h1 className="text-base sm:text-xl font-bold tracking-tight text-white leading-tight">
+              {mosqueProfile.namaMasjid}
+            </h1>
             <p className="text-[11px] sm:text-xs text-emerald-200/90 font-normal">
               {[mosqueProfile.alamat, mosqueProfile.desa ? `Desa ${mosqueProfile.desa}` : '', mosqueProfile.kota].filter(Boolean).join(' ')}
             </p>
           </div>
         </div>
-
-        {/* Right Action: In Public Mode show Login button for DKM Admin */}
-        {isPublicMode && onOpenLoginModal && (
-          <button
-            type="button"
-            onClick={onOpenLoginModal}
-            className="px-3 sm:px-4 py-1.5 sm:py-2 bg-emerald-800/80 hover:bg-emerald-700 text-amber-300 hover:text-white border border-emerald-700 text-xs font-bold rounded-xl transition flex items-center gap-1.5 shrink-0 cursor-pointer shadow-xs active:scale-95"
-            title="Masuk sebagai Pengurus DKM untuk mengelola kas"
-          >
-            <LogIn className="w-4 h-4" />
-            <span>Masuk Pengurus</span>
-          </button>
-        )}
       </div>
 
       {/* Navigation Sub-bar (Desktop & Tablet) - Only rendered when NOT in Public Mode */}
