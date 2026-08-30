@@ -4,7 +4,6 @@ import {
   ListFilter,
   FileText,
   Settings,
-  Users,
 } from 'lucide-react';
 import { AppTab } from '../types';
 
@@ -63,21 +62,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         <span>Laporan</span>
       </button>
 
-      {/* 4. Portal Jamaah */}
-      <button
-        id="mobile-nav-jamaah"
-        onClick={() => setActiveTab('jamaah')}
-        className={`flex flex-col items-center justify-center py-1 px-1.5 rounded-lg transition text-[9.5px] cursor-pointer ${
-          activeTab === 'jamaah'
-            ? 'text-amber-400 bg-slate-800/90 font-bold'
-            : 'text-amber-300 hover:text-amber-200 font-semibold'
-        }`}
-      >
-        <Users className={`w-4.5 h-4.5 mb-0.5 ${activeTab === 'jamaah' ? 'text-amber-400' : 'text-amber-300'}`} />
-        <span>Jamaah</span>
-      </button>
-
-      {/* 5. Usaha DKM / Sewa Tanah */}
+      {/* 4. Usaha DKM / Sewa Tanah */}
       <button
         id="mobile-nav-business"
         onClick={() => setActiveTab('business')}
@@ -91,7 +76,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
         <span>Sewa</span>
       </button>
 
-      {/* 6. Menu Pengaturan */}
+      {/* 5. Menu Pengaturan */}
       <button
         id="mobile-nav-settings"
         onClick={() => setActiveTab('settings')}

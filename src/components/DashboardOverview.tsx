@@ -6,20 +6,17 @@ import {
   ArrowUpRight, 
   ArrowDownRight, 
   Building, 
-  HeartHandshake, 
   CircleDollarSign, 
   PlusCircle, 
   Calendar, 
   ChevronRight, 
   QrCode, 
   ShieldCheck, 
-  FileText,
   Clock,
   Sparkles,
   Coins,
   Camera,
   Store,
-  Users,
 } from 'lucide-react';
 import { FundCategory, MosqueProfile, Transaction, MosqueBusinessUnit, BusinessRecord, AppTab } from '../types';
 import { ReceiptModal } from './ReceiptModal';
@@ -35,7 +32,6 @@ interface DashboardOverviewProps {
   onOpenAddModal?: (defaultCategory?: FundCategory) => void;
   onNavigateTab: (tab: AppTab) => void;
   onSelectFundFilter: (fund: FundCategory | 'semua') => void;
-  readOnly?: boolean;
 }
 
 export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
@@ -49,7 +45,6 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   onOpenAddModal,
   onNavigateTab,
   onSelectFundFilter,
-  readOnly = false,
 }) => {
   const [activeReceiptTrx, setActiveReceiptTrx] = useState<Transaction | null>(null);
   // Compute overall financial totals
@@ -193,20 +188,6 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                 "{mosqueProfile.motto}"
               </p>
             </div>
-          </div>
-
-          {/* Quick Access to Jamaah Portal & TV Mode */}
-          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 shrink-0">
-            <button
-              id="dashboard-btn-to-jamaah"
-              type="button"
-              onClick={() => onNavigateTab('jamaah')}
-              className="py-2.5 px-4 bg-amber-400 hover:bg-amber-300 text-emerald-950 text-xs sm:text-sm font-extrabold rounded-xl shadow-md transition flex items-center gap-2 cursor-pointer active:scale-95 border border-amber-300"
-              title="Buka Portal Transparansi Kas untuk Jamaah & Dapatkan Link QR"
-            >
-              <Users className="w-4 h-4 stroke-[2.5]" />
-              <span>Portal Jamaah & QR</span>
-            </button>
           </div>
         </div>
       </div>
@@ -353,7 +334,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                 </div>
 
                 <div className="flex gap-2 pt-0.5">
-                  {!readOnly && onOpenAddModal && (
+                  {onOpenAddModal && (
                     <button
                       onClick={() => onOpenAddModal(item.name)}
                       className="flex-1 py-1 px-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-[10px] rounded-md border border-emerald-200 transition text-center cursor-pointer"
@@ -363,10 +344,10 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                   )}
                   <button
                     onClick={() => onSelectFundFilter(item.name)}
-                    className={`${readOnly ? 'w-full' : 'py-1 px-2.5'} py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[10px] rounded-md transition text-center cursor-pointer`}
+                    className="py-1 px-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[10px] rounded-md transition text-center cursor-pointer"
                     title="Lihat rincian mutasi pos ini"
                   >
-                    {readOnly ? 'Lihat Mutasi Kas' : 'Mutasi'}
+                    Mutasi
                   </button>
                 </div>
               </div>

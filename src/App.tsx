@@ -5,7 +5,6 @@ import { TransactionList } from './components/TransactionList';
 import { MonthlyReportView } from './components/MonthlyReportView';
 import { AnalyticsCharts } from './components/AnalyticsCharts';
 import { PublicDisplayBoard } from './components/PublicDisplayBoard';
-import { JamaahReportPortal } from './components/JamaahReportPortal';
 import { AddTransactionModal } from './components/AddTransactionModal';
 import { MosqueSettingsTab } from './components/MosqueSettingsTab';
 import { PwaInstallModal } from './components/PwaInstallModal';
@@ -370,12 +369,25 @@ export default function App() {
     }
   }, [currentUser?.uid, currentUser?.isLocal]);
 
+  // Public Transparency Mode State
+  const [isPublicMode, setIsPublicMode] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const mode = params.get('mode') || params.get('publik') || params.get('public');
+      const tab = params.get('tab');
+      if (mode === 'publik' || mode === 'public' || mode === 'true' || tab === 'laporan-publik') {
+        return true;
+      }
+    }
+    return false;
+  });
+
   // Tab State
   const [activeTab, setActiveTab] = useState<AppTab>(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const tabParam = params.get('tab');
-      if (tabParam === 'monthlyReport' || tabParam === 'report') {
+      if (tabParam === 'monthlyReport' || tabParam === 'report' || tabParam === 'laporan-publik') {
         return 'monthlyReport';
       }
       if (tabParam === 'transactions' || tabParam === 'jurnal') {
@@ -389,9 +401,6 @@ export default function App() {
       }
       if (tabParam === 'business' || tabParam === 'usaha') {
         return 'business';
-      }
-      if (tabParam === 'jamaah' || tabParam === 'warga' || tabParam === 'publik') {
-        return 'jamaah';
       }
       if (tabParam === 'settings' || tabParam === 'pengaturan') {
         return 'settings';
@@ -1302,17 +1311,20 @@ export default function App() {
     }
   };
 
-  // Determine if the current session is in Read-Only Mode (e.g. accessed by Jamaah via link/QR or explicitly viewing public portal)
+  // Determine if the current session is in Read-Only Mode (e.g. accessed via public transparency link or without login)
   const isSharedOrPublicVisitor = Boolean(
+    isPublicMode ||
     dkmParam ||
     (typeof window !== 'undefined' &&
       (new URLSearchParams(window.location.search).get('role') === 'jamaah' ||
-        new URLSearchParams(window.location.search).get('tab') === 'jamaah'))
+        new URLSearchParams(window.location.search).get('tab') === 'jamaah' ||
+        new URLSearchParams(window.location.search).get('mode') === 'publik'))
   );
 
   // If user is accessing via shared link or portal without logging in as this DKM owner, enforce read-only
   const isReadOnly = Boolean(
-    isSharedOrPublicVisitor && (!currentUser || (dkmParam && currentUser.uid !== dkmParam))
+    isPublicMode ||
+    (isSharedOrPublicVisitor && (!currentUser || (dkmParam && currentUser.uid !== dkmParam)))
   );
 
   const effectiveDkmId = dkmParam || currentUser?.uid || undefined;
@@ -1328,46 +1340,17 @@ export default function App() {
         onOpenPwaModal={() => setIsPwaModalOpen(true)}
         currentUser={currentUser}
         readOnly={isReadOnly}
-        onOpenLoginModal={() => handleNavigateToSettings('account')}
+        isPublicMode={isPublicMode}
+        onOpenLoginModal={() => {
+          setIsPublicMode(false);
+          handleNavigateToSettings('account');
+        }}
       />
 
       {/* Main View Container */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 md:pb-12 print:p-0 print:m-0 print:max-w-none print:bg-white">
-        {activeTab === 'dashboard' && (
-          <DashboardOverview
-            transactions={transactions}
-            mosqueProfile={mosqueProfile}
-            selectedMonth={reportMonth}
-            selectedYear={reportYear}
-            posDanaList={posDanaList}
-            businessUnits={businessUnits}
-            businessRecords={businessRecords}
-            onOpenAddModal={handleOpenAddModal}
-            onNavigateTab={setActiveTab}
-            onSelectFundFilter={(fund) => {
-              setSelectedFundFilter(fund);
-              setActiveTab('transactions');
-            }}
-            readOnly={isReadOnly}
-          />
-        )}
-
-        {activeTab === 'transactions' && (
-          <TransactionList
-            transactions={transactions}
-            onOpenAddModal={handleOpenAddModal}
-            onEditTransaction={handleEditTransaction}
-            onDeleteTransaction={handleDeleteTransaction}
-            initialFundFilter={selectedFundFilter}
-            categoriesPemasukan={categoriesPemasukan}
-            categoriesPengeluaran={categoriesPengeluaran}
-            posDanaList={posDanaList}
-            mosqueProfile={mosqueProfile}
-            readOnly={isReadOnly}
-          />
-        )}
-
-        {activeTab === 'monthlyReport' && (
+        {/* If in Public Transparency Mode, strictly restrict view to MonthlyReportView only */}
+        {isPublicMode ? (
           <MonthlyReportView
             transactions={transactions}
             mosqueProfile={mosqueProfile}
@@ -1379,104 +1362,147 @@ export default function App() {
             }}
             categoriesPemasukan={categoriesPemasukan}
             categoriesPengeluaran={categoriesPengeluaran}
-          />
-        )}
-
-        {activeTab === 'analytics' && (
-          <AnalyticsCharts transactions={transactions} posDanaList={posDanaList} />
-        )}
-
-        {activeTab === 'business' && (
-          <MosqueBusinessTab
-            businessUnits={businessUnits}
-            businessRecords={businessRecords}
-            landTenants={landTenants}
-            categoriesSewa={categoriesSewa}
-            mosqueProfile={mosqueProfile}
             posDanaList={posDanaList}
-            metodePembayaranList={metodePembayaranList}
-            onAddUnit={handleAddBusinessUnit}
-            onEditUnit={handleEditBusinessUnit}
-            onDeleteUnit={handleDeleteBusinessUnit}
-            onAddRecord={handleAddBusinessRecord}
-            onEditRecord={handleEditBusinessRecord}
-            onDeleteRecord={handleDeleteBusinessRecord}
-            onPushRecordToTransaction={handlePushRecordToTransaction}
-            onAddTenant={handleAddTenant}
-            onEditTenant={handleEditTenant}
-            onDeleteTenant={handleDeleteTenant}
-            onPayTenantRent={handlePayTenantRent}
-            onDeleteTenantPayment={handleDeleteTenantPayment}
-            onNavigateToTransactions={(trxId) => {
-              setActiveTab('transactions');
-            }}
-            readOnly={isReadOnly}
-          />
-        )}
-
-        {activeTab === 'tvMode' && (
-          <PublicDisplayBoard
-            transactions={transactions}
-            mosqueProfile={mosqueProfile}
-          />
-        )}
-
-        {activeTab === 'jamaah' && (
-          <JamaahReportPortal
-            transactions={transactions}
-            mosqueProfile={mosqueProfile}
-            businessUnits={businessUnits}
-            businessRecords={businessRecords}
-            landTenants={landTenants}
-            posDanaList={posDanaList}
-            selectedMonth={reportMonth}
-            selectedYear={reportYear}
-            onMonthYearChange={(m, y) => {
-              setReportMonth(m);
-              setReportYear(y);
-            }}
+            isPublicMode={true}
             dkmId={effectiveDkmId}
-            readOnly={isReadOnly}
-            onOpenLoginModal={() => handleNavigateToSettings('account')}
+            onOpenLoginModal={() => {
+              setIsPublicMode(false);
+              handleNavigateToSettings('account');
+            }}
+            onTogglePublicPreview={(mode) => setIsPublicMode(mode)}
           />
-        )}
+        ) : (
+          <>
+            {activeTab === 'dashboard' && (
+              <DashboardOverview
+                transactions={transactions}
+                mosqueProfile={mosqueProfile}
+                selectedMonth={reportMonth}
+                selectedYear={reportYear}
+                posDanaList={posDanaList}
+                businessUnits={businessUnits}
+                businessRecords={businessRecords}
+                onOpenAddModal={handleOpenAddModal}
+                onNavigateTab={setActiveTab}
+                onSelectFundFilter={(fund) => {
+                  setSelectedFundFilter(fund);
+                  setActiveTab('transactions');
+                }}
+              />
+            )}
 
-        {activeTab === 'settings' && (
-          <MosqueSettingsTab
-            mosqueProfile={mosqueProfile}
-            onSaveProfile={handleSaveProfile}
-            currentUser={currentUser}
-            categoriesPemasukan={categoriesPemasukan}
-            categoriesPengeluaran={categoriesPengeluaran}
-            onAddCategory={handleAddCategory}
-            onEditCategory={handleEditCategory}
-            onDeleteCategory={handleDeleteCategory}
-            onResetCategories={handleResetCategories}
-            categoriesSewa={categoriesSewa}
-            onAddCategorySewa={handleAddCategorySewa}
-            onEditCategorySewa={handleEditCategorySewa}
-            onDeleteCategorySewa={handleDeleteCategorySewa}
-            posDanaList={posDanaList}
-            onAddPosDana={handleAddPosDana}
-            onEditPosDana={handleEditPosDana}
-            onDeletePosDana={handleDeletePosDana}
-            metodePembayaranList={metodePembayaranList}
-            onAddMetodePembayaran={handleAddMetodePembayaran}
-            onEditMetodePembayaran={handleEditMetodePembayaran}
-            onDeleteMetodePembayaran={handleDeleteMetodePembayaran}
-            onExportBackup={handleExportBackup}
-            onImportBackup={handleImportBackup}
-            onResetData={handleResetData}
-            defaultSubTab={settingsDefaultTab}
-            onOpenPwaModal={() => setIsPwaModalOpen(true)}
-            readOnly={isReadOnly}
-            onOpenLoginModal={() => handleNavigateToSettings('account')}
-          />
+            {activeTab === 'transactions' && (
+              <TransactionList
+                transactions={transactions}
+                onOpenAddModal={handleOpenAddModal}
+                onEditTransaction={handleEditTransaction}
+                onDeleteTransaction={handleDeleteTransaction}
+                initialFundFilter={selectedFundFilter}
+                categoriesPemasukan={categoriesPemasukan}
+                categoriesPengeluaran={categoriesPengeluaran}
+                posDanaList={posDanaList}
+                mosqueProfile={mosqueProfile}
+                readOnly={isReadOnly}
+              />
+            )}
+
+            {activeTab === 'monthlyReport' && (
+              <MonthlyReportView
+                transactions={transactions}
+                mosqueProfile={mosqueProfile}
+                selectedMonth={reportMonth}
+                selectedYear={reportYear}
+                onMonthYearChange={(m, y) => {
+                  setReportMonth(m);
+                  setReportYear(y);
+                }}
+                categoriesPemasukan={categoriesPemasukan}
+                categoriesPengeluaran={categoriesPengeluaran}
+                posDanaList={posDanaList}
+                isPublicMode={false}
+                dkmId={effectiveDkmId}
+                onOpenLoginModal={() => {
+                  handleNavigateToSettings('account');
+                }}
+                onTogglePublicPreview={(mode) => setIsPublicMode(mode)}
+              />
+            )}
+
+            {activeTab === 'analytics' && (
+              <AnalyticsCharts transactions={transactions} posDanaList={posDanaList} />
+            )}
+
+            {activeTab === 'business' && (
+              <MosqueBusinessTab
+                businessUnits={businessUnits}
+                businessRecords={businessRecords}
+                landTenants={landTenants}
+                categoriesSewa={categoriesSewa}
+                mosqueProfile={mosqueProfile}
+                posDanaList={posDanaList}
+                metodePembayaranList={metodePembayaranList}
+                onAddUnit={handleAddBusinessUnit}
+                onEditUnit={handleEditBusinessUnit}
+                onDeleteUnit={handleDeleteBusinessUnit}
+                onAddRecord={handleAddBusinessRecord}
+                onEditRecord={handleEditBusinessRecord}
+                onDeleteRecord={handleDeleteBusinessRecord}
+                onPushRecordToTransaction={handlePushRecordToTransaction}
+                onAddTenant={handleAddTenant}
+                onEditTenant={handleEditTenant}
+                onDeleteTenant={handleDeleteTenant}
+                onPayTenantRent={handlePayTenantRent}
+                onDeleteTenantPayment={handleDeleteTenantPayment}
+                onNavigateToTransactions={(trxId) => {
+                  setActiveTab('transactions');
+                }}
+                readOnly={isReadOnly}
+              />
+            )}
+
+            {activeTab === 'tvMode' && (
+              <PublicDisplayBoard
+                transactions={transactions}
+                mosqueProfile={mosqueProfile}
+              />
+            )}
+
+            {activeTab === 'settings' && (
+              <MosqueSettingsTab
+                mosqueProfile={mosqueProfile}
+                onSaveProfile={handleSaveProfile}
+                currentUser={currentUser}
+                categoriesPemasukan={categoriesPemasukan}
+                categoriesPengeluaran={categoriesPengeluaran}
+                onAddCategory={handleAddCategory}
+                onEditCategory={handleEditCategory}
+                onDeleteCategory={handleDeleteCategory}
+                onResetCategories={handleResetCategories}
+                categoriesSewa={categoriesSewa}
+                onAddCategorySewa={handleAddCategorySewa}
+                onEditCategorySewa={handleEditCategorySewa}
+                onDeleteCategorySewa={handleDeleteCategorySewa}
+                posDanaList={posDanaList}
+                onAddPosDana={handleAddPosDana}
+                onEditPosDana={handleEditPosDana}
+                onDeletePosDana={handleDeletePosDana}
+                metodePembayaranList={metodePembayaranList}
+                onAddMetodePembayaran={handleAddMetodePembayaran}
+                onEditMetodePembayaran={handleEditMetodePembayaran}
+                onDeleteMetodePembayaran={handleDeleteMetodePembayaran}
+                onExportBackup={handleExportBackup}
+                onImportBackup={handleImportBackup}
+                onResetData={handleResetData}
+                defaultSubTab={settingsDefaultTab}
+                onOpenPwaModal={() => setIsPwaModalOpen(true)}
+              />
+            )}
+          </>
         )}
       </main>
 
-      {/* Floating '+' Action Button - Only visible in Ikhtisar / Dashboard when not in read-only mode */}
-      {activeTab === 'dashboard' && !isReadOnly && (
+      {/* Floating '+' Action Button - Only visible in Ikhtisar / Dashboard when not in read-only / public mode */}
+      {!isPublicMode && activeTab === 'dashboard' && !isReadOnly && (
         <FloatingActionButton
           onOpenAddTransaction={(type) => {
             if (type) {
@@ -1498,13 +1524,15 @@ export default function App() {
         </div>
       )}
 
-      {/* Mobile Bottom Navigation Bar */}
-      <MobileBottomNav
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        onOpenAddModal={() => handleOpenAddModal()}
-        onOpenSettingsModal={() => handleNavigateToSettings('profile')}
-      />
+      {/* Mobile Bottom Navigation Bar - Only shown for authenticated / full mode */}
+      {!isPublicMode && (
+        <MobileBottomNav
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          onOpenAddModal={() => handleOpenAddModal()}
+          onOpenSettingsModal={() => handleNavigateToSettings('profile')}
+        />
+      )}
 
       {/* Footer */}
       <footer className="bg-white border-t border-slate-200 py-6 text-center text-xs text-slate-500 print:hidden hidden md:block">

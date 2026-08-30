@@ -10,7 +10,19 @@ import {
   Tag,
   CalendarDays,
   FileSpreadsheet,
-  Camera
+  Camera,
+  Globe,
+  QrCode,
+  Share2,
+  Copy,
+  Check,
+  ExternalLink,
+  ShieldCheck,
+  X,
+  LogIn,
+  Eye,
+  ArrowRight,
+  MessageSquare
 } from 'lucide-react';
 import { MosqueProfile, Transaction } from '../types';
 import { exportTransactionsToExcel } from '../lib/excelExport';
@@ -25,6 +37,10 @@ interface MonthlyReportViewProps {
   categoriesPemasukan?: string[];
   categoriesPengeluaran?: string[];
   posDanaList?: string[];
+  isPublicMode?: boolean;
+  dkmId?: string;
+  onOpenLoginModal?: () => void;
+  onTogglePublicPreview?: (mode: boolean) => void;
 }
 
 export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
@@ -36,6 +52,10 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
   categoriesPemasukan = [],
   categoriesPengeluaran = [],
   posDanaList = ['Kas Operasional', 'Kas Pembangunan'],
+  isPublicMode = false,
+  dkmId,
+  onOpenLoginModal,
+  onTogglePublicPreview,
 }) => {
   // Period Mode State: 'bulanan' | 'tahunan' | 'custom'
   const [reportPeriodType, setReportPeriodType] = useState<'bulanan' | 'tahunan' | 'custom'>('bulanan');
@@ -46,6 +66,10 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
 
   // Active Receipt Modal
   const [activeReceiptTrx, setActiveReceiptTrx] = useState<Transaction | null>(null);
+
+  // Public Transparency Modal State
+  const [isPublicModalOpen, setIsPublicModalOpen] = useState<boolean>(false);
+  const [isCopied, setIsCopied] = useState<boolean>(false);
 
   const monthNames = [
     'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -330,8 +354,97 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
     });
   };
 
+  // Public Transparency URL Generator
+  const publicShareUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}${window.location.pathname}?${dkmId ? `dkm=${dkmId}&` : ''}mode=publik`
+    : '';
+
+  const handleCopyLink = async () => {
+    try {
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(publicShareUrl);
+      } else {
+        const el = document.createElement('textarea');
+        el.value = publicShareUrl;
+        document.body.appendChild(el);
+        el.select();
+        document.execCommand('copy');
+        document.body.removeChild(el);
+      }
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2500);
+    } catch (err) {
+      console.error('Failed to copy link:', err);
+    }
+  };
+
+  const handleShareWhatsApp = () => {
+    const formatRp = (num: number) => new Intl.NumberFormat('id-ID').format(num);
+    const msg = `📢 *LAPORAN TRANSPARANSI KAS MASJID*\n` +
+      `*${mosqueProfile.namaMasjid}*\n\n` +
+      `📅 *Periode:* ${formatDateIndo(effectiveStartDate)} s/d ${formatDateIndo(effectiveEndDate)}\n` +
+      `---------------------------------------\n` +
+      `• Saldo Awal: Rp ${formatRp(startingBalance)}\n` +
+      `• Total Pemasukan: Rp ${formatRp(totalIncome)}\n` +
+      `• Total Pengeluaran: Rp ${formatRp(totalExpense)}\n` +
+      `• *Saldo Kas Saat Ini: Rp ${formatRp(endingBalance)}*\n` +
+      `---------------------------------------\n\n` +
+      `🌐 *Lihat Laporan Lengkap & Nota Bukti (Tanpa Login):*\n${publicShareUrl}\n\n` +
+      `_Laporan terbuka resmi untuk seluruh jamaah & masyarakat._`;
+
+    const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`;
+    window.open(waUrl, '_blank');
+  };
+
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(publicShareUrl)}&bgcolor=ffffff&color=064e3b&margin=15`;
+
   return (
     <div className="space-y-6 pb-12 print:space-y-0 print:pb-0 print:bg-white">
+      {/* Public Transparency Banner when in Public Mode */}
+      {isPublicMode && (
+        <div className="bg-gradient-to-r from-emerald-950 via-emerald-900 to-teal-950 text-white rounded-2xl p-4 sm:p-5 shadow-md border border-emerald-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4 print:hidden">
+          <div className="flex items-start sm:items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-amber-400 text-emerald-950 flex items-center justify-center font-black shrink-0 shadow-xs">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-sm sm:text-base font-bold text-amber-300">
+                  Portal Transparansi Kas Masjid Terbuka
+                </h3>
+                <span className="bg-emerald-800 text-emerald-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-emerald-700">
+                  Akses Publik Tanpa Login
+                </span>
+              </div>
+              <p className="text-xs text-emerald-100/90 mt-0.5 leading-relaxed">
+                Laporan keuangan resmi {mosqueProfile.namaMasjid}. Publik dapat melihat rincian mutasi kas, saldo per pos dana, serta bukti nota secara terbuka dan transparan tanpa perlu login.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsPublicModalOpen(true)}
+              className="px-3.5 py-2 bg-emerald-800 hover:bg-emerald-700 text-amber-300 text-xs font-bold rounded-xl border border-emerald-700/80 transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+            >
+              <QrCode className="w-4 h-4" />
+              <span>Bagikan / QR Code</span>
+            </button>
+            {onTogglePublicPreview && (
+              <button
+                type="button"
+                onClick={() => onTogglePublicPreview(false)}
+                className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl border border-slate-700 transition flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                title="Keluar dari pratinjau publik dan kembali ke mode pengurus"
+              >
+                <span>Keluar Mode Publik</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Top Bar Header */}
       <div className="bg-white rounded-xl p-5 border border-slate-200 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4 print:hidden">
         <div>
@@ -345,6 +458,18 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
+          {/* Public Transparency Button */}
+          <button
+            id="report-btn-public-transparency"
+            type="button"
+            onClick={() => setIsPublicModalOpen(true)}
+            className="bg-emerald-800 hover:bg-emerald-700 text-amber-300 border border-emerald-700/80 font-bold text-xs py-2 px-3.5 rounded-lg shadow-sm flex items-center gap-1.5 transition cursor-pointer active:scale-95"
+            title="Buka Fitur Transparansi Publik & QR Code untuk Warga/Jamaah"
+          >
+            <Globe className="w-4 h-4 text-amber-300" />
+            <span>Transparansi Publik & QR</span>
+          </button>
+
           {/* Period Mode Selector Pill Tabs */}
           <div className="flex items-center bg-slate-100 p-1 rounded-lg border border-slate-200 text-xs font-bold">
             <button
@@ -941,6 +1066,169 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
         onClose={() => setActiveReceiptTrx(null)}
         transaction={activeReceiptTrx}
       />
+
+      {/* Modal Dialog Transparansi Publik & QR Code */}
+      {isPublicModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-4 print:hidden animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl overflow-hidden animate-scale-up">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-emerald-900 to-teal-900 text-white p-5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-400 text-emerald-950 flex items-center justify-center font-black shadow-xs shrink-0">
+                  <Globe className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-bold text-white leading-tight">
+                    Fitur Transparansi Publik & QR Code
+                  </h3>
+                  <p className="text-xs text-emerald-200/90 mt-0.5">
+                    Publik dapat melihat laporan kas tanpa login & hanya bisa mengakses menu laporan.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPublicModalOpen(false)}
+                className="text-emerald-200 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition cursor-pointer"
+                title="Tutup"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 sm:p-6 space-y-5 max-h-[80vh] overflow-y-auto">
+              {/* Box 1: Keamanan & Privasi Publik */}
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 flex items-start gap-3">
+                <ShieldCheck className="w-5 h-5 text-emerald-700 shrink-0 mt-0.5" />
+                <div className="text-xs text-emerald-950 space-y-1">
+                  <p className="font-bold text-emerald-900">
+                    Akses Khusus Menu Laporan Kas (Read-Only)
+                  </p>
+                  <p className="text-emerald-800 leading-relaxed">
+                    Ketika tautan ini dibuka oleh jamaah atau publik, mereka <strong>hanya dapat melihat Menu Laporan</strong> saja. Menu Dashboard, Jurnal Transaksi, Sewa, dan Pengaturan secara otomatis <strong>disembunyikan & dikunci</strong>.
+                  </p>
+                </div>
+              </div>
+
+              {/* Box 2: Tautan Publik */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-slate-700">
+                  Tautan / Link Transparansi Publik:
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    readOnly
+                    value={publicShareUrl}
+                    className="flex-1 bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 font-mono focus:outline-none select-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCopyLink}
+                    className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition shrink-0 cursor-pointer shadow-xs ${
+                      isCopied
+                        ? 'bg-emerald-700 text-white'
+                        : 'bg-emerald-800 hover:bg-emerald-900 text-amber-300'
+                    }`}
+                  >
+                    {isCopied ? (
+                      <>
+                        <Check className="w-4 h-4 text-white" />
+                        <span>Tersalin!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-4 h-4" />
+                        <span>Salin Link</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Box 3: Tombol Aksi Cepat */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={handleShareWhatsApp}
+                  className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  <span>Bagikan ke WhatsApp</span>
+                </button>
+
+                {onTogglePublicPreview ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsPublicModalOpen(false);
+                      onTogglePublicPreview(true);
+                    }}
+                    className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-900 text-amber-300 font-bold text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-2 cursor-pointer active:scale-95 border border-slate-700"
+                  >
+                    <Eye className="w-4 h-4" />
+                    <span>Uji Pratinjau Tampilan Publik</span>
+                  </button>
+                ) : (
+                  <a
+                    href={publicShareUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-900 text-amber-300 font-bold text-xs rounded-xl shadow-xs transition flex items-center justify-center gap-2 cursor-pointer active:scale-95 border border-slate-700"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    <span>Buka Link di Tab Baru</span>
+                  </a>
+                )}
+              </div>
+
+              {/* Box 4: QR Code Publik */}
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-center gap-5">
+                <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-xs shrink-0">
+                  <img
+                    src={qrCodeUrl}
+                    alt="QR Code Transparansi Kas"
+                    className="w-36 h-36 object-contain"
+                  />
+                </div>
+                <div className="space-y-2 text-center sm:text-left flex-1">
+                  <div className="flex items-center justify-center sm:justify-start gap-1.5 text-xs font-bold text-emerald-900">
+                    <QrCode className="w-4 h-4 text-emerald-700" />
+                    <span>QR Code Laporan Kas Masjid</span>
+                  </div>
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    Cetak dan tempel QR code ini pada papan informasi (mading) masjid, banner, atau buletin Jumat agar jamaah dapat memindai langsung menggunakan kamera HP.
+                  </p>
+                  <div className="pt-1">
+                    <a
+                      href={qrCodeUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      download="QR_Transparansi_Kas_Masjid.png"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-white hover:bg-slate-100 text-slate-800 font-bold text-xs rounded-lg border border-slate-300 transition shadow-2xs cursor-pointer"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5 text-slate-600" />
+                      <span>Buka Gambar QR Code</span>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="bg-slate-50 px-5 py-3.5 border-t border-slate-200 flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => setIsPublicModalOpen(false)}
+                className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs rounded-xl transition cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
