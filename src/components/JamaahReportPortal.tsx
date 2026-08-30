@@ -44,6 +44,9 @@ export interface JamaahReportPortalProps {
   selectedMonth?: number;
   selectedYear?: number;
   onMonthYearChange?: (month: number, year: number) => void;
+  dkmId?: string;
+  readOnly?: boolean;
+  onOpenLoginModal?: () => void;
 }
 
 export const JamaahReportPortal: React.FC<JamaahReportPortalProps> = ({
@@ -56,6 +59,9 @@ export const JamaahReportPortal: React.FC<JamaahReportPortalProps> = ({
   selectedMonth: initialMonth,
   selectedYear: initialYear,
   onMonthYearChange,
+  dkmId,
+  readOnly = false,
+  onOpenLoginModal,
 }) => {
   const currentDate = new Date();
   const [selectedMonth, setSelectedMonth] = useState<number>(
@@ -102,6 +108,9 @@ export const JamaahReportPortal: React.FC<JamaahReportPortalProps> = ({
   const getPublicShareUrl = () => {
     if (typeof window === 'undefined') return '';
     const url = new URL(window.location.href);
+    if (dkmId) {
+      url.searchParams.set('dkm', dkmId);
+    }
     url.searchParams.set('tab', 'jamaah');
     return url.toString();
   };
@@ -111,7 +120,7 @@ export const JamaahReportPortal: React.FC<JamaahReportPortalProps> = ({
     const url = getPublicShareUrl();
     if (url) {
       QRCode.toDataURL(url, {
-        width: 320,
+        width: 360,
         margin: 2,
         color: {
           dark: '#064e3b', // emerald-900
@@ -121,7 +130,7 @@ export const JamaahReportPortal: React.FC<JamaahReportPortalProps> = ({
         .then((dataUrl) => setQrDataUrl(dataUrl))
         .catch((err) => console.error('Failed to generate QR Code', err));
     }
-  }, []);
+  }, [dkmId]);
 
   const handleMonthYearChange = (m: number, y: number) => {
     setSelectedMonth(m);
@@ -362,6 +371,36 @@ export const JamaahReportPortal: React.FC<JamaahReportPortalProps> = ({
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Mode Jamaah Info & Security Notice Banner */}
+      <div className="bg-emerald-50 border border-emerald-200/80 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-emerald-950 shadow-2xs">
+        <div className="flex items-start sm:items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-emerald-700 text-white flex items-center justify-center shrink-0 shadow-2xs">
+            <ShieldCheck className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="font-extrabold text-slate-900 flex items-center gap-2">
+              <span>Mode Transparansi Kas Jamaah (Hanya Lihat)</span>
+              <span className="bg-emerald-200/70 text-emerald-900 font-bold px-2 py-0.5 rounded-full text-[10px]">
+                Akses Terproteksi
+              </span>
+            </div>
+            <p className="text-slate-600 mt-0.5 leading-relaxed">
+              Tautan dan barcode ini menyajikan laporan keuangan kas, penerimaan infaq, pengeluaran, sewa tanah, serta rekening donasi <strong className="text-slate-900">{mosqueProfile.namaMasjid}</strong> secara transparan tanpa hak akses edit/tambah data.
+            </p>
+          </div>
+        </div>
+
+        {readOnly && onOpenLoginModal && (
+          <button
+            type="button"
+            onClick={onOpenLoginModal}
+            className="shrink-0 px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-800 font-bold text-xs rounded-xl border border-slate-300 shadow-2xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <span>Masuk Pengurus DKM</span>
+          </button>
+        )}
       </div>
 
       {/* Real-time Summary Cards for Jamaah */}

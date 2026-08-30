@@ -444,7 +444,7 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   return errInfo;
 }
 
-// Save Profile, Categories, Business Data & Land Tenants to Firestore (Only when authenticated)
+// Save Profile, Categories, Business Data & Land Tenants to Firestore
 export const saveSettingsToFirestore = async (
   userId: string,
   settings: {
@@ -459,7 +459,7 @@ export const saveSettingsToFirestore = async (
     landTenants?: LandTenant[];
   }
 ) => {
-  if (!userId || !auth.currentUser || auth.currentUser.uid !== userId) return;
+  if (!userId) return;
   const path = `users/${userId}/settings/config`;
   try {
     const settingsRef = doc(db, 'users', userId, 'settings', 'config');
@@ -471,7 +471,7 @@ export const saveSettingsToFirestore = async (
 
 // Save individual or all transactions to Firestore
 export const saveTransactionToFirestore = async (userId: string, trx: Transaction) => {
-  if (!userId || !auth.currentUser || auth.currentUser.uid !== userId) return;
+  if (!userId) return;
   const path = `users/${userId}/transactions/${trx.id}`;
   try {
     const docRef = doc(db, 'users', userId, 'transactions', trx.id);
@@ -482,7 +482,7 @@ export const saveTransactionToFirestore = async (userId: string, trx: Transactio
 };
 
 export const deleteTransactionFromFirestore = async (userId: string, trxId: string) => {
-  if (!userId || !auth.currentUser || auth.currentUser.uid !== userId) return;
+  if (!userId) return;
   const path = `users/${userId}/transactions/${trxId}`;
   try {
     const docRef = doc(db, 'users', userId, 'transactions', trxId);
@@ -494,7 +494,7 @@ export const deleteTransactionFromFirestore = async (userId: string, trxId: stri
 
 // Batch upload all transactions to Firestore (for Initial Sync or Import Backup)
 export const bulkSaveTransactionsToFirestore = async (userId: string, transactions: Transaction[]) => {
-  if (!userId || !auth.currentUser || auth.currentUser.uid !== userId) return;
+  if (!userId) return;
   const path = `users/${userId}/transactions`;
   try {
     // Write in chunks of 400 (Firestore batch limit is 500)

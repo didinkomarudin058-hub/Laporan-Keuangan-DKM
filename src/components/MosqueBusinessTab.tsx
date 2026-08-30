@@ -83,6 +83,7 @@ interface MosqueBusinessTabProps {
   ) => void;
   onDeleteTenantPayment?: (tenantId: string, paymentId: string) => void;
   onNavigateToTransactions?: (trxId?: string) => void;
+  readOnly?: boolean;
 }
 
 export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
@@ -104,6 +105,7 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
   onDeleteTenant,
   onPayTenantRent,
   onDeleteTenantPayment,
+  readOnly = false,
 }) => {
   // Main Sub-Tab View Switcher
   const [activeView, setActiveView] = useState<'paymentStatus' | 'tenantList'>('paymentStatus');
@@ -543,13 +545,15 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
               <Printer className="w-4 h-4 text-white" />
               <span>Cetak Rekap Sewa</span>
             </button>
-            <button
-              onClick={handleOpenAddTenant}
-              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-lg shadow-emerald-950/20 cursor-pointer border border-emerald-500/50 active:scale-95"
-            >
-              <Plus className="w-4 h-4 stroke-[3]" />
-              <span>+ Tambah Penyewa Baru</span>
-            </button>
+            {!readOnly && (
+              <button
+                onClick={handleOpenAddTenant}
+                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-2 shadow-lg shadow-emerald-950/20 cursor-pointer border border-emerald-500/50 active:scale-95"
+              >
+                <Plus className="w-4 h-4 stroke-[3]" />
+                <span>+ Tambah Penyewa Baru</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -984,14 +988,16 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
                           <span>Kwitansi</span>
                         </button>
 
-                        <button
-                          type="button"
-                          onClick={() => handleOpenPayment(tenant)}
-                          className="px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm shadow-emerald-700/20 cursor-pointer active:scale-95"
-                        >
-                          <Coins className="w-3.5 h-3.5 text-amber-300" />
-                          <span>Catat Bayar</span>
-                        </button>
+                        {!readOnly && (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenPayment(tenant)}
+                            className="px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm shadow-emerald-700/20 cursor-pointer active:scale-95"
+                          >
+                            <Coins className="w-3.5 h-3.5 text-amber-300" />
+                            <span>Catat Bayar</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1083,24 +1089,26 @@ export const MosqueBusinessTab: React.FC<MosqueBusinessTabProps> = ({
                           </h3>
                         </div>
 
-                        <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEditTenant(tenant)}
-                            className="p-1.5 text-slate-400 hover:text-emerald-700 hover:bg-slate-100 rounded-lg transition cursor-pointer"
-                            title="Edit Data Penyewa"
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteTenant(tenant)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
-                            title="Hapus Data Penyewa"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+                        {!readOnly && (
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditTenant(tenant)}
+                              className="p-1.5 text-slate-400 hover:text-emerald-700 hover:bg-slate-100 rounded-lg transition cursor-pointer"
+                              title="Edit Data Penyewa"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteTenant(tenant)}
+                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition cursor-pointer"
+                              title="Hapus Data Penyewa"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
                       </div>
 
                       {/* Detail Lahan & Peruntukan */}

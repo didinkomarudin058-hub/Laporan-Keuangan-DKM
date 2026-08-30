@@ -257,6 +257,54 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+  // Shared DKM ID from URL query parameters (e.g. ?dkm=... or ?masjid=...)
+  const [dkmParam] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('dkm') || params.get('masjid') || null;
+    }
+    return null;
+  });
+
+  // Subscribe to Firestore Real-Time Data for Shared DKM (when Jamaah opens shared link/QR)
+  useEffect(() => {
+    if (dkmParam && (!currentUser || currentUser.uid !== dkmParam)) {
+      const unsubscribeShared = subscribeFirestoreData(dkmParam, (data) => {
+        if (data.mosqueProfile) {
+          setMosqueProfile(data.mosqueProfile);
+        }
+        if (data.categoriesPemasukan && Array.isArray(data.categoriesPemasukan)) {
+          setCategoriesPemasukan(data.categoriesPemasukan);
+        }
+        if (data.categoriesPengeluaran && Array.isArray(data.categoriesPengeluaran)) {
+          setCategoriesPengeluaran(data.categoriesPengeluaran);
+        }
+        if (data.categoriesSewa && Array.isArray(data.categoriesSewa)) {
+          setCategoriesSewa(data.categoriesSewa);
+        }
+        if (data.posDanaList && Array.isArray(data.posDanaList)) {
+          setPosDanaList(data.posDanaList);
+        }
+        if (data.metodePembayaranList && Array.isArray(data.metodePembayaranList)) {
+          setMetodePembayaranList(data.metodePembayaranList);
+        }
+        if (data.transactions && Array.isArray(data.transactions)) {
+          setTransactions(data.transactions);
+        }
+        if (data.businessUnits && Array.isArray(data.businessUnits)) {
+          setBusinessUnits(data.businessUnits);
+        }
+        if (data.businessRecords && Array.isArray(data.businessRecords)) {
+          setBusinessRecords(data.businessRecords);
+        }
+        if (data.landTenants && Array.isArray(data.landTenants)) {
+          setLandTenants(data.landTenants);
+        }
+      });
+      return () => unsubscribeShared();
+    }
+  }, [dkmParam, currentUser?.uid]);
+
   // Subscribe to Firestore Real-Time Data for Authenticated User
   useEffect(() => {
     if (currentUser?.uid && !currentUser?.isLocal && auth.currentUser) {
@@ -1254,6 +1302,21 @@ export default function App() {
     }
   };
 
+  // Determine if the current session is in Read-Only Mode (e.g. accessed by Jamaah via link/QR or explicitly viewing public portal)
+  const isSharedOrPublicVisitor = Boolean(
+    dkmParam ||
+    (typeof window !== 'undefined' &&
+      (new URLSearchParams(window.location.search).get('role') === 'jamaah' ||
+        new URLSearchParams(window.location.search).get('tab') === 'jamaah'))
+  );
+
+  // If user is accessing via shared link or portal without logging in as this DKM owner, enforce read-only
+  const isReadOnly = Boolean(
+    isSharedOrPublicVisitor && (!currentUser || (dkmParam && currentUser.uid !== dkmParam))
+  );
+
+  const effectiveDkmId = dkmParam || currentUser?.uid || undefined;
+
   return (
     <div className="min-h-screen bg-slate-100 print:bg-white print:min-h-0 text-slate-900 font-sans antialiased selection:bg-emerald-200 relative">
       {/* Top App Navbar */}
@@ -1264,6 +1327,8 @@ export default function App() {
         onOpenSettingsModal={(tab) => handleNavigateToSettings(tab || 'profile')}
         onOpenPwaModal={() => setIsPwaModalOpen(true)}
         currentUser={currentUser}
+        readOnly={isReadOnly}
+        onOpenLoginModal={() => handleNavigateToSettings('account')}
       />
 
       {/* Main View Container */}
@@ -1275,12 +1340,15 @@ export default function App() {
             selectedMonth={reportMonth}
             selectedYear={reportYear}
             posDanaList={posDanaList}
+            businessUnits={businessUnits}
+            businessRecords={businessRecords}
             onOpenAddModal={handleOpenAddModal}
             onNavigateTab={setActiveTab}
             onSelectFundFilter={(fund) => {
               setSelectedFundFilter(fund);
               setActiveTab('transactions');
             }}
+            readOnly={isReadOnly}
           />
         )}
 
@@ -1295,6 +1363,7 @@ export default function App() {
             categoriesPengeluaran={categoriesPengeluaran}
             posDanaList={posDanaList}
             mosqueProfile={mosqueProfile}
+            readOnly={isReadOnly}
           />
         )}
 
@@ -1341,6 +1410,7 @@ export default function App() {
             onNavigateToTransactions={(trxId) => {
               setActiveTab('transactions');
             }}
+            readOnly={isReadOnly}
           />
         )}
 
@@ -1365,6 +1435,9 @@ export default function App() {
               setReportMonth(m);
               setReportYear(y);
             }}
+            dkmId={effectiveDkmId}
+            readOnly={isReadOnly}
+            onOpenLoginModal={() => handleNavigateToSettings('account')}
           />
         )}
 
@@ -1396,12 +1469,14 @@ export default function App() {
             onResetData={handleResetData}
             defaultSubTab={settingsDefaultTab}
             onOpenPwaModal={() => setIsPwaModalOpen(true)}
+            readOnly={isReadOnly}
+            onOpenLoginModal={() => handleNavigateToSettings('account')}
           />
         )}
       </main>
 
-      {/* Floating '+' Action Button - Only visible in Ikhtisar / Dashboard */}
-      {activeTab === 'dashboard' && (
+      {/* Floating '+' Action Button - Only visible in Ikhtisar / Dashboard when not in read-only mode */}
+      {activeTab === 'dashboard' && !isReadOnly && (
         <FloatingActionButton
           onOpenAddTransaction={(type) => {
             if (type) {

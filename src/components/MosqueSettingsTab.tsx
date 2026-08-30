@@ -64,6 +64,8 @@ export interface MosqueSettingsTabProps {
   // Initial sub-tab
   defaultSubTab?: 'profile' | 'categories' | 'account' | 'backup' | 'pwa';
   onOpenPwaModal?: () => void;
+  readOnly?: boolean;
+  onOpenLoginModal?: () => void;
 }
 
 export const MosqueSettingsTab: React.FC<MosqueSettingsTabProps> = ({
@@ -93,6 +95,8 @@ export const MosqueSettingsTab: React.FC<MosqueSettingsTabProps> = ({
   onResetData,
   defaultSubTab = 'profile',
   onOpenPwaModal,
+  readOnly = false,
+  onOpenLoginModal,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<
     'profile' | 'categories' | 'account' | 'backup' | 'pwa'
@@ -244,6 +248,42 @@ export const MosqueSettingsTab: React.FC<MosqueSettingsTabProps> = ({
 
   return (
     <div id="mosque-settings-tab-view" className="space-y-6 animate-fade-in pb-12">
+      {/* Read-Only Mode Banner */}
+      {readOnly && (
+        <div className="bg-amber-50 border border-amber-300/80 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-950 shadow-2xs">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center shrink-0 shadow-2xs font-black">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="font-extrabold text-slate-900 flex items-center gap-2">
+                <span>Pengaturan Terproteksi (Mode Jamaah)</span>
+                <span className="bg-amber-200/80 text-amber-950 font-bold px-2 py-0.5 rounded-full text-[10px]">
+                  Hanya Lihat
+                </span>
+              </div>
+              <p className="text-slate-600 mt-0.5 leading-relaxed">
+                Pengubahan profil masjid, nomor rekening, penambahan pos dana, impor cadangan, serta reset data kas dikhususkan bagi Pengurus DKM terdaftar.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              if (onOpenLoginModal) {
+                onOpenLoginModal();
+              } else {
+                setActiveSubTab('account');
+              }
+            }}
+            className="shrink-0 px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-xl shadow-2xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <span>Masuk Pengurus DKM</span>
+          </button>
+        </div>
+      )}
+
       {/* Top Banner Header */}
       <div className="bg-gradient-to-r from-emerald-900 via-emerald-800 to-teal-900 text-white rounded-2xl p-5 sm:p-6 shadow-md border border-emerald-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
@@ -386,28 +426,30 @@ export const MosqueSettingsTab: React.FC<MosqueSettingsTabProps> = ({
                     <p className="text-xs text-slate-600 leading-relaxed">
                       Logo ini ditampilkan pada bilah navigasi utama, tampilan TV informasi kas, dan kop surat cetak PDF.
                     </p>
-                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
-                      <label className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer transition flex items-center gap-2">
-                        <Upload className="w-4 h-4" />
-                        <span>{profile.logoUrl ? 'Ganti Logo Masjid' : 'Upload File Logo'}</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleLogoUpload}
-                          className="hidden"
-                        />
-                      </label>
-                      {profile.logoUrl && (
-                        <button
-                          type="button"
-                          onClick={handleRemoveLogo}
-                          className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 transition flex items-center gap-1.5 cursor-pointer"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          <span>Hapus Logo</span>
-                        </button>
-                      )}
-                    </div>
+                    {!readOnly && (
+                      <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
+                        <label className="px-3.5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-xl shadow-xs cursor-pointer transition flex items-center gap-2">
+                          <Upload className="w-4 h-4" />
+                          <span>{profile.logoUrl ? 'Ganti Logo Masjid' : 'Upload File Logo'}</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleLogoUpload}
+                            className="hidden"
+                          />
+                        </label>
+                        {profile.logoUrl && (
+                          <button
+                            type="button"
+                            onClick={handleRemoveLogo}
+                            className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs rounded-xl border border-rose-200 transition flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            <span>Hapus Logo</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -602,13 +644,19 @@ export const MosqueSettingsTab: React.FC<MosqueSettingsTabProps> = ({
             </div>
 
             <div className="pt-4 border-t border-slate-200 flex justify-end">
-              <button
-                type="submit"
-                className="px-6 py-3 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md hover:shadow-lg transition flex items-center gap-2 cursor-pointer active:scale-95"
-              >
-                <Save className="w-4 h-4" />
-                <span>Simpan Perubahan Profil DKM</span>
-              </button>
+              {!readOnly ? (
+                <button
+                  type="submit"
+                  className="px-6 py-3 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md hover:shadow-lg transition flex items-center gap-2 cursor-pointer active:scale-95"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>Simpan Perubahan Profil DKM</span>
+                </button>
+              ) : (
+                <p className="text-xs text-slate-500 italic">
+                  Mode Jamaah (Hanya Lihat): Masuk dengan Akun Pengurus DKM untuk mengubah identitas masjid.
+                </p>
+              )}
             </div>
           </form>
         )}
@@ -709,39 +757,45 @@ export const MosqueSettingsTab: React.FC<MosqueSettingsTabProps> = ({
             </div>
 
             {/* Form Add New Item */}
-            <form onSubmit={handleAddItemSubmit} className="flex gap-2">
-              <input
-                type="text"
-                placeholder={getPlaceholder()}
-                value={newItemName}
-                onChange={(e) => setNewItemName(e.target.value)}
-                className="flex-1 py-2.5 px-3.5 text-xs sm:text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
-              />
-              <button
-                type="submit"
-                className={`px-5 py-2.5 text-xs sm:text-sm font-bold text-white rounded-xl shadow-sm transition flex items-center gap-1.5 shrink-0 cursor-pointer active:scale-95 ${
-                  activeCatType === 'pemasukan'
-                    ? 'bg-emerald-700 hover:bg-emerald-800'
-                    : activeCatType === 'pengeluaran'
-                    ? 'bg-rose-700 hover:bg-rose-800'
-                    : activeCatType === 'kategoriSewa'
-                    ? 'bg-teal-700 hover:bg-teal-800'
-                    : activeCatType === 'posDana'
-                    ? 'bg-amber-600 hover:bg-amber-700'
-                    : 'bg-blue-700 hover:bg-blue-800'
-                }`}
-              >
-                <Plus className="w-4 h-4" />
-                <span>Tambah {getSubTabLabel()}</span>
-              </button>
-            </form>
+            {!readOnly ? (
+              <form onSubmit={handleAddItemSubmit} className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder={getPlaceholder()}
+                  value={newItemName}
+                  onChange={(e) => setNewItemName(e.target.value)}
+                  className="flex-1 py-2.5 px-3.5 text-xs sm:text-sm border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                />
+                <button
+                  type="submit"
+                  className={`px-5 py-2.5 text-xs sm:text-sm font-bold text-white rounded-xl shadow-sm transition flex items-center gap-1.5 shrink-0 cursor-pointer active:scale-95 ${
+                    activeCatType === 'pemasukan'
+                      ? 'bg-emerald-700 hover:bg-emerald-800'
+                      : activeCatType === 'pengeluaran'
+                      ? 'bg-rose-700 hover:bg-rose-800'
+                      : activeCatType === 'kategoriSewa'
+                      ? 'bg-teal-700 hover:bg-teal-800'
+                      : activeCatType === 'posDana'
+                      ? 'bg-amber-600 hover:bg-amber-700'
+                      : 'bg-blue-700 hover:bg-blue-800'
+                  }`}
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Tambah {getSubTabLabel()}</span>
+                </button>
+              </form>
+            ) : (
+              <p className="text-xs text-slate-500 italic bg-slate-50 p-2.5 rounded-xl border border-slate-200">
+                Mode Jamaah (Hanya Lihat): Struktur pos dana & kategori di bawah ini bersifat informatif.
+              </p>
+            )}
 
             {/* Current Items List */}
             <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
               {currentList.length === 0 ? (
                 <div className="p-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-300">
                   <p className="text-xs text-slate-400 italic">
-                    Belum ada data untuk {getSubTabLabel()}. Silakan ketik nama baru di atas.
+                    Belum ada data untuk {getSubTabLabel()}.
                   </p>
                 </div>
               ) : (
@@ -779,27 +833,29 @@ export const MosqueSettingsTab: React.FC<MosqueSettingsTabProps> = ({
                     ) : (
                       <>
                         <span className="font-semibold text-slate-800">{item}</span>
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingItemName(item);
-                              setEditInputValue(item);
-                            }}
-                            className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-white rounded-lg border border-transparent hover:border-slate-200 transition cursor-pointer"
-                            title={`Edit nama ${getSubTabLabel()}`}
-                          >
-                            <Edit2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteItem(item)}
-                            className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg border border-transparent hover:border-rose-200 transition cursor-pointer"
-                            title={`Hapus ${getSubTabLabel()}`}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
+                        {!readOnly && (
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingItemName(item);
+                                setEditInputValue(item);
+                              }}
+                              className="p-1.5 text-slate-500 hover:text-emerald-700 hover:bg-white rounded-lg border border-transparent hover:border-slate-200 transition cursor-pointer"
+                              title={`Edit nama ${getSubTabLabel()}`}
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteItem(item)}
+                              className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg border border-transparent hover:border-rose-200 transition cursor-pointer"
+                              title={`Hapus ${getSubTabLabel()}`}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
                       </>
                     )}
                   </div>
@@ -807,7 +863,7 @@ export const MosqueSettingsTab: React.FC<MosqueSettingsTabProps> = ({
               )}
             </div>
 
-            {(activeCatType === 'pemasukan' || activeCatType === 'pengeluaran') && (
+            {!readOnly && (activeCatType === 'pemasukan' || activeCatType === 'pengeluaran') && (
               <div className="pt-4 border-t border-slate-200 flex justify-start">
                 <button
                   type="button"
@@ -884,16 +940,22 @@ export const MosqueSettingsTab: React.FC<MosqueSettingsTabProps> = ({
                   Pulihkan data kas masjid dari file `.json` cadangan yang telah diekspor sebelumnya.
                 </p>
                 <div className="pt-2">
-                  <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer active:scale-95">
-                    <Upload className="w-4 h-4" />
-                    <span>Pilih File Backup JSON</span>
-                    <input
-                      type="file"
-                      accept=".json"
-                      onChange={onImportBackup}
-                      className="hidden"
-                    />
-                  </label>
+                  {!readOnly ? (
+                    <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-xl shadow-xs transition cursor-pointer active:scale-95">
+                      <Upload className="w-4 h-4" />
+                      <span>Pilih File Backup JSON</span>
+                      <input
+                        type="file"
+                        accept=".json"
+                        onChange={onImportBackup}
+                        className="hidden"
+                      />
+                    </label>
+                  ) : (
+                    <p className="text-xs text-slate-500 italic">
+                      Fitur impor data cadangan dikhususkan bagi Pengurus DKM.
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -909,14 +971,20 @@ export const MosqueSettingsTab: React.FC<MosqueSettingsTabProps> = ({
                   <span className="font-bold"> Perhatian: Seluruh data transaksi yang telah Anda masukkan akan diganti dengan data sampel.</span>
                 </p>
                 <div className="pt-2">
-                  <button
-                    type="button"
-                    onClick={onResetData}
-                    className="px-4 py-2.5 bg-rose-700 hover:bg-rose-800 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-2 cursor-pointer active:scale-95"
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                    <span>Reset Seluruh Data Kas Masjid</span>
-                  </button>
+                  {!readOnly ? (
+                    <button
+                      type="button"
+                      onClick={onResetData}
+                      className="px-4 py-2.5 bg-rose-700 hover:bg-rose-800 text-white font-bold text-xs rounded-xl shadow-xs transition flex items-center gap-2 cursor-pointer active:scale-95"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                      <span>Reset Seluruh Data Kas Masjid</span>
+                    </button>
+                  ) : (
+                    <p className="text-xs text-rose-600 italic font-medium">
+                      Reset data kas dikunci untuk akun Pengurus DKM.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

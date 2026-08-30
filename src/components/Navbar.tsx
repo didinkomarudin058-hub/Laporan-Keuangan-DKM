@@ -7,6 +7,8 @@ import {
   ListFilter,
   Settings,
   Users,
+  ShieldCheck,
+  LogIn,
 } from 'lucide-react';
 import { User } from 'firebase/auth';
 import { MosqueProfile, AppTab } from '../types';
@@ -18,15 +20,43 @@ interface NavbarProps {
   onOpenSettingsModal?: (tab?: 'profile' | 'account' | 'categories' | 'backup' | 'pwa') => void;
   onOpenPwaModal?: () => void;
   currentUser?: User | null;
+  readOnly?: boolean;
+  onOpenLoginModal?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   mosqueProfile,
   activeTab,
   setActiveTab,
+  readOnly = false,
+  onOpenLoginModal,
 }) => {
   return (
     <header id="dkm-app-navbar" className="bg-emerald-900 text-white shadow-md border-b border-emerald-800 sticky top-0 z-30 print:hidden">
+      {/* Read-Only Top Jamaah Banner */}
+      {readOnly && (
+        <div className="bg-amber-400 text-emerald-950 px-4 py-1.5 text-xs font-bold flex items-center justify-between shadow-inner">
+          <div className="flex items-center gap-2 max-w-7xl mx-auto w-full justify-between">
+            <div className="flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4 stroke-[2.5] shrink-0" />
+              <span>
+                Mode Jamaah (Hanya Lihat) &bull; Transparansi Keuangan Kas {mosqueProfile.namaMasjid}
+              </span>
+            </div>
+            {onOpenLoginModal && (
+              <button
+                type="button"
+                onClick={onOpenLoginModal}
+                className="px-2.5 py-0.5 bg-emerald-900 hover:bg-emerald-800 text-white text-[11px] font-extrabold rounded-md shadow-2xs transition flex items-center gap-1 cursor-pointer shrink-0 ml-2"
+              >
+                <LogIn className="w-3 h-3" />
+                <span>Masuk Pengurus DKM</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Main Header Banner */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 sm:py-3 flex items-center justify-between gap-3">
         {/* Brand & Mosque Name + Address */}
