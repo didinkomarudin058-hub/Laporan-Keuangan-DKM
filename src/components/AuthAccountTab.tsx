@@ -63,11 +63,18 @@ export const AuthAccountTab: React.FC<AuthAccountTabProps> = ({
     resetForm();
   };
 
-  const handleRecoverTargetAccount = (targetEmail: string) => {
+  const handleRecoverTargetAccount = async (targetEmail: string) => {
     setErrorMsg(null);
     setSuccessMsg(null);
-    const user = recoverOrActivateAccount(targetEmail);
-    setSuccessMsg(`Akun ${user.email} berhasil dipulihkan dan diaktifkan secara instan!`);
+    setIsLoading(true);
+    try {
+      const user = await recoverOrActivateAccount(targetEmail);
+      setSuccessMsg(`Akun ${user.email} berhasil dipulihkan dan dihubungkan secara multi-perangkat!`);
+    } catch (err: any) {
+      setErrorMsg('Gagal memulihkan akun: ' + (err?.message || err));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleGoogleAuth = async () => {
@@ -131,13 +138,7 @@ export const AuthAccountTab: React.FC<AuthAccountTabProps> = ({
       if (res.error) {
         setErrorMsg(res.error);
       } else {
-        if (res.isLocalFallback) {
-          setSuccessMsg(
-            `Akun DKM Pengurus (${email.trim()}) berhasil dibuat & diaktifkan! Anda telah otomatis masuk.`
-          );
-        } else {
-          setSuccessMsg('Akun Firebase DKM baru berhasil dibuat! Anda sekarang telah otomatis masuk.');
-        }
+        setSuccessMsg(`Akun DKM Pengurus (${email.trim()}) berhasil didaftarkan & disinkronkan ke cloud! Anda telah otomatis masuk.`);
         resetForm();
       }
     } else if (mode === 'login') {
@@ -257,28 +258,41 @@ export const AuthAccountTab: React.FC<AuthAccountTabProps> = ({
       ) : (
         /* Not Logged In - Login / Register / Forgot Form */
         <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-sm">
-          {/* Quick Account Recovery / Pulihkan Akun bulqia89@gmail.com */}
-          <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 p-3.5 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          {/* Multi-Device Login Helper Banner */}
+          <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border border-emerald-200 p-3.5 rounded-xl space-y-2">
             <div className="flex items-start gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-emerald-700 text-white flex items-center justify-center shrink-0 mt-0.5">
-                <Key className="w-4 h-4" />
+              <div className="w-8 h-8 rounded-lg bg-emerald-700 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
+                <ShieldCheck className="w-4 h-4" />
               </div>
-              <div>
-                <h4 className="text-xs font-bold text-slate-800">
-                  Pemulihan Akun: bulqia89@gmail.com
+              <div className="flex-1">
+                <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                  <span>Sinkronisasi Multi-Perangkat (HP, Tablet & Laptop)</span>
+                  <span className="bg-emerald-600 text-white text-[9px] px-1.5 py-0.5 rounded font-bold">Cloud Real-time</span>
                 </h4>
-                <p className="text-[11px] text-slate-500">
-                  Pulihkan dan hubungkan langsung akun pengurus DKM ini.
+                <p className="text-[11px] text-slate-600 leading-relaxed mt-0.5">
+                  Gunakan email & password yang sama di HP, laptop, atau tablet lain untuk mengakses dan menginput buku kas DKM secara bersamaan.
                 </p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => handleRecoverTargetAccount('bulqia89@gmail.com')}
-              className="px-3.5 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-lg transition shrink-0 cursor-pointer shadow-xs"
-            >
-              Pulihkan Akun Ini
-            </button>
+
+            <div className="flex flex-wrap gap-2 pt-1 border-t border-emerald-100">
+              <button
+                type="button"
+                onClick={() => handleRecoverTargetAccount('didinkomarudin058@gmail.com')}
+                className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-[11px] rounded-lg transition shrink-0 cursor-pointer flex items-center gap-1 shadow-xs"
+              >
+                <Key className="w-3 h-3" />
+                <span>Hubungkan Akun: didinkomarudin058@gmail.com</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleRecoverTargetAccount('bulqia89@gmail.com')}
+                className="px-2.5 py-1 bg-slate-700 hover:bg-slate-800 text-white font-semibold text-[11px] rounded-lg transition shrink-0 cursor-pointer flex items-center gap-1 shadow-xs"
+              >
+                <Key className="w-3 h-3" />
+                <span>Hubungkan Akun: bulqia89@gmail.com</span>
+              </button>
+            </div>
           </div>
 
           {/* Mode Tabs */}

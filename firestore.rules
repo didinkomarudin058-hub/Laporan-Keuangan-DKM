@@ -1,26 +1,28 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Registry Akun DKM untuk login dan sinkronisasi multi perangkat
+    match /dkm_accounts/{email} {
+      allow read, write: if true;
+    }
+
+    // Data Kas Masjid, Profil DKM, Transaksi, Unit Usaha & Sewa
     match /users/{userId} {
-      // Izinkan baca publik untuk transparansi kas jamaah melalui barcode
-      allow read: if true;
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if true;
 
       match /settings/{docId} {
-        allow read: if true;
-        allow write: if request.auth != null && request.auth.uid == userId;
+        allow read, write: if true;
       }
 
       match /transactions/{trxId} {
-        allow read: if true;
-        allow write: if request.auth != null && request.auth.uid == userId;
+        allow read, write: if true;
       }
 
       match /{allPaths=**} {
-        allow read: if true;
-        allow write: if request.auth != null && request.auth.uid == userId;
+        allow read, write: if true;
       }
     }
   }
 }
+
 

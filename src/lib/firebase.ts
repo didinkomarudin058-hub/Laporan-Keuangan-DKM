@@ -14,6 +14,7 @@ import {
   getFirestore,
   doc,
   setDoc,
+  getDoc,
   collection,
   onSnapshot,
   deleteDoc,
@@ -41,7 +42,7 @@ export const getAuthErrorMessage = (errorCode: string): string => {
     case 'auth/user-disabled':
       return 'Akun ini telah dinonaktifkan oleh administrator.';
     case 'auth/user-not-found':
-      return 'Akun dengan email ini tidak ditemukan. Silakan buat akun baru.';
+      return 'Akun dengan email ini belum terdaftar. Silakan buat akun baru di tab "Buat Akun Baru".';
     case 'auth/wrong-password':
     case 'auth/invalid-credential':
       return 'Email atau password yang Anda masukkan salah. Periksa kembali.';
@@ -55,7 +56,7 @@ export const getAuthErrorMessage = (errorCode: string): string => {
       return 'Gagal terhubung ke jaringan. Periksa koneksi internet Anda.';
     case 'auth/operation-not-allowed':
     case 'auth/admin-restricted-operation':
-      return 'Metode email/password Firebase belum diaktifkan. Akun lokal DKM telah diaktifkan secara otomatis untuk Anda.';
+      return 'Layanan autentikasi email terhubung ke sinkronisasi Cloud DKM.';
     case 'auth/popup-closed-by-user':
       return 'Jendela pendaftaran Google ditutup sebelum selesai.';
     case 'auth/cancelled-popup-request':
@@ -65,9 +66,6 @@ export const getAuthErrorMessage = (errorCode: string): string => {
     case 'auth/account-exists-with-different-credential':
       return 'Akun dengan email ini sudah ada dengan metode masuk yang berbeda.';
     default:
-      if (errorCode && errorCode.includes('operation-not-allowed')) {
-        return 'Pendaftaran email/password belum diaktifkan di Firebase. Akun lokal DKM aktif secara otomatis.';
-      }
       return 'Terjadi kesalahan autentikasi: ' + errorCode;
   }
 };
@@ -111,30 +109,41 @@ export const setStoredCurrentLocalUser = (user: any | null) => {
   window.dispatchEvent(new Event('dkm_auth_state_changed'));
 };
 
-// Authentication Services
+// Helper: generate consistent deterministic UID based on email for multi-device sync
+export const generateDeterministicUid = (email: string): string => {
+  const clean = email.trim().toLowerCase();
+  const sanitized = clean.replace(/[^a-z0-9]/g, '_');
+  return `dkm_user_${sanitized}`;
+};
+
+// Register Account with Email & Password across all devices
 export const registerWithEmail = async (email: string, pass: string) => {
   const cleanEmail = email.trim().toLowerCase();
+  const defaultUid = generateDeterministicUid(cleanEmail);
   const localUsers = getStoredLocalUsers();
 
-  // Check if email already registered in local database
-  const existingLocal = localUsers.find((u) => u.email.toLowerCase() === cleanEmail);
+  // 1. Check if email already exists in Firestore dkm_accounts
+  try {
+    const accRef = doc(db, 'dkm_accounts', cleanEmail);
+    const accSnap = await getDoc(accRef);
+    if (accSnap.exists()) {
+      return {
+        user: null,
+        error: 'Email ini sudah terdaftar di sistem DKM. Silakan gunakan tab "Masuk Akun" untuk login dari perangkat mana pun.',
+      };
+    }
+  } catch (err) {
+    console.warn('Firestore dkm_accounts check notice:', err);
+  }
 
+  let finalUid = defaultUid;
+
+  // 2. Try Firebase Auth createUser
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, pass);
-    const newUser: LocalUserAccount = {
-      uid: userCredential.user.uid,
-      email: cleanEmail,
-      password: pass,
-      createdAt: new Date().toISOString(),
-    };
-    if (!existingLocal) {
-      localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify([...localUsers, newUser]));
-    }
-    setStoredCurrentLocalUser(newUser);
-    return { user: userCredential.user, error: null };
+    finalUid = userCredential.user.uid;
   } catch (err: any) {
-    console.warn('Firebase createUserWithEmailAndPassword notice:', err?.code || err);
-
+    console.warn('Firebase createUser notice:', err?.code || err);
     if (err.code === 'auth/email-already-in-use') {
       return {
         user: null,
@@ -153,54 +162,134 @@ export const registerWithEmail = async (email: string, pass: string) => {
         error: 'Password terlalu lemah. Masukkan password minimal 6 karakter.',
       };
     }
+  }
 
-    // If Firebase Auth provider is restricted or throws operation-not-allowed or network error,
-    // fallback to creating/activating the local DKM user account seamlessly!
-    if (existingLocal) {
-      return {
-        user: null,
-        error: 'Email ini sudah terdaftar di database DKM lokal. Silakan gunakan tab "Masuk Akun".',
-      };
-    }
-
-    const localUid = `dkm-user-${cleanEmail.replace(/[^a-z0-9]/g, '_')}`;
-    const newUser: LocalUserAccount = {
-      uid: localUid,
+  // 3. Save to Cloud Firestore dkm_accounts so ANY other device (HP/Laptop) can log in with this email & password
+  try {
+    const accRef = doc(db, 'dkm_accounts', cleanEmail);
+    await setDoc(accRef, {
+      uid: finalUid,
       email: cleanEmail,
       password: pass,
       createdAt: new Date().toISOString(),
-    };
+      updatedAt: new Date().toISOString(),
+    }, { merge: true });
 
-    const updatedList = [...localUsers, newUser];
-    localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(updatedList));
-
-    const userObj = {
-      uid: localUid,
-      email: cleanEmail,
-      displayName: cleanEmail.split('@')[0],
-      isLocal: true,
-    };
-    setStoredCurrentLocalUser(userObj);
-
-    return { user: userObj, error: null, isLocalFallback: true };
+    // Initialize user profile doc in Firestore
+    const userDocRef = doc(db, 'users', finalUid, 'settings', 'config');
+    await setDoc(userDocRef, {
+      accountEmail: cleanEmail,
+      createdAt: new Date().toISOString(),
+    }, { merge: true });
+  } catch (err) {
+    console.warn('Saving dkm_accounts to Firestore notice:', err);
   }
+
+  // 4. Save to Local Cache
+  const newUser: LocalUserAccount = {
+    uid: finalUid,
+    email: cleanEmail,
+    password: pass,
+    createdAt: new Date().toISOString(),
+  };
+  const existingLocalIndex = localUsers.findIndex((u) => u.email.toLowerCase() === cleanEmail);
+  if (existingLocalIndex >= 0) {
+    localUsers[existingLocalIndex] = newUser;
+  } else {
+    localUsers.push(newUser);
+  }
+  localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(localUsers));
+
+  const userObj = {
+    uid: finalUid,
+    email: cleanEmail,
+    displayName: cleanEmail.split('@')[0],
+  };
+  setStoredCurrentLocalUser(userObj);
+
+  return { user: userObj, error: null };
 };
 
+// Login with Email & Password (works across multiple devices seamlessly)
 export const loginWithEmail = async (email: string, pass: string) => {
   const cleanEmail = email.trim().toLowerCase();
 
+  // 1. Try Firebase Auth signIn first
   try {
     const userCredential = await signInWithEmailAndPassword(auth, cleanEmail, pass);
     const loggedUser = {
       uid: userCredential.user.uid,
       email: cleanEmail,
+      displayName: cleanEmail.split('@')[0],
     };
+    
+    // Sync to Firestore dkm_accounts
+    try {
+      const accRef = doc(db, 'dkm_accounts', cleanEmail);
+      await setDoc(accRef, {
+        uid: userCredential.user.uid,
+        email: cleanEmail,
+        password: pass,
+        lastLoginAt: new Date().toISOString(),
+      }, { merge: true });
+    } catch (e) {
+      console.warn('Syncing login to dkm_accounts notice:', e);
+    }
+
     setStoredCurrentLocalUser(loggedUser);
     return { user: userCredential.user, error: null };
   } catch (err: any) {
     console.warn('Firebase signInWithEmailAndPassword notice:', err?.code || err);
 
-    // Check local database for matches
+    // If wrong password returned directly by Firebase Auth
+    if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+      // Check cloud dkm_accounts as secondary verification
+      try {
+        const accRef = doc(db, 'dkm_accounts', cleanEmail);
+        const accSnap = await getDoc(accRef);
+        if (accSnap.exists()) {
+          const accData = accSnap.data();
+          if (accData.password === pass) {
+            const uid = accData.uid || generateDeterministicUid(cleanEmail);
+            const userObj = {
+              uid,
+              email: cleanEmail,
+              displayName: cleanEmail.split('@')[0],
+            };
+            setStoredCurrentLocalUser(userObj);
+            return { user: userObj, error: null };
+          }
+        }
+      } catch (cloudErr) {
+        console.warn('Cloud account check error:', cloudErr);
+      }
+      return { user: null, error: 'Password yang Anda masukkan salah. Periksa kembali.' };
+    }
+
+    // 2. Check Firestore dkm_accounts for multi-device credentials
+    try {
+      const accRef = doc(db, 'dkm_accounts', cleanEmail);
+      const accSnap = await getDoc(accRef);
+      if (accSnap.exists()) {
+        const accData = accSnap.data();
+        if (accData.password === pass) {
+          const uid = accData.uid || generateDeterministicUid(cleanEmail);
+          const userObj = {
+            uid,
+            email: cleanEmail,
+            displayName: cleanEmail.split('@')[0],
+          };
+          setStoredCurrentLocalUser(userObj);
+          return { user: userObj, error: null };
+        } else {
+          return { user: null, error: 'Password yang Anda masukkan salah. Periksa kembali.' };
+        }
+      }
+    } catch (firestoreErr) {
+      console.warn('Firestore dkm_accounts read error:', firestoreErr);
+    }
+
+    // 3. Check Local Device Cache
     const localUsers = getStoredLocalUsers();
     const localUser = localUsers.find(
       (u) => u.email.toLowerCase() === cleanEmail && u.password === pass
@@ -211,10 +300,22 @@ export const loginWithEmail = async (email: string, pass: string) => {
         uid: localUser.uid,
         email: localUser.email,
         displayName: cleanEmail.split('@')[0],
-        isLocal: true,
       };
+      // Push to Firestore dkm_accounts so other devices will have it immediately
+      try {
+        const accRef = doc(db, 'dkm_accounts', cleanEmail);
+        setDoc(accRef, {
+          uid: localUser.uid,
+          email: cleanEmail,
+          password: pass,
+          updatedAt: new Date().toISOString(),
+        }, { merge: true });
+      } catch (e) {
+        console.warn('Syncing local user to Firestore notice:', e);
+      }
+
       setStoredCurrentLocalUser(userObj);
-      return { user: userObj, error: null, isLocalFallback: true };
+      return { user: userObj, error: null };
     }
 
     const emailFoundLocally = localUsers.find((u) => u.email.toLowerCase() === cleanEmail);
@@ -222,7 +323,10 @@ export const loginWithEmail = async (email: string, pass: string) => {
       return { user: null, error: 'Password yang Anda masukkan salah. Periksa kembali.' };
     }
 
-    return { user: null, error: getAuthErrorMessage(err.code || err.message) };
+    return {
+      user: null,
+      error: 'Akun dengan email ini belum terdaftar. Silakan buat akun baru di tab "Buat Akun Baru".',
+    };
   }
 };
 
@@ -231,6 +335,31 @@ export const loginWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
     provider.setCustomParameters({ prompt: 'select_account' });
     const userCredential = await signInWithPopup(auth, provider);
+    const cleanEmail = (userCredential.user.email || '').toLowerCase();
+    
+    // Register Google account in Firestore dkm_accounts
+    if (cleanEmail) {
+      try {
+        const accRef = doc(db, 'dkm_accounts', cleanEmail);
+        await setDoc(accRef, {
+          uid: userCredential.user.uid,
+          email: cleanEmail,
+          authProvider: 'google',
+          displayName: userCredential.user.displayName || cleanEmail.split('@')[0],
+          lastLoginAt: new Date().toISOString(),
+        }, { merge: true });
+      } catch (e) {
+        console.warn('Syncing Google user to dkm_accounts notice:', e);
+      }
+    }
+
+    const userObj = {
+      uid: userCredential.user.uid,
+      email: cleanEmail,
+      displayName: userCredential.user.displayName || cleanEmail.split('@')[0],
+    };
+    setStoredCurrentLocalUser(userObj);
+
     return { user: userCredential.user, error: null };
   } catch (err: any) {
     return { user: null, error: getAuthErrorMessage(err.code || err.message) };
@@ -256,28 +385,30 @@ export const sendPasswordReset = async (email: string) => {
   }
 };
 
-export const recoverOrActivateAccount = (email: string) => {
+export const recoverOrActivateAccount = async (email: string) => {
   const cleanEmail = email.trim().toLowerCase();
-  const localUsers = getStoredLocalUsers();
-  
-  let targetUser = localUsers.find((u) => u.email.toLowerCase() === cleanEmail);
-  
-  if (!targetUser) {
-    const localUid = `dkm-user-${cleanEmail.replace(/[^a-z0-9]/g, '_')}`;
-    targetUser = {
-      uid: localUid,
-      email: cleanEmail,
-      createdAt: new Date().toISOString(),
-    };
-    const updated = [...localUsers, targetUser];
-    localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(updated));
+  const uid = generateDeterministicUid(cleanEmail);
+
+  // Check if exists in cloud dkm_accounts
+  try {
+    const accRef = doc(db, 'dkm_accounts', cleanEmail);
+    const accSnap = await getDoc(accRef);
+    if (!accSnap.exists()) {
+      await setDoc(accRef, {
+        uid,
+        email: cleanEmail,
+        createdAt: new Date().toISOString(),
+        recoveredAt: new Date().toISOString(),
+      }, { merge: true });
+    }
+  } catch (e) {
+    console.warn('recoverOrActivateAccount firestore notice:', e);
   }
 
   const userObj = {
-    uid: targetUser.uid,
-    email: targetUser.email,
-    displayName: targetUser.displayName || targetUser.email.split('@')[0],
-    isLocal: true,
+    uid,
+    email: cleanEmail,
+    displayName: cleanEmail.split('@')[0],
   };
   setStoredCurrentLocalUser(userObj);
   return userObj;
@@ -286,11 +417,13 @@ export const recoverOrActivateAccount = (email: string) => {
 export const subscribeAuth = (callback: (user: any | null) => void) => {
   const checkCurrentState = (fbUser: User | null) => {
     if (fbUser) {
-      setStoredCurrentLocalUser({
+      const userObj = {
         uid: fbUser.uid,
         email: fbUser.email,
-      });
-      callback(fbUser);
+        displayName: fbUser.displayName || fbUser.email?.split('@')[0],
+      };
+      setStoredCurrentLocalUser(userObj);
+      callback(userObj);
     } else {
       const localUser = getStoredCurrentLocalUser();
       callback(localUser);

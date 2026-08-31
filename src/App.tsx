@@ -307,7 +307,7 @@ export default function App() {
 
   // Subscribe to Firestore Real-Time Data for Authenticated User
   useEffect(() => {
-    if (currentUser?.uid && !currentUser?.isLocal && auth.currentUser) {
+    if (currentUser?.uid) {
       const unsubscribeData = subscribeFirestoreData(currentUser.uid, (data) => {
         if (data.mosqueProfile) {
           setMosqueProfile(data.mosqueProfile);
@@ -368,7 +368,7 @@ export default function App() {
 
       return () => unsubscribeData();
     }
-  }, [currentUser?.uid, currentUser?.isLocal]);
+  }, [currentUser?.uid]);
 
   // Public Transparency Mode State
   const [isPublicMode, setIsPublicMode] = useState<boolean>(() => {
@@ -839,9 +839,8 @@ export default function App() {
         localStorage.setItem(STORAGE_KEY_TRANSACTIONS, JSON.stringify(next));
         return next;
       });
-      if (currentUser?.uid && !currentUser.isLocal && auth.currentUser) {
-        saveTransactionToFirestore(currentUser.uid, newTrx);
-      }
+      const syncId = currentUser?.uid || getOrCreateMosquePublicId();
+      saveTransactionToFirestore(syncId, newTrx);
     }
 
     const newRecord: BusinessRecord = {
@@ -854,9 +853,8 @@ export default function App() {
 
     const updatedRecords = [newRecord, ...businessRecords];
     setBusinessRecords(updatedRecords);
-    if (currentUser) {
-      saveSettingsToFirestore(currentUser.uid, { businessRecords: updatedRecords });
-    }
+    const syncId = currentUser?.uid || getOrCreateMosquePublicId();
+    saveSettingsToFirestore(syncId, { businessRecords: updatedRecords });
 
     if (createdTrxId) {
       setToastMessage(`Rekap tersimpan & otomatis disetorkan ke Kas Rp ${Number(recordData.setoranKasMasjid).toLocaleString('id-ID')}`);
@@ -931,9 +929,8 @@ export default function App() {
       localStorage.setItem(STORAGE_KEY_TRANSACTIONS, JSON.stringify(next));
       return next;
     });
-    if (currentUser?.uid && !currentUser.isLocal && auth.currentUser) {
-      saveTransactionToFirestore(currentUser.uid, newTrx);
-    }
+    const syncId = currentUser?.uid || getOrCreateMosquePublicId();
+    saveTransactionToFirestore(syncId, newTrx);
 
     const updatedRecords = businessRecords.map((r) =>
       r.id === recordId
@@ -945,9 +942,7 @@ export default function App() {
         : r
     );
     setBusinessRecords(updatedRecords);
-    if (currentUser) {
-      saveSettingsToFirestore(currentUser.uid, { businessRecords: updatedRecords });
-    }
+    saveSettingsToFirestore(syncId, { businessRecords: updatedRecords });
 
     setToastMessage(`Berhasil menyetorkan Rp ${Number(record.setoranKasMasjid).toLocaleString('id-ID')} ke Kas Masjid!`);
     setTimeout(() => setToastMessage(null), 3500);
@@ -1058,9 +1053,8 @@ export default function App() {
         localStorage.setItem(STORAGE_KEY_TRANSACTIONS, JSON.stringify(next));
         return next;
       });
-      if (currentUser?.uid && !currentUser.isLocal && auth.currentUser) {
-        saveTransactionToFirestore(currentUser.uid, newTrx);
-      }
+      const syncId = currentUser?.uid || getOrCreateMosquePublicId();
+      saveTransactionToFirestore(syncId, newTrx);
     }
 
     // Also add to Business Records
@@ -1128,12 +1122,11 @@ export default function App() {
     });
     setLandTenants(updatedTenants);
 
-    if (currentUser) {
-      saveSettingsToFirestore(currentUser.uid, {
-        businessRecords: updatedRecords,
-        landTenants: updatedTenants,
-      });
-    }
+    const syncId = currentUser?.uid || getOrCreateMosquePublicId();
+    saveSettingsToFirestore(syncId, {
+      businessRecords: updatedRecords,
+      landTenants: updatedTenants,
+    });
 
     setToastMessage(
       diskonPersen > 0
@@ -1166,11 +1159,10 @@ export default function App() {
     });
 
     setLandTenants(updatedTenants);
-    if (currentUser) {
-      saveSettingsToFirestore(currentUser.uid, {
-        landTenants: updatedTenants,
-      });
-    }
+    const syncId = currentUser?.uid || getOrCreateMosquePublicId();
+    saveSettingsToFirestore(syncId, {
+      landTenants: updatedTenants,
+    });
 
     setToastMessage('Catatan pembayaran sewa berhasil dihapus.');
     setTimeout(() => setToastMessage(null), 3000);
