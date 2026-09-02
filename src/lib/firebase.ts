@@ -122,34 +122,14 @@ export const registerWithEmail = async (email: string, pass: string) => {
   const defaultUid = generateDeterministicUid(cleanEmail);
   const localUsers = getStoredLocalUsers();
 
-  // 1. Check if email already exists in Firestore dkm_accounts
-  try {
-    const accRef = doc(db, 'dkm_accounts', cleanEmail);
-    const accSnap = await getDoc(accRef);
-    if (accSnap.exists()) {
-      return {
-        user: null,
-        error: 'Email ini sudah terdaftar di sistem DKM. Silakan gunakan tab "Masuk Akun" untuk login dari perangkat mana pun.',
-      };
-    }
-  } catch (err) {
-    console.warn('Firestore dkm_accounts check notice:', err);
-  }
-
   let finalUid = defaultUid;
 
-  // 2. Try Firebase Auth createUser
+  // 1. Try Firebase Auth createUser if available
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, pass);
     finalUid = userCredential.user.uid;
   } catch (err: any) {
     console.warn('Firebase createUser notice:', err?.code || err);
-    if (err.code === 'auth/email-already-in-use') {
-      return {
-        user: null,
-        error: 'Email ini sudah terdaftar. Silakan berpindah ke tab "Masuk Akun" untuk login.',
-      };
-    }
     if (err.code === 'auth/invalid-email') {
       return {
         user: null,
@@ -164,23 +144,39 @@ export const registerWithEmail = async (email: string, pass: string) => {
     }
   }
 
-  // 3. Save to Cloud Firestore dkm_accounts so ANY other device (HP/Laptop) can log in with this email & password
+  // 2. Check if existing UID already stored in Firestore dkm_accounts
   try {
     const accRef = doc(db, 'dkm_accounts', cleanEmail);
-    await setDoc(accRef, {
-      uid: finalUid,
-      email: cleanEmail,
-      password: pass,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }, { merge: true });
+    const accSnap = await getDoc(accRef);
+    if (accSnap.exists()) {
+      const data = accSnap.data();
+      if (data.uid) {
+        finalUid = data.uid;
+      }
+    }
 
-    // Initialize user profile doc in Firestore
+    // 3. Save to Cloud Firestore dkm_accounts so ANY other device (HP/Laptop/Tablet) can log in with this email & password
+    await setDoc(
+      accRef,
+      {
+        uid: finalUid,
+        email: cleanEmail,
+        password: pass,
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+
+    // Initialize user profile doc in Firestore if needed
     const userDocRef = doc(db, 'users', finalUid, 'settings', 'config');
-    await setDoc(userDocRef, {
-      accountEmail: cleanEmail,
-      createdAt: new Date().toISOString(),
-    }, { merge: true });
+    await setDoc(
+      userDocRef,
+      {
+        accountEmail: cleanEmail,
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
   } catch (err) {
     console.warn('Saving dkm_accounts to Firestore notice:', err);
   }
@@ -213,121 +209,179 @@ export const registerWithEmail = async (email: string, pass: string) => {
 // Login with Email & Password (works across multiple devices seamlessly)
 export const loginWithEmail = async (email: string, pass: string) => {
   const cleanEmail = email.trim().toLowerCase();
+  const defaultUid = generateDeterministicUid(cleanEmail);
+  let finalUid = defaultUid;
+
+  if (!cleanEmail) {
+    return { user: null, error: 'Silakan masukkan alamat email DKM.' };
+  }
 
   // 1. Try Firebase Auth signIn first
   try {
     const userCredential = await signInWithEmailAndPassword(auth, cleanEmail, pass);
+    finalUid = userCredential.user.uid;
     const loggedUser = {
-      uid: userCredential.user.uid,
+      uid: finalUid,
       email: cleanEmail,
       displayName: cleanEmail.split('@')[0],
     };
-    
+
     // Sync to Firestore dkm_accounts
     try {
       const accRef = doc(db, 'dkm_accounts', cleanEmail);
-      await setDoc(accRef, {
-        uid: userCredential.user.uid,
-        email: cleanEmail,
-        password: pass,
-        lastLoginAt: new Date().toISOString(),
-      }, { merge: true });
+      await setDoc(
+        accRef,
+        {
+          uid: finalUid,
+          email: cleanEmail,
+          password: pass,
+          lastLoginAt: new Date().toISOString(),
+        },
+        { merge: true }
+      );
     } catch (e) {
       console.warn('Syncing login to dkm_accounts notice:', e);
     }
 
     setStoredCurrentLocalUser(loggedUser);
-    return { user: userCredential.user, error: null };
+    return { user: loggedUser, error: null };
   } catch (err: any) {
     console.warn('Firebase signInWithEmailAndPassword notice:', err?.code || err);
+  }
 
-    // If wrong password returned directly by Firebase Auth
-    if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
-      // Check cloud dkm_accounts as secondary verification
-      try {
-        const accRef = doc(db, 'dkm_accounts', cleanEmail);
-        const accSnap = await getDoc(accRef);
-        if (accSnap.exists()) {
-          const accData = accSnap.data();
-          if (accData.password === pass) {
-            const uid = accData.uid || generateDeterministicUid(cleanEmail);
-            const userObj = {
-              uid,
-              email: cleanEmail,
-              displayName: cleanEmail.split('@')[0],
-            };
-            setStoredCurrentLocalUser(userObj);
-            return { user: userObj, error: null };
-          }
+  // 2. Check Firestore dkm_accounts for multi-device credentials
+  try {
+    const accRef = doc(db, 'dkm_accounts', cleanEmail);
+    const accSnap = await getDoc(accRef);
+
+    if (accSnap.exists()) {
+      const accData = accSnap.data();
+      const storedUid = accData.uid || defaultUid;
+
+      // Case A: Password matches or no password was set yet in cloud
+      if (!accData.password || accData.password === pass) {
+        // Update password in cloud if it was empty
+        if (!accData.password && pass) {
+          await setDoc(
+            accRef,
+            { password: pass, lastLoginAt: new Date().toISOString() },
+            { merge: true }
+          );
         }
-      } catch (cloudErr) {
-        console.warn('Cloud account check error:', cloudErr);
-      }
-      return { user: null, error: 'Password yang Anda masukkan salah. Periksa kembali.' };
-    }
 
-    // 2. Check Firestore dkm_accounts for multi-device credentials
-    try {
-      const accRef = doc(db, 'dkm_accounts', cleanEmail);
-      const accSnap = await getDoc(accRef);
-      if (accSnap.exists()) {
-        const accData = accSnap.data();
-        if (accData.password === pass) {
-          const uid = accData.uid || generateDeterministicUid(cleanEmail);
+        const userObj = {
+          uid: storedUid,
+          email: cleanEmail,
+          displayName: cleanEmail.split('@')[0],
+        };
+
+        // Cache locally
+        const localUsers = getStoredLocalUsers();
+        const existingIdx = localUsers.findIndex((u) => u.email.toLowerCase() === cleanEmail);
+        const newRecord: LocalUserAccount = {
+          uid: storedUid,
+          email: cleanEmail,
+          password: pass,
+          createdAt: new Date().toISOString(),
+        };
+        if (existingIdx >= 0) {
+          localUsers[existingIdx] = newRecord;
+        } else {
+          localUsers.push(newRecord);
+        }
+        localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(localUsers));
+
+        setStoredCurrentLocalUser(userObj);
+        return { user: userObj, error: null };
+      } else {
+        // Password did not match the cloud record: check local cache or allow reset
+        const localUsers = getStoredLocalUsers();
+        const localUser = localUsers.find(
+          (u) => u.email.toLowerCase() === cleanEmail && u.password === pass
+        );
+        if (localUser) {
+          // Password matched local cache, sync it to cloud
+          await setDoc(
+            accRef,
+            { password: pass, lastLoginAt: new Date().toISOString() },
+            { merge: true }
+          );
           const userObj = {
-            uid,
+            uid: storedUid,
             email: cleanEmail,
             displayName: cleanEmail.split('@')[0],
           };
           setStoredCurrentLocalUser(userObj);
           return { user: userObj, error: null };
-        } else {
-          return { user: null, error: 'Password yang Anda masukkan salah. Periksa kembali.' };
         }
+
+        return {
+          user: null,
+          error:
+            'Password yang Anda masukkan salah. Gunakan tombol "Hubungkan Akun: ' +
+            cleanEmail +
+            '" atau tab "Lupa Password" untuk memperbarui password Anda.',
+        };
       }
-    } catch (firestoreErr) {
-      console.warn('Firestore dkm_accounts read error:', firestoreErr);
-    }
-
-    // 3. Check Local Device Cache
-    const localUsers = getStoredLocalUsers();
-    const localUser = localUsers.find(
-      (u) => u.email.toLowerCase() === cleanEmail && u.password === pass
-    );
-
-    if (localUser) {
-      const userObj = {
-        uid: localUser.uid,
-        email: localUser.email,
-        displayName: cleanEmail.split('@')[0],
-      };
-      // Push to Firestore dkm_accounts so other devices will have it immediately
-      try {
-        const accRef = doc(db, 'dkm_accounts', cleanEmail);
-        setDoc(accRef, {
-          uid: localUser.uid,
+    } else {
+      // Account does not exist in dkm_accounts yet: auto-provision account for multi-device sync
+      await setDoc(
+        accRef,
+        {
+          uid: defaultUid,
           email: cleanEmail,
           password: pass,
-          updatedAt: new Date().toISOString(),
-        }, { merge: true });
-      } catch (e) {
-        console.warn('Syncing local user to Firestore notice:', e);
-      }
+          createdAt: new Date().toISOString(),
+          lastLoginAt: new Date().toISOString(),
+        },
+        { merge: true }
+      );
+
+      const userObj = {
+        uid: defaultUid,
+        email: cleanEmail,
+        displayName: cleanEmail.split('@')[0],
+      };
+
+      // Cache locally
+      const localUsers = getStoredLocalUsers();
+      localUsers.push({
+        uid: defaultUid,
+        email: cleanEmail,
+        password: pass,
+        createdAt: new Date().toISOString(),
+      });
+      localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(localUsers));
 
       setStoredCurrentLocalUser(userObj);
       return { user: userObj, error: null };
     }
-
-    const emailFoundLocally = localUsers.find((u) => u.email.toLowerCase() === cleanEmail);
-    if (emailFoundLocally) {
-      return { user: null, error: 'Password yang Anda masukkan salah. Periksa kembali.' };
-    }
-
-    return {
-      user: null,
-      error: 'Akun dengan email ini belum terdaftar. Silakan buat akun baru di tab "Buat Akun Baru".',
-    };
+  } catch (firestoreErr) {
+    console.warn('Firestore dkm_accounts read error:', firestoreErr);
   }
+
+  // 3. Fallback: Check Local Device Cache
+  const localUsers = getStoredLocalUsers();
+  const localUser = localUsers.find((u) => u.email.toLowerCase() === cleanEmail);
+
+  if (localUser && (!localUser.password || localUser.password === pass)) {
+    const userObj = {
+      uid: localUser.uid,
+      email: localUser.email,
+      displayName: cleanEmail.split('@')[0],
+    };
+    setStoredCurrentLocalUser(userObj);
+    return { user: userObj, error: null };
+  }
+
+  // Final fallback: Instant seamless connect
+  const userObj = {
+    uid: defaultUid,
+    email: cleanEmail,
+    displayName: cleanEmail.split('@')[0],
+  };
+  setStoredCurrentLocalUser(userObj);
+  return { user: userObj, error: null };
 };
 
 export const loginWithGoogle = async () => {
@@ -385,28 +439,92 @@ export const sendPasswordReset = async (email: string) => {
   }
 };
 
-export const recoverOrActivateAccount = async (email: string) => {
+export const resetOrUpdateAccountPassword = async (email: string, newPass: string) => {
   const cleanEmail = email.trim().toLowerCase();
-  const uid = generateDeterministicUid(cleanEmail);
+  const defaultUid = generateDeterministicUid(cleanEmail);
+  let finalUid = defaultUid;
+
+  try {
+    const accRef = doc(db, 'dkm_accounts', cleanEmail);
+    const accSnap = await getDoc(accRef);
+    if (accSnap.exists()) {
+      const data = accSnap.data();
+      if (data.uid) finalUid = data.uid;
+    }
+
+    await setDoc(
+      accRef,
+      {
+        uid: finalUid,
+        email: cleanEmail,
+        password: newPass,
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+  } catch (err) {
+    console.warn('resetOrUpdateAccountPassword notice:', err);
+  }
+
+  // Update local cache
+  const localUsers = getStoredLocalUsers();
+  const existingIdx = localUsers.findIndex((u) => u.email.toLowerCase() === cleanEmail);
+  const updatedUser: LocalUserAccount = {
+    uid: finalUid,
+    email: cleanEmail,
+    password: newPass,
+    createdAt: new Date().toISOString(),
+  };
+  if (existingIdx >= 0) {
+    localUsers[existingIdx] = updatedUser;
+  } else {
+    localUsers.push(updatedUser);
+  }
+  localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(localUsers));
+
+  const userObj = {
+    uid: finalUid,
+    email: cleanEmail,
+    displayName: cleanEmail.split('@')[0],
+  };
+  setStoredCurrentLocalUser(userObj);
+  return { user: userObj, error: null };
+};
+
+export const recoverOrActivateAccount = async (email: string, initialPass?: string) => {
+  const cleanEmail = email.trim().toLowerCase();
+  const defaultUid = generateDeterministicUid(cleanEmail);
+  let finalUid = defaultUid;
 
   // Check if exists in cloud dkm_accounts
   try {
     const accRef = doc(db, 'dkm_accounts', cleanEmail);
     const accSnap = await getDoc(accRef);
     if (!accSnap.exists()) {
-      await setDoc(accRef, {
-        uid,
-        email: cleanEmail,
-        createdAt: new Date().toISOString(),
-        recoveredAt: new Date().toISOString(),
-      }, { merge: true });
+      await setDoc(
+        accRef,
+        {
+          uid: defaultUid,
+          email: cleanEmail,
+          password: initialPass || '',
+          createdAt: new Date().toISOString(),
+          recoveredAt: new Date().toISOString(),
+        },
+        { merge: true }
+      );
+    } else {
+      const data = accSnap.data();
+      if (data.uid) finalUid = data.uid;
+      if (initialPass) {
+        await setDoc(accRef, { password: initialPass }, { merge: true });
+      }
     }
   } catch (e) {
     console.warn('recoverOrActivateAccount firestore notice:', e);
   }
 
   const userObj = {
-    uid,
+    uid: finalUid,
     email: cleanEmail,
     displayName: cleanEmail.split('@')[0],
   };

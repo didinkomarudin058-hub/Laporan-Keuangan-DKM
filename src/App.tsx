@@ -308,11 +308,24 @@ export default function App() {
   // Subscribe to Firestore Real-Time Data for Authenticated User
   useEffect(() => {
     if (currentUser?.uid) {
-      const unsubscribeData = subscribeFirestoreData(currentUser.uid, (data) => {
+      const currentUid = currentUser.uid;
+      const unsubscribeData = subscribeFirestoreData(currentUid, (data) => {
         if (data.mosqueProfile) {
           setMosqueProfile(data.mosqueProfile);
           localStorage.setItem(STORAGE_KEY_PROFILE, JSON.stringify(data.mosqueProfile));
+        } else {
+          // Sync existing local profile to Firestore if cloud doesn't have it yet
+          const savedProfile = localStorage.getItem(STORAGE_KEY_PROFILE);
+          if (savedProfile) {
+            try {
+              const parsed = JSON.parse(savedProfile);
+              saveSettingsToFirestore(currentUid, { mosqueProfile: parsed });
+            } catch (e) {
+              console.error(e);
+            }
+          }
         }
+
         if (data.categoriesPemasukan !== undefined && Array.isArray(data.categoriesPemasukan) && data.categoriesPemasukan.length > 0) {
           setCategoriesPemasukan(data.categoriesPemasukan);
           localStorage.setItem(STORAGE_KEY_CATEGORIES_PEMASUKAN, JSON.stringify(data.categoriesPemasukan));
@@ -344,7 +357,7 @@ export default function App() {
               try {
                 const parsed = JSON.parse(saved);
                 if (Array.isArray(parsed) && parsed.length > 0) {
-                  bulkSaveTransactionsToFirestore(currentUser.uid, parsed);
+                  bulkSaveTransactionsToFirestore(currentUid, parsed);
                 }
               } catch (e) {
                 console.error(e);
@@ -734,9 +747,8 @@ export default function App() {
   const handleDeletePosDana = (name: string) => {
     const updated = posDanaList.filter((f) => f !== name);
     setPosDanaList(updated);
-    if (currentUser) {
-      saveSettingsToFirestore(currentUser.uid, { posDanaList: updated });
-    }
+    const syncId = currentUser?.uid || getOrCreateMosquePublicId();
+    saveSettingsToFirestore(syncId, { posDanaList: updated });
   };
 
   // Metode Pembayaran Handlers
@@ -744,9 +756,8 @@ export default function App() {
     if (!metodePembayaranList.includes(name)) {
       const updated = [...metodePembayaranList, name];
       setMetodePembayaranList(updated);
-      if (currentUser) {
-        saveSettingsToFirestore(currentUser.uid, { metodePembayaranList: updated });
-      }
+      const syncId = currentUser?.uid || getOrCreateMosquePublicId();
+      saveSettingsToFirestore(syncId, { metodePembayaranList: updated });
     }
   };
 
@@ -756,17 +767,15 @@ export default function App() {
     setTransactions((prev) =>
       prev.map((t) => (t.metodePembayaran === oldName ? { ...t, metodePembayaran: newName } : t))
     );
-    if (currentUser) {
-      saveSettingsToFirestore(currentUser.uid, { metodePembayaranList: updated });
-    }
+    const syncId = currentUser?.uid || getOrCreateMosquePublicId();
+    saveSettingsToFirestore(syncId, { metodePembayaranList: updated });
   };
 
   const handleDeleteMetodePembayaran = (name: string) => {
     const updated = metodePembayaranList.filter((m) => m !== name);
     setMetodePembayaranList(updated);
-    if (currentUser) {
-      saveSettingsToFirestore(currentUser.uid, { metodePembayaranList: updated });
-    }
+    const syncId = currentUser?.uid || getOrCreateMosquePublicId();
+    saveSettingsToFirestore(syncId, { metodePembayaranList: updated });
   };
 
   // Business Unit Handlers
@@ -777,9 +786,8 @@ export default function App() {
     };
     const updated = [newUnit, ...businessUnits];
     setBusinessUnits(updated);
-    if (currentUser) {
-      saveSettingsToFirestore(currentUser.uid, { businessUnits: updated });
-    }
+    const syncId = currentUser?.uid || getOrCreateMosquePublicId();
+    saveSettingsToFirestore(syncId, { businessUnits: updated });
     setToastMessage(`Unit usaha "${newUnit.nama}" berhasil ditambahkan!`);
     setTimeout(() => setToastMessage(null), 3000);
   };
@@ -787,9 +795,8 @@ export default function App() {
   const handleEditBusinessUnit = (id: string, unitData: Omit<MosqueBusinessUnit, 'id'>) => {
     const updated = businessUnits.map((u) => (u.id === id ? { ...unitData, id } : u));
     setBusinessUnits(updated);
-    if (currentUser) {
-      saveSettingsToFirestore(currentUser.uid, { businessUnits: updated });
-    }
+    const syncId = currentUser?.uid || getOrCreateMosquePublicId();
+    saveSettingsToFirestore(syncId, { businessUnits: updated });
     setToastMessage('Data unit usaha berhasil diperbarui!');
     setTimeout(() => setToastMessage(null), 3000);
   };
@@ -797,9 +804,8 @@ export default function App() {
   const handleDeleteBusinessUnit = (id: string) => {
     const updated = businessUnits.filter((u) => u.id !== id);
     setBusinessUnits(updated);
-    if (currentUser) {
-      saveSettingsToFirestore(currentUser.uid, { businessUnits: updated });
-    }
+    const syncId = currentUser?.uid || getOrCreateMosquePublicId();
+    saveSettingsToFirestore(syncId, { businessUnits: updated });
     setToastMessage('Unit usaha berhasil dihapus.');
     setTimeout(() => setToastMessage(null), 3000);
   };
@@ -867,9 +873,8 @@ export default function App() {
   const handleEditBusinessRecord = (id: string, partial: Partial<BusinessRecord>) => {
     const updated = businessRecords.map((r) => (r.id === id ? { ...r, ...partial } : r));
     setBusinessRecords(updated);
-    if (currentUser) {
-      saveSettingsToFirestore(currentUser.uid, { businessRecords: updated });
-    }
+    const syncId = currentUser?.uid || getOrCreateMosquePublicId();
+    saveSettingsToFirestore(syncId, { businessRecords: updated });
     setToastMessage('Data rekap usaha berhasil diperbarui.');
     setTimeout(() => setToastMessage(null), 3000);
   };
@@ -889,9 +894,8 @@ export default function App() {
     }
     const updated = businessRecords.filter((r) => r.id !== id);
     setBusinessRecords(updated);
-    if (currentUser) {
-      saveSettingsToFirestore(currentUser.uid, { businessRecords: updated });
-    }
+    const syncId = currentUser?.uid || getOrCreateMosquePublicId();
+    saveSettingsToFirestore(syncId, { businessRecords: updated });
     setToastMessage('Rekap usaha berhasil dihapus.');
     setTimeout(() => setToastMessage(null), 3000);
   };
@@ -959,11 +963,10 @@ export default function App() {
     setLandTenants(updatedTenants);
     localStorage.setItem(STORAGE_KEY_LAND_TENANTS, JSON.stringify(updatedTenants));
 
-    if (currentUser?.uid) {
-      await saveSettingsToFirestore(currentUser.uid, {
-        landTenants: updatedTenants,
-      });
-    }
+    const syncId = currentUser?.uid || getOrCreateMosquePublicId();
+    await saveSettingsToFirestore(syncId, {
+      landTenants: updatedTenants,
+    });
 
     setToastMessage(`Data sewa "${newTenant.namaPenyewa}" berhasil ditambahkan!`);
     setTimeout(() => setToastMessage(null), 3000);
@@ -973,9 +976,8 @@ export default function App() {
     const updated = landTenants.map((t) => (t.id === id ? { ...tenantData, id } : t));
     setLandTenants(updated);
     localStorage.setItem(STORAGE_KEY_LAND_TENANTS, JSON.stringify(updated));
-    if (currentUser?.uid) {
-      await saveSettingsToFirestore(currentUser.uid, { landTenants: updated });
-    }
+    const syncId = currentUser?.uid || getOrCreateMosquePublicId();
+    await saveSettingsToFirestore(syncId, { landTenants: updated });
     setToastMessage('Data sewa berhasil diperbarui!');
     setTimeout(() => setToastMessage(null), 3000);
   };
@@ -984,9 +986,8 @@ export default function App() {
     const updated = landTenants.filter((t) => t.id !== id);
     setLandTenants(updated);
     localStorage.setItem(STORAGE_KEY_LAND_TENANTS, JSON.stringify(updated));
-    if (currentUser?.uid) {
-      await saveSettingsToFirestore(currentUser.uid, { landTenants: updated });
-    }
+    const syncId = currentUser?.uid || getOrCreateMosquePublicId();
+    await saveSettingsToFirestore(syncId, { landTenants: updated });
     setToastMessage('Data sewa berhasil dihapus.');
     setTimeout(() => setToastMessage(null), 3000);
   };

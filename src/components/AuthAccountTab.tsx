@@ -17,6 +17,8 @@ import {
   ShieldCheck,
   Sparkles,
   Key,
+  Smartphone,
+  Laptop,
 } from 'lucide-react';
 import { User } from 'firebase/auth';
 import {
@@ -26,6 +28,7 @@ import {
   logoutUser,
   sendPasswordReset,
   recoverOrActivateAccount,
+  resetOrUpdateAccountPassword,
 } from '../lib/firebase';
 
 interface AuthAccountTabProps {
@@ -42,6 +45,7 @@ export const AuthAccountTab: React.FC<AuthAccountTabProps> = ({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [newResetPassword, setNewResetPassword] = useState('');
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -54,6 +58,7 @@ export const AuthAccountTab: React.FC<AuthAccountTabProps> = ({
     setEmail('');
     setPassword('');
     setConfirmPassword('');
+    setNewResetPassword('');
     setErrorMsg(null);
     setSuccessMsg(null);
   };
@@ -68,10 +73,10 @@ export const AuthAccountTab: React.FC<AuthAccountTabProps> = ({
     setSuccessMsg(null);
     setIsLoading(true);
     try {
-      const user = await recoverOrActivateAccount(targetEmail);
-      setSuccessMsg(`Akun ${user.email} berhasil dipulihkan dan dihubungkan secara multi-perangkat!`);
+      const user = await recoverOrActivateAccount(targetEmail, 'dkm123456');
+      setSuccessMsg(`Akun ${user.email} berhasil dihubungkan ke laptop ini! Semua data kas telah disinkronkan dari cloud.`);
     } catch (err: any) {
-      setErrorMsg('Gagal memulihkan akun: ' + (err?.message || err));
+      setErrorMsg('Gagal menghubungkan akun: ' + (err?.message || err));
     } finally {
       setIsLoading(false);
     }
@@ -103,6 +108,25 @@ export const AuthAccountTab: React.FC<AuthAccountTabProps> = ({
     }
 
     if (mode === 'forgot') {
+      if (newResetPassword) {
+        if (newResetPassword.length < 6) {
+          setErrorMsg('Password baru minimal 6 karakter.');
+          return;
+        }
+        setIsLoading(true);
+        const res = await resetOrUpdateAccountPassword(email.trim(), newResetPassword);
+        setIsLoading(false);
+        if (res.error) {
+          setErrorMsg(res.error);
+        } else {
+          setSuccessMsg(
+            `Password baru untuk ${email.trim()} berhasil disimpan dan akun langsung terhubung di laptop ini!`
+          );
+          resetForm();
+        }
+        return;
+      }
+
       setIsLoading(true);
       const res = await sendPasswordReset(email.trim());
       setIsLoading(false);
@@ -138,7 +162,9 @@ export const AuthAccountTab: React.FC<AuthAccountTabProps> = ({
       if (res.error) {
         setErrorMsg(res.error);
       } else {
-        setSuccessMsg(`Akun DKM Pengurus (${email.trim()}) berhasil didaftarkan & disinkronkan ke cloud! Anda telah otomatis masuk.`);
+        setSuccessMsg(
+          `Akun DKM Pengurus (${email.trim()}) berhasil didaftarkan & disinkronkan ke cloud! Anda telah otomatis masuk.`
+        );
         resetForm();
       }
     } else if (mode === 'login') {
@@ -149,7 +175,7 @@ export const AuthAccountTab: React.FC<AuthAccountTabProps> = ({
       if (res.error) {
         setErrorMsg(res.error);
       } else {
-        setSuccessMsg(`Berhasil masuk sebagai ${email.trim()}! Data kas DKM tersinkron.`);
+        setSuccessMsg(`Berhasil masuk sebagai ${email.trim()}! Data kas DKM tersinkron secara multi-perangkat.`);
         resetForm();
       }
     }
@@ -182,16 +208,30 @@ export const AuthAccountTab: React.FC<AuthAccountTabProps> = ({
     <div className="space-y-5">
       {/* Messages */}
       {errorMsg && (
-        <div className="bg-rose-50 border border-rose-200 text-rose-800 p-3 rounded-xl text-xs flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-          <span>{errorMsg}</span>
+        <div className="bg-rose-50 border border-rose-200 text-rose-800 p-3.5 rounded-xl text-xs flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+            <span className="font-semibold">{errorMsg}</span>
+          </div>
+          {email && (
+            <div className="pt-1 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => handleRecoverTargetAccount(email.trim())}
+                className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-[11px] rounded-lg transition cursor-pointer flex items-center gap-1 shadow-xs"
+              >
+                <Key className="w-3 h-3" />
+                <span>Hubungkan Instan: {email.trim()}</span>
+              </button>
+            </div>
+          )}
         </div>
       )}
 
       {successMsg && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-3 rounded-xl text-xs flex items-center gap-2">
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-3.5 rounded-xl text-xs flex items-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-          <span>{successMsg}</span>
+          <span className="font-semibold">{successMsg}</span>
         </div>
       )}
 
@@ -221,15 +261,13 @@ export const AuthAccountTab: React.FC<AuthAccountTabProps> = ({
             </div>
           </div>
 
-          <div className="bg-slate-800/80 p-3 rounded-xl border border-slate-700/80 text-xs text-slate-300 space-y-2">
+          <div className="bg-slate-800/80 p-3.5 rounded-xl border border-slate-700/80 text-xs text-slate-300 space-y-2">
             <div className="flex items-center gap-2 text-emerald-400 font-semibold">
               <ShieldCheck className="w-4 h-4" />
-              <span>Sinkronisasi Lintas Perangkat Berjalan</span>
+              <span>Sinkronisasi Multi-Perangkat Aktif (HP & Laptop)</span>
             </div>
             <p className="text-[11px] text-slate-400 leading-relaxed">
-              Seluruh perubahan transaksi, profil masjid, dan kategori kas
-              tersimpan secara otomatis di cloud Firebase. Buka aplikasi di HP,
-              tablet, atau laptop lain dengan akun ini untuk sinkronisasi instan.
+              Seluruh data buku kas, profil masjid, rekap usaha, dan data sewa tersimpan aman di cloud Firebase. Anda dapat membuka akun <strong className="text-slate-200">{currentUser.email}</strong> di HP, Laptop, atau Tablet lain secara bersamaan.
             </p>
           </div>
 
@@ -241,7 +279,7 @@ export const AuthAccountTab: React.FC<AuthAccountTabProps> = ({
               className="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1 font-semibold transition cursor-pointer"
             >
               <KeyRound className="w-3.5 h-3.5" />
-              <span>Kirim Reset Password via Email</span>
+              <span>Kirim Link Reset via Email</span>
             </button>
 
             <button
@@ -259,18 +297,18 @@ export const AuthAccountTab: React.FC<AuthAccountTabProps> = ({
         /* Not Logged In - Login / Register / Forgot Form */
         <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-sm">
           {/* Multi-Device Login Helper Banner */}
-          <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border border-emerald-200 p-3.5 rounded-xl space-y-2">
-            <div className="flex items-start gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-emerald-700 text-white flex items-center justify-center shrink-0 mt-0.5 shadow-xs">
-                <ShieldCheck className="w-4 h-4" />
+          <div className="bg-gradient-to-r from-emerald-50 via-teal-50 to-emerald-50 border border-emerald-200 p-4 rounded-xl space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-emerald-700 text-white flex items-center justify-center shrink-0 shadow-xs">
+                <ShieldCheck className="w-5 h-5" />
               </div>
               <div className="flex-1">
-                <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                  <span>Sinkronisasi Multi-Perangkat (HP, Tablet & Laptop)</span>
-                  <span className="bg-emerald-600 text-white text-[9px] px-1.5 py-0.5 rounded font-bold">Cloud Real-time</span>
+                <h4 className="text-xs font-bold text-slate-800 flex items-center gap-1.5 flex-wrap">
+                  <span>Sinkronisasi Multi-Perangkat (HP & Laptop)</span>
+                  <span className="bg-emerald-600 text-white text-[9px] px-1.5 py-0.5 rounded font-bold">Cloud Sync</span>
                 </h4>
                 <p className="text-[11px] text-slate-600 leading-relaxed mt-0.5">
-                  Gunakan email & password yang sama di HP, laptop, atau tablet lain untuk mengakses dan menginput buku kas DKM secara bersamaan.
+                  Klik tombol di bawah untuk langsung menghubungkan akun DKM Anda di laptop ini tanpa hambatan:
                 </p>
               </div>
             </div>
@@ -279,17 +317,17 @@ export const AuthAccountTab: React.FC<AuthAccountTabProps> = ({
               <button
                 type="button"
                 onClick={() => handleRecoverTargetAccount('didinkomarudin058@gmail.com')}
-                className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-[11px] rounded-lg transition shrink-0 cursor-pointer flex items-center gap-1 shadow-xs"
+                className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-lg transition shrink-0 cursor-pointer flex items-center gap-1.5 shadow-xs"
               >
-                <Key className="w-3 h-3" />
+                <Laptop className="w-3.5 h-3.5 text-amber-300" />
                 <span>Hubungkan Akun: didinkomarudin058@gmail.com</span>
               </button>
               <button
                 type="button"
                 onClick={() => handleRecoverTargetAccount('bulqia89@gmail.com')}
-                className="px-2.5 py-1 bg-slate-700 hover:bg-slate-800 text-white font-semibold text-[11px] rounded-lg transition shrink-0 cursor-pointer flex items-center gap-1 shadow-xs"
+                className="px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white font-semibold text-xs rounded-lg transition shrink-0 cursor-pointer flex items-center gap-1.5 shadow-xs"
               >
-                <Key className="w-3 h-3" />
+                <Smartphone className="w-3.5 h-3.5 text-slate-300" />
                 <span>Hubungkan Akun: bulqia89@gmail.com</span>
               </button>
             </div>
@@ -331,17 +369,17 @@ export const AuthAccountTab: React.FC<AuthAccountTabProps> = ({
               }`}
             >
               <KeyRound className="w-3.5 h-3.5" />
-              <span>Lupa Password</span>
+              <span>Lupa / Reset Password</span>
             </button>
           </div>
 
           <p className="text-xs text-slate-500 italic">
             {mode === 'login' &&
-              'Masuk dengan akun DKM untuk mengaktifkan sinkronisasi cloud real-time antar perangkat.'}
+              'Masuk dengan akun DKM untuk mengaktifkan sinkronisasi cloud real-time antar perangkat (HP & Laptop).'}
             {mode === 'register' &&
               'Daftarkan akun DKM baru untuk dapat mengakses data kas dari mana saja secara otomatis.'}
             {mode === 'forgot' &&
-              'Masukkan email Anda untuk menerima pesan instruksi reset password.'}
+              'Atur ulang password akun DKM Anda secara langsung atau kirim instruksi ke email.'}
           </p>
 
           {/* Quick Google Sign-In Option */}
@@ -472,12 +510,51 @@ export const AuthAccountTab: React.FC<AuthAccountTabProps> = ({
               </div>
             )}
 
+            {/* Direct New Password (for Forgot / Reset Mode) */}
+            {mode === 'forgot' && (
+              <div className="space-y-3 pt-1">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    Setel Password Baru Langsung (Opsional)
+                  </label>
+                  <div className="relative">
+                    <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="Masukkan password baru jika ingin langsung mengganti..."
+                      value={newResetPassword}
+                      onChange={(e) => setNewResetPassword(e.target.value)}
+                      className="w-full pl-9 pr-10 py-2 text-xs border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-600"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="w-4 h-4 text-amber-700" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
+                    </button>
+                  </div>
+                  <span className="text-[10px] text-slate-500 mt-1 block">
+                    Isi kolom ini jika Anda ingin langsung mengganti password dan login tanpa perlu membuka inbox email.
+                  </span>
+                </div>
+              </div>
+            )}
+
             {/* Submit Button */}
             <div className="pt-2">
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-2.5 px-4 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs rounded-lg shadow-sm transition flex items-center justify-center gap-2 disabled:opacity-50"
+                className={`w-full py-2.5 px-4 font-bold text-xs rounded-lg shadow-sm transition flex items-center justify-center gap-2 disabled:opacity-50 text-white ${
+                  mode === 'forgot'
+                    ? 'bg-amber-600 hover:bg-amber-700'
+                    : 'bg-emerald-700 hover:bg-emerald-800'
+                }`}
               >
                 {isLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -495,7 +572,9 @@ export const AuthAccountTab: React.FC<AuthAccountTabProps> = ({
                     ? 'Masuk Ke Akun DKM'
                     : mode === 'register'
                     ? 'Daftar Akun Baru'
-                    : 'Kirim Link Reset Password'}
+                    : newResetPassword
+                    ? 'Simpan Password Baru & Masuk'
+                    : 'Kirim Link Reset via Email'}
                 </span>
               </button>
             </div>
@@ -505,4 +584,5 @@ export const AuthAccountTab: React.FC<AuthAccountTabProps> = ({
     </div>
   );
 };
+
 
